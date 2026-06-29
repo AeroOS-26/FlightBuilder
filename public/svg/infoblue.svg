@@ -1,0 +1,11 @@
+<svg width="38" height="38" viewBox="0 0 38 38" fill="none" xmlns="http://www.w3.org/2000/svg">
+<mask id="path-1-inside-1_1215_14218" fill="white">
+<path d="M0 19C0 8.50657 8.50657 0 19 0C29.4934 0 37.9999 8.50657 37.9999 19C37.9999 29.4934 29.4934 37.9999 19 37.9999C8.50657 37.9999 0 29.4934 0 19Z"/>
+</mask>
+<path d="M0 19C0 8.50657 8.50657 0 19 0C29.4934 0 37.9999 8.50657 37.9999 19C37.9999 29.4934 29.4934 37.9999 19 37.9999C8.50657 37.9999 0 29.4934 0 19Z" fill="#CFE3F1" fill-opacity="0.4"/>
+<path d="M0 19M37.9999 19M37.9999 19M0 19M19 0M37.9999 19M19 37.9999M0 19M19 37.9999V36.9999C9.05886 36.9999 1 28.9411 1 19H0H-1C-1 30.0456 7.95429 38.9999 19 38.9999V37.9999ZM37.9999 19H36.9999C36.9999 28.9411 28.9411 36.9999 19 36.9999V37.9999V38.9999C30.0456 38.9999 38.9999 30.0456 38.9999 19H37.9999ZM19 0V1C28.9411 1 36.9999 9.05886 36.9999 19H37.9999H38.9999C38.9999 7.95429 30.0456 -1 19 -1V0ZM19 0V-1C7.95429 -1 -1 7.95429 -1 19H0H1C1 9.05886 9.05886 1 19 1V0Z" fill="#CFE3F1" mask="url(#path-1-inside-1_1215_14218)"/>
+<rect width="24" height="24" transform="translate(7 7)" fill="#CFE3F1" fill-opacity="0.4"/>
+<ellipse cx="19" cy="19" rx="7.5" ry="7.5" transform="rotate(-180 19 19)" stroke="#112D7C" stroke-width="1.5"/>
+<path d="M19.006 16.75L18.9993 16.75" stroke="#112D7C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M19 19L19 22" stroke="#112D7C" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

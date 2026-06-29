@@ -1,0 +1,100 @@
+/**
+ * Brand-agnostic design tokens.
+ *
+ * Every visual value is a CSS variable. Components reference semantic tokens
+ * (never hardcoded brand colors), so a brand can re-skin the whole app by
+ * overriding these variables via the `data-brand` attribute (see brand.ts).
+ *
+ * The palette below is tuned to the Perro Air "Create a Shared Flight" design:
+ * near-black primary CTAs, a blue accent for links / active steps, green for
+ * completed steps, and soft tinted surfaces for info / error / recommendation.
+ */
+
+:root {
+  /* --- Primary call-to-action (the dark, filled buttons) --- */
+  --color-primary: #101114;
+  --color-primary-hover: #000000;
+  --color-on-primary: #ffffff;
+
+  /* --- Accent (links, active step, focus, number badges) --- */
+  --color-accent: #112D7C;
+  --color-accent-hover: #112D7C;
+  --color-accent-soft: #eaf0ff;
+  --color-accent-softer: #f4f7ff;
+  --color-on-accent: #ffffff;
+
+  /* --- Deep navy (segmented control / selected pills / logo) --- */
+  --color-navy: #18204a;
+  --color-navy-hover: #11183a;
+
+  /* --- Surfaces & text --- */
+  /* --- Page background (diagonal white → tint → white) --- */
+  --color-bg-from: #ffffff;
+  --color-bg-mid: #f5f9fc;
+  --color-bg-to: #ffffff;
+  --color-surface: #ffffff;
+  --color-surface-muted: #f7f8fb;
+  --color-border: #e7e9ef;
+  --color-border-strong: #d6d9e2;
+  --color-text: #14161d;
+  --color-text-muted: #5d6675;
+  --color-text-subtle: #000000;
+  --color-placeholder: #a3abb9;
+
+  /* --- Feedback: success / warning / danger / info --- */
+  --color-success: #1aa35a;
+  --color-success-strong: #15924f;
+  --color-success-soft: #e4f6ec;
+  --color-success-text: #0f7a40;
+
+  --color-warning: #c98a02;
+  --color-warning-soft: #fdf3da;
+  --color-warning-text: #946400;
+
+  --color-danger: #D00416;
+  --color-danger-hover: #D00416;
+  --color-danger-soft: #fdecec;
+  --color-danger-border: #f6cccd;
+  --color-danger-text: #D00416;
+  --color-error-input-bg: rgba(233, 106, 111, 0.1);
+  --color-error-banner-bg: rgba(233, 106, 111, 0.2);
+
+  --color-recommend-soft: #fdeceb;
+  --color-recommend-text: #D00416;
+
+  /* --- Radius --- */
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.25rem;
+  --radius-pill: 999px;
+
+  /* --- Shadows --- */
+  --shadow-card: 0 1px 2px rgba(20, 22, 29, 0.04), 0 8px 24px rgba(20, 22, 29, 0.05);
+  --shadow-pop: 0 12px 32px rgba(20, 22, 29, 0.12);
+  --shadow-focus: 0 0 0 3px rgba(47, 98, 245, 0.18);
+
+  /* --- Typography --- */
+  --font-heading: 'Inter Display', 'Inter', system-ui, -apple-system, sans-serif;
+  --font-sans: 'Inter Tight', 'Inter', system-ui, -apple-system, sans-serif;
+
+  /* --- Dashed outlines (add buttons, privacy panel) --- */
+  --dashed-border-color: #112d7c;
+  --dashed-border-length: 12px;
+  --dashed-border-gap: 8px;
+}
+
+/* Perro Air brand (default). */
+[data-brand='perro-air'] {
+  --color-accent: #112D7C;
+  --color-accent-hover: #112D7C;
+  --color-navy: #18204a;
+}
+
+/* JetLegs brand — override the same tokens, components stay untouched. */
+[data-brand='jetlegs'] {
+  --color-primary: #0d0d12;
+  --color-accent: #c8a24b;
+  --color-accent-hover: #b08d3c;
+  --color-navy: #0d0d12;
+}

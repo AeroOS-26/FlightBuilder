@@ -1,0 +1,27 @@
+# Bitbucket Pipelines — mirror `main` to the client's GitHub repository.
+#
+# Trigger:  every successful merge/push to `main` (post-merge).
+# Action:   publish the current state of `main` to GitHub as a single commit
+#           authored by XpertWebApp, so the client's repo only ever shows
+#           XpertWebApp as the contributor. The real (multi-author) Bitbucket
+#           history stays private and is never pushed.
+#
+# Security: authentication uses a GitHub fine-grained personal access token
+#           (Contents: read & write on the client's repo only). The token lives
+#           ONLY in the secured Bitbucket variable GITHUB_TOKEN and is passed to
+#           git via an Authorization header, so it never appears in a URL or the
+#           logs. No credentials are hardcoded here. See docs/ci-github-mirror.md.
+
+image: atlassian/default-image:4
+
+pipelines:
+  branches:
+    main:
+      - step:
+          name: Mirror main to client GitHub
+          # Only the mirror script runs here; no build needed to publish source.
+          clone:
+            # Full history isn't required — we publish a snapshot of the tip.
+            depth: 1
+          script:
+            - bash ./scripts/mirror-to-github.sh
