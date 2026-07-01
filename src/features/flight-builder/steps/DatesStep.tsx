@@ -82,49 +82,50 @@ export function DatesStep() {
         }
       />
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        {date.mode === 'specific' ? (
-          <FormField label="Travel date" className="sm:col-span-2">
-            <TextInput
-              readOnly
-              placeholder="Select your date"
-              endAdornment={calendarInputIcon}
-              value={date.start ? formatLongDate(date.start) : ''}
-              invalid={Boolean(errors.date)}
-            />
-          </FormField>
-        ) : (
-          <>
-            <FormField label="Start date">
+      <div className="flex flex-col gap-[6px] md:gap-2">
+        <div className="grid gap-4 sm:grid-cols-2">
+          {date.mode === 'specific' ? (
+            <FormField label="Travel date" className="sm:col-span-2">
               <TextInput
                 readOnly
-                placeholder="Select a start date"
+                placeholder="Select your date"
                 endAdornment={calendarInputIcon}
                 value={date.start ? formatLongDate(date.start) : ''}
                 invalid={Boolean(errors.date)}
               />
             </FormField>
-            <FormField label="End date">
-              <TextInput
-                readOnly
-                placeholder="Select an end date"
-                endAdornment={calendarInputIcon}
-                value={date.end ? formatLongDate(date.end) : ''}
-                invalid={Boolean(errors.date)}
-              />
-            </FormField>
-          </>
-        )}
+          ) : (
+            <>
+              <FormField label="Earliest travel date">
+                <TextInput
+                  readOnly
+                  placeholder="Select a start date"
+                  endAdornment={calendarInputIcon}
+                  value={date.start ? formatLongDate(date.start) : ''}
+                />
+              </FormField>
+              <FormField label="Travel date">
+                <TextInput
+                  readOnly
+                  placeholder="Select an end date"
+                  endAdornment={calendarInputIcon}
+                  value={date.end ? formatLongDate(date.end) : ''}
+                  invalid={Boolean(errors.date)}
+                />
+              </FormField>
+            </>
+          )}
+        </div>
+
+        <Calendar
+          mode={date.mode}
+          start={date.start}
+          end={date.end}
+          onChange={({ start, end }) => setDate({ start, end })}
+        />
+
+        {errors.date && <FieldError>{errors.date}</FieldError>}
       </div>
-
-      <Calendar
-        mode={date.mode}
-        start={date.start}
-        end={date.end}
-        onChange={({ start, end }) => setDate({ start, end })}
-      />
-
-      {errors.date && <FieldError>{errors.date}</FieldError>}
 
       <InfoNote>
         Shared flights typically form 2–6 weeks out from your travel date.

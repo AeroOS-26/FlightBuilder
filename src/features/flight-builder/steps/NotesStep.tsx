@@ -43,11 +43,12 @@ export function NotesStep() {
         description="Optional. Mention anything that might affect routing, scheduling, or pets. Examples: morning departure preferred, allergies in the group, large luggage."
       />
 
-      <FormField label="Notes for the operator" htmlFor="notes" error={error} className="mt-5">
+      <FormField label="Notes for the operator" htmlFor="notes" className="mt-5">
         <Textarea
           id="notes"
           rows={6}
           maxCount={NOTES_MAX_LENGTH}
+          error={error}
           placeholder="Add any notes for the operator... (optional)"
           value={notes}
           invalid={Boolean(error)}

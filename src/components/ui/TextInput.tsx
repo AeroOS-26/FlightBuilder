@@ -40,7 +40,7 @@ export const TextInput = forwardRef<HTMLInputElement, TextInputProps>(
           aria-invalid={invalid || undefined}
           className={cn(
             'min-h-[40px] w-full rounded-[12px] border py-3 font-sans text-[12px] font-medium leading-[18px] text-[#000000] transition-colors lg:text-[14px] lg:leading-4',
-            'placeholder:text-placeholder focus-ring',
+            'placeholder:text-placeholder focus-visible:border-accent focus-visible:outline-none',
             leadingIcon ? 'pl-11' : 'pl-[14px]',
             endAdornment || trailingIcon ? 'pr-11' : 'pr-[14px]',
             invalid

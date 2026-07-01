@@ -14,9 +14,11 @@ import { useFlightBuilderStore } from '@/features/flight-builder/store/flightBui
 import type { MemberIdentity } from '@/types'
 
 // Placeholder — replace with the real member lookup when auth is wired.
+// Name is left blank so Traveler 1's "Full name" isn't pre-filled; the user
+// enters their own name until the real member lookup provides it.
 const PLACEHOLDER_FOUNDER: MemberIdentity = {
   id: 'member_self',
-  name: 'Margot Davies',
+  name: '',
   email: 'margot@perroair.example',
 }
 

@@ -37,11 +37,18 @@ export function StepFooter({
 
   const label = continueLabel ?? currentStep.continueLabel ?? 'Continue'
   const handleContinue = onContinue ?? goNext
+  const backText =
+    canGoBack && prevStep ? `Back to ${prevStep.backLabel}` : 'Save & Exit'
+  const useMobileStack = label.length > 22 || backText.length > 22
 
   return (
     <div
       className={cn(
-        'flex flex-col gap-3 px-4 py-4 md:flex-row md:items-center md:justify-between',
+        'flex min-w-0 gap-3 px-4 py-4',
+        useMobileStack
+          ? 'max-md:flex-col max-md:gap-3'
+          : 'max-md:flex-row max-md:items-center max-md:justify-between max-md:gap-2',
+        'md:flex-row md:items-center md:justify-between',
         className ?? (compact ? 'mt-[24px]' : 'mt-6 lg:mt-[94px]'),
       )}
     >
@@ -49,12 +56,22 @@ export function StepFooter({
         <Button
           variant="secondary"
           onClick={goBack}
-          className="w-full shrink-0 md:w-auto"
+          className={cn(
+            'w-full md:w-auto',
+            !useMobileStack && 'max-md:w-auto max-md:shrink-0',
+          )}
         >
           Back to {prevStep.backLabel}
         </Button>
       ) : (
-        <Button variant="secondary" onClick={onSaveAndExit} className="w-full shrink-0 max-md:underline md:w-auto">
+        <Button
+          variant="secondary"
+          onClick={onSaveAndExit}
+          className={cn(
+            'w-full md:w-auto',
+            !useMobileStack && 'max-md:w-auto max-md:shrink-0',
+          )}
+        >
           Save &amp; Exit
         </Button>
       )}
@@ -64,7 +81,10 @@ export function StepFooter({
           loading={continueLoading}
           disabled={continueDisabled}
           onClick={handleContinue}
-          className="w-full shrink-0 !pr-[11px] md:w-auto"
+          className={cn(
+            'w-full pr-[11px]! md:w-auto',
+            !useMobileStack && 'max-md:w-auto max-md:shrink-0',
+          )}
           trailingAdornment={
             <img src="/svg/arrow.svg" alt="" aria-hidden="true" className="h-[18px] w-[18px]" />
           }

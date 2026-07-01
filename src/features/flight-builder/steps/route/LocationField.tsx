@@ -227,7 +227,7 @@ export function LocationField({
               return (
                 <div key={optionKey(opt, index)}>
                   {isFirstAirport && (
-                    <div className="py-3 font-sans text-[12px] font-medium uppercase leading-[15px] tracking-[0.06em] text-[#112D7C] md:px-2 md:py-4 md:leading-normal">
+                    <div className="py-3 font-sans text-[12px] font-medium uppercase leading-[15px] tracking-[0.06em] text-[#112D7C] md:px-2 md:pt-4 md:pb-2 md:leading-normal">
                       Or lock to a specific airport
                     </div>
                   )}
@@ -253,12 +253,12 @@ export function LocationField({
           </ul>
 
           <div className="flex items-start justify-between gap-3 px-4 py-3 md:items-center md:gap-4">
-            <p className="flex min-w-0 flex-1 items-start gap-2 font-sans text-[12px] font-medium leading-[18px] text-[#000000]/70 md:gap-2.5 md:leading-[15px]">
+            <p className="flex min-w-0 flex-1 items-center gap-2 font-sans text-[11px] font-medium leading-[15px] text-[#000000]/70 md:gap-2.5 md:text-[12px] md:leading-[15px]">
               <img
                 src="/svg/infoblue.svg"
                 alt=""
                 aria-hidden="true"
-                className="h-6 w-6 shrink-0 md:h-[38px] md:w-[38px]"
+                className="h-[28px] w-[28px] shrink-0 md:h-[38px] md:w-[38px]"
               />
               <span className="max-md:max-w-none max-w-[523px]">
                 {topAirports.length > 0
@@ -277,22 +277,28 @@ export function LocationField({
       {noMatch && (
         <div
           role="alert"
-          className="relative mt-[5px] flex items-center gap-2 rounded-[12px] bg-error-banner-bg p-3"
+          className="relative mt-[5px] flex items-start gap-2 rounded-[12px] bg-error-banner-bg p-3 md:items-center"
         >
           <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-danger-text text-white md:h-[38px] md:w-[38px]">
             <Icon name="alert" size={14} className="text-white md:h-4 md:w-4" strokeWidth={2.25} />
           </span>
-          <div className="min-w-0 flex-1 pr-4">
-            <p className="font-sans text-[12px] font-medium leading-4 text-[#000000] md:text-[14px]">
-              We couldn’t find “{query.trim()}”.
-            </p>
-            <p className="mt-0.5 font-sans text-[10px] font-semibold leading-4 text-[#000000]/70">
-              Try a city name, airport name, or 3-letter code (e.g., LAX, JFK, OPF).
-            </p>
+          <div className="flex min-w-0 flex-1 items-center gap-1.5 md:contents">
+            <div className="min-w-0 flex-1 md:pr-4">
+              <p className="font-sans text-[12px] font-medium leading-4 text-[#000000] md:text-[14px]">
+                We couldn’t find “{query.trim()}”.
+              </p>
+              <p className="mt-0.5 font-sans text-[10px] font-semibold leading-4 text-[#000000]/70">
+                Try a city name, airport name, or 3-letter code (e.g., LAX, JFK, OPF).
+              </p>
+            </div>
+            <div
+              aria-hidden="true"
+              className="h-[60%] min-h-[20px] w-1 shrink-0 self-center rounded-full bg-danger-text md:hidden"
+            />
           </div>
           <div
             aria-hidden="true"
-            className="absolute right-3 top-1/2 h-[60%] w-1 -translate-y-1/2 rounded-full bg-danger-text"
+            className="absolute right-3 top-1/2 hidden h-[60%] w-1 -translate-y-1/2 rounded-full bg-danger-text md:block"
           />
         </div>
       )}
@@ -374,7 +380,7 @@ function CityRow({
       onClick={onSelect}
       onMouseEnter={onHover}
       className={cn(
-        'box-border flex w-full items-center justify-between gap-2 rounded-[12px] py-[10px] pl-3 pr-2 text-left transition-colors md:gap-3 md:pl-4 md:pr-[10px]',
+        'box-border flex w-full items-center justify-between gap-2 rounded-[12px] py-[10px] pl-2 pr-2 text-left transition-colors md:gap-3 md:pl-4 md:pr-[10px]',
         recommended && 'border border-[#F9E8D9] bg-[#FFF8F2]',
         active && recommended && 'border-[#F9E8D9] bg-[#FFF8F2]',
         !recommended && (active ? 'bg-[#D9E9F7]' : 'bg-[#D9E9F7]/40 hover:bg-[#D9E9F7]'),
@@ -383,14 +389,14 @@ function CityRow({
       <span className="flex min-w-0 items-center gap-2 md:gap-3">
         {recommended ? (
           <img
-            src="/svg/redLocate.svg"
+            src="/svg/locationRedBlue.svg"
             alt=""
             aria-hidden="true"
             className="h-8 w-8 shrink-0 md:h-[38px] md:w-[38px]"
           />
         ) : (
           <img
-            src="/svg/aeroplane.svg"
+            src="/svg/locationblackblue.svg"
             alt=""
             aria-hidden="true"
             className="h-8 w-8 shrink-0 md:h-[38px] md:w-[38px]"
@@ -411,12 +417,9 @@ function CityRow({
             )}
           </span>
           <span
-            className={cn(
-              'block font-sans text-[12px] font-medium leading-[18px] tracking-[-0.2px] md:leading-normal md:tracking-normal',
-              recommended ? 'text-[#000000]' : 'text-[#000000]/70',
-            )}
+            className="block font-sans text-[12px] font-medium leading-[18px] tracking-[-0.2px] text-[#000000] md:leading-normal md:tracking-normal"
           >
-            Any airport — we’ll match nearest executive field
+            Any airport
           </span>
         </span>
       </span>

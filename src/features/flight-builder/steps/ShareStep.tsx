@@ -64,13 +64,10 @@ const shareLinkEditButtonClass =
   'size-10 shrink-0 items-center justify-center rounded-[12px] border border-[#98C3E1] bg-[#F5F9FC] transition-opacity hover:opacity-90 focus-ring'
 
 const shareSectionLabelClass =
-  'font-sans text-[12px] font-medium uppercase leading-[15px] tracking-normal text-[#080B2B]/60 lg:font-heading lg:text-[16px] lg:leading-normal lg:tracking-[0.06em] lg:text-[#000000]'
-
-const shareCardSectionLabelClass =
   'font-heading text-[14px] font-medium uppercase leading-normal tracking-[0.06em] text-[#000000] lg:text-[16px]'
 
 const shareLinkCardClass =
-  'relative flex flex-col gap-4 rounded-[20px] border border-[#A8A8A8]/20 bg-white p-[16px]'
+  'relative flex flex-col gap-4 rounded-[20px] border border-[#A8A8A8]/20 bg-white p-[10px] sm:p-[16px]'
 
 const shareLinkTitleClass =
   'font-heading text-[18px] font-semibold leading-[22px] text-[#000000]'
@@ -85,7 +82,7 @@ const shareLinkJoinButtonClass =
   'inline-flex h-10 shrink-0 items-center gap-1.5 rounded-[12px] border border-[#98C3E1] bg-[linear-gradient(90deg,#E9EFFA_0%,#FFFFFF_100%)] px-[14px] font-sans text-[14px] font-medium leading-4 text-[#000000] transition-opacity hover:opacity-90 focus-ring'
 
 const shareCardClass =
-  'flex flex-col gap-4 rounded-[20px] border border-[#A8A8A8]/20 bg-[#ffffff] p-[16px]'
+  'flex flex-col gap-4 rounded-[20px] border border-[#A8A8A8]/20 bg-[#ffffff] p-[10px] sm:p-[16px]'
 
 const shareChannelButtonClass =
   'flex h-10 w-full items-center justify-center gap-1.5 rounded-[12px] border border-[#98C3E1] bg-[#F5F9FC] px-2 font-sans text-[14px] font-medium leading-4 text-[#000000] transition-colors hover:bg-[#E9EFFA] focus-ring lg:gap-2 lg:px-[10px]'
@@ -93,7 +90,10 @@ const shareChannelButtonClass =
 const shareLinkDividerClass = 'border-[#A8A8A8]/40'
 
 const sidebarStepBadgeClass =
-  'flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#CFE3F1] font-sans text-[10px] font-semibold leading-none text-[#080B2B] lg:h-[26px] lg:w-[26px] lg:border lg:border-[#98C3E1]/87 lg:bg-[#ECF4F9] lg:text-[12px]'
+  'flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-[#98C3E1]/87 bg-[#ECF4F9] font-sans text-[10px] font-semibold leading-none text-[#080B2B] lg:h-[26px] lg:w-[26px] lg:text-[12px]'
+
+const shareTipsStepBadgeClass =
+  'flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-[#CFE3F1] bg-[#E5EFF8] font-sans text-[10px] font-semibold leading-none text-[#080B2B] lg:h-[26px] lg:w-[26px] lg:text-[12px]'
 
 const sidebarStepTextClass =
   'font-sans text-[14px] font-normal leading-[21px] text-[#000000] lg:text-[16px] lg:font-medium lg:leading-6'
@@ -103,8 +103,7 @@ const shareTipsTitleClass =
 
 const dotSeparatorClass = 'size-1 shrink-0 rounded-full bg-[#000000]'
 
-const shareTipsPanelClass =
-  '!bg-white lg:!bg-[linear-gradient(90deg,#E9EFFA_0%,#E9EFFA_55%,#FFFFFF_100%)]'
+const shareTipsPanelClass = '!bg-[#FFFFFF]/40'
 
 const shareFooterClass =
   'flex flex-row items-stretch justify-between gap-3 pt-1 max-lg:[&_button]:min-h-10 max-lg:[&_button]:flex-1 max-lg:[&_button]:px-3 max-lg:[&_button]:text-[12px] max-lg:[&_button]:leading-4'
@@ -117,13 +116,30 @@ export function ShareStep() {
   )
   const router = useRouter()
   const [copied, setCopied] = useState(false)
+  const [hasHydrated, setHasHydrated] = useState(false)
+
+  useEffect(() => {
+    const persist = useFlightBuilderStore.persist
+    if (!persist) {
+      setHasHydrated(true)
+      return
+    }
+    if (persist.hasHydrated()) {
+      setHasHydrated(true)
+      return
+    }
+    return persist.onFinishHydration(() => {
+      setHasHydrated(true)
+    })
+  }, [])
 
   // No created flight (e.g. a direct visit) — send back to the start of the flow.
   useEffect(() => {
+    if (!hasHydrated) return
     if (!flight) router.replace(`/build/${FIRST_STEP}`)
-  }, [flight, router])
+  }, [hasHydrated, flight, router])
 
-  if (!flight) return null
+  if (!hasHydrated || !flight) return null
 
   const link = displayShareUrl(flight.shareUrl)
   const monthLabel = flight.date.start ? formatMonthLabel(fromISODate(flight.date.start)) : ''
@@ -247,17 +263,17 @@ export function ShareStep() {
               >
                 <span>Shared flight · {sharePreviewFrom}</span>
                 <img
-                  src="/svg/aeroplane.svg"
+                  src="/svg/soFar.svg"
                   alt=""
                   aria-hidden="true"
-                  className="size-[15px] shrink-0"
+                  className="size-[12px] shrink-0"
                 />
                 <span>
                   {sharePreviewTo}
                   {sharePreviewMonth ? ` · ${sharePreviewMonth}` : ''}
                 </span>
               </p>
-              <p className={cn('flex flex-wrap items-center gap-x-2', shareLinkTitleClass)}>
+              <p className={cn('flex flex-wrap items-center gap-[2px] sm:gap-x-2', shareLinkTitleClass)}>
                 {(hasPets
                   ? ['Pets welcome', 'Forming now', 'Join us']
                   : ['Forming now', 'Join us']
@@ -268,7 +284,7 @@ export function ShareStep() {
                   </Fragment>
                 ))}
               </p>
-              <p className={cn('flex flex-wrap items-center gap-x-2', shareLinkMetaClass)}>
+              <p className={cn('flex flex-wrap items-center gap-[4px] sm:gap-x-2', shareLinkMetaClass)}>
                 {[flight.aircraftClass, 'Member-organized', 'Whole-flight pricing'].map(
                   (item, i) => (
                     <Fragment key={item}>
@@ -280,12 +296,14 @@ export function ShareStep() {
               </p>
               <div
                 className={cn(
-                  'flex flex-nowrap items-center gap-2 border-t pt-4',
+                  'flex gap-2 border-t pt-4',
+                  'max-md:flex-col max-md:items-stretch max-md:gap-3',
+                  'md:flex-nowrap md:items-center',
                   shareLinkDividerClass,
                 )}
               >
-                <span className={cn(shareLinkUrlClass, 'min-w-0 flex-1 ')}>{link}</span>
-                <div className="flex shrink-0 items-center gap-2">
+                <span className={cn(shareLinkUrlClass, 'min-w-0 break-all md:flex-1')}>{link}</span>
+                <div className="flex shrink-0 items-center justify-start sm:justify-end gap-2">
                   <button
                     type="button"
                     aria-label="Edit share card"
@@ -312,49 +330,51 @@ export function ShareStep() {
           </div>
 
           <div>
-            <p className={cn('mb-2', shareCardSectionLabelClass)}>Your share card</p>
+            <p className={cn('mb-2', shareSectionLabelClass)}>Your share card</p>
             <div className={shareCardClass}>
-              <div className="flex items-center gap-2">
-                <div className="min-w-0 flex-1">
-                  <TextInput
-                    readOnly
-                    value={link}
-                    endAdornment={
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-2">
+                  <div className="min-w-0 flex-1">
+                    <TextInput
+                      readOnly
+                      value={link}
+                      endAdornment={
+                        <img
+                          src="/svg/location.svg"
+                          alt=""
+                          aria-hidden="true"
+                          className="size-4 shrink-0"
+                        />
+                      }
+                      onFocus={(e) => e.currentTarget.select()}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={copyLink}
+                    aria-label="Copy share link"
+                    className="shrink-0 transition-opacity hover:opacity-90 focus-ring"
+                  >
+                    {copied ? (
+                      <span className="flex size-10 items-center justify-center rounded-[12px] border border-[#98C3E1] bg-[#F5F9FC]">
+                        <Icon name="check" size={18} />
+                      </span>
+                    ) : (
                       <img
-                        src="/svg/location.svg"
+                        src="/svg/blackedit.svg"
                         alt=""
                         aria-hidden="true"
-                        className="size-4 shrink-0"
+                        className="size-10"
                       />
-                    }
-                    onFocus={(e) => e.currentTarget.select()}
-                  />
+                    )}
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={copyLink}
-                  aria-label="Copy share link"
-                  className="shrink-0 transition-opacity hover:opacity-90 focus-ring"
-                >
-                  {copied ? (
-                    <span className="flex size-10 items-center justify-center rounded-[12px] border border-[#98C3E1] bg-[#F5F9FC]">
-                      <Icon name="check" size={18} />
-                    </span>
-                  ) : (
-                    <img
-                      src="/svg/blackedit.svg"
-                      alt=""
-                      aria-hidden="true"
-                      className="size-10"
-                    />
-                  )}
-                </button>
+                {copied && (
+                  <p className="font-sans text-[12px] font-medium text-success-text">
+                    Link copied to clipboard.
+                  </p>
+                )}
               </div>
-              {copied && (
-                <p className="font-sans text-[12px] font-medium text-success-text">
-                  Link copied to clipboard.
-                </p>
-              )}
               <div className="grid grid-cols-3 gap-2">
                 <ChannelButton
                   icon="sms"
@@ -380,7 +400,7 @@ export function ShareStep() {
             <ol className="mt-4 space-y-3">
               {SHARE_TIPS.map((tip, i) => (
                 <li key={tip} className="flex items-center gap-2">
-                  <span className={sidebarStepBadgeClass}>{i + 1}</span>
+                  <span className={shareTipsStepBadgeClass}>{i + 1}</span>
                   <span className={sidebarStepTextClass}>{tip}</span>
                 </li>
               ))}

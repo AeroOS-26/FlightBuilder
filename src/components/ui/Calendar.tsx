@@ -59,7 +59,7 @@ export function Calendar({ mode, start, end, onChange }: CalendarProps) {
   }
 
   return (
-    <div className="box-border flex w-full max-w-full min-h-[320px] sm:min-h-[370px] flex-col rounded-[20px] border border-[#CFE3F1] bg-[linear-gradient(to_bottom,#FFFFFF_0%,#E8EEFF_28%,#E0E8FF_100%)] p-5 md:max-w-[439px]">
+    <div className="box-border flex w-full max-w-full min-h-[320px] sm:min-h-[370px] flex-col rounded-[20px] border border-[#CFE3F1] bg-[#F8F9FD] bg-[url('/svg/calenderBackground.svg')] bg-cover bg-center bg-no-repeat p-5 md:max-w-[439px]">
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
         <button

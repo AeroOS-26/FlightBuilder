@@ -27,7 +27,7 @@ interface PetCardProps {
 export function PetCard({ pet, index, errors, onChange, onRemove }: PetCardProps) {
   const idBase = `pet-${pet.id}`
   return (
-    <div className="flex flex-col gap-3 rounded-[12px] border border-[#A8A8A8]/20 bg-white p-4 lg:gap-2 lg:px-[14px] lg:py-[10px]">
+    <div className="flex flex-col gap-3 rounded-[16px] border border-[#CDCDCD] bg-white p-4 lg:gap-2 lg:px-[14px] lg:py-[10px]">
       <div className="flex items-center justify-between gap-3">
         <h4 className="font-heading text-[16px] font-medium leading-[19px] text-[#000000]">
           Pet {index + 1}
@@ -42,7 +42,7 @@ export function PetCard({ pet, index, errors, onChange, onRemove }: PetCardProps
       </div>
 
       <div className="grid gap-3 lg:grid-cols-2 lg:gap-2">
-        <FormField label="Pet name" htmlFor={`${idBase}-name`} error={errors?.name}>
+        <FormField label="Pet's name" htmlFor={`${idBase}-name`} error={errors?.name}>
           <TextInput
             id={`${idBase}-name`}
             placeholder="e.g. Biscuit"
@@ -89,6 +89,7 @@ export function PetCard({ pet, index, errors, onChange, onRemove }: PetCardProps
       <FormField
         label="Temperament (pick one)"
         className="items-start"
+        labelClassName="font-heading text-[16px] mt-[19px] font-medium leading-normal text-[#000000]"
         error={errors?.temperament}
       >
         <PillGroup<PetTemperament>

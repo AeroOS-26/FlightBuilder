@@ -46,8 +46,9 @@ export function validateRoute(route: RouteSelection): RouteErrors {
   }
 
   if (!from || !to) {
+    // Per the designs, when only one field is missing the Route step shows no
+    // top banner — the red border and per-field message are the only signal.
     return {
-      banner: 'Please complete the highlighted fields before continuing.',
       from: !from ? 'Please enter where you’re flying from.' : undefined,
       to: !to ? 'Please enter where you’re flying to.' : undefined,
     }
@@ -80,13 +81,14 @@ export interface DateErrors {
 
 export function validateDates(date: DateSelection): DateErrors {
   if (date.mode === 'specific') {
-    if (!date.start) return { date: 'Select a date.' }
+    if (!date.start) return { date: 'Please select a date.' }
     if (isPastDate(date.start)) return { date: 'Choose a date that isn’t in the past.' }
     return {}
   }
 
-  // Range mode.
-  if (!date.start || !date.end) return { date: 'Select a start and end date.' }
+  // Range mode — highlight end date only in the UI.
+  if (!date.end) return { date: 'Please select an end date.' }
+  if (!date.start) return { date: 'Please select a start date.' }
   if (isPastDate(date.start)) return { date: 'Choose a date that isn’t in the past.' }
   if (date.end < date.start) return { date: 'The end date can’t be before the start date.' }
   return {}

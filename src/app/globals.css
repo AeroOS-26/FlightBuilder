@@ -109,6 +109,21 @@ input::-webkit-inner-spin-button {
   border-color: var(--color-accent);
 }
 
+/* Hand cursor for all clickable controls; not-allowed when disabled. */
+button:not(:disabled),
+[role='button']:not([aria-disabled='true']),
+[role='tab']:not([aria-disabled='true']),
+label[for],
+summary,
+a[href] {
+  cursor: pointer;
+}
+
+button:disabled,
+[aria-disabled='true'] {
+  cursor: not-allowed;
+}
+
 @keyframes fade-in {
   from {
     opacity: 0;

@@ -4,9 +4,8 @@
  * Review step.
  *
  * Summarizes what happens on confirm and triggers flight creation. The confirm
- * action shows a loading state on the primary button and a failure banner with
- * the normalized API error; on success the create-flight hook advances to the
- * Share step.
+ * action shows a failure banner with the normalized API error; on success the
+ * create-flight hook advances to the Share step.
  */
 
 import { StepShell } from './StepShell'
@@ -28,7 +27,7 @@ const TIMELINE: TimelineItem[] = [
   },
   {
     title: 'You get a shareable link',
-    body: 'Send to friends, your relocation group, or post it publicly to invite other travelers on the same route.',
+    body: 'Send it to friends, your relocation group, or post it publicly to invite other travelers on the same route.',
     chip: { label: 'Immediately', tone: 'accent' },
   },
   {
@@ -70,25 +69,25 @@ const reviewBodyClass =
   'font-sans text-[14px] font-normal leading-[21px] text-[#000000]/70 lg:font-medium lg:leading-[130%]'
 
 const timelineStepBadgeClass =
-  'flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#CFE3F1] font-sans text-[10px] font-semibold leading-none text-[#080B2B] lg:h-[26px] lg:w-[26px] lg:border lg:border-[#98C3E1]/87 lg:bg-[#ECF4F9] lg:text-[12px]'
+  'flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-[#98C3E1]/87 bg-[#ECF4F9] font-sans text-[10px] font-semibold leading-none text-[#080B2B] lg:h-[26px] lg:w-[26px] lg:text-[12px]'
 
 const whatsNextStepBadgeClass =
-  'flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#CFE3F1] font-sans text-[10px] font-semibold leading-none text-[#080B2B] lg:h-[26px] lg:w-[26px] lg:border lg:border-[#98C3E1]/87 lg:bg-[#ECF4F9] lg:text-[12px]'
+  'flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-[#98C3E1]/87 bg-[#ECF4F9] font-sans text-[10px] font-semibold leading-none text-[#080B2B] lg:h-[26px] lg:w-[26px] lg:text-[12px]'
 
 const whatsNextStepTextClass =
   'font-sans text-[14px] font-medium leading-5 text-[#000000] lg:text-[16px] lg:leading-6'
 
 const timelineSectionTitleClass =
-  'font-heading text-[16px] font-medium leading-[19px] text-[#000000] lg:leading-6'
+  'font-heading text-[20px] font-medium leading-[19px] text-[#000000] lg:leading-6'
 
 const timelineTitleClass =
   'font-heading text-[14px] font-medium leading-5 text-[#000000] lg:text-[16px] lg:leading-6'
 
 const timelineBodyClass =
-  'font-sans text-[14px] font-normal leading-[21px] text-[#000000]/70 lg:font-medium lg:leading-[130%]'
+  'max-w-[486px] font-sans text-[14px] font-normal leading-[21px] text-[#000000]/70 lg:font-medium lg:leading-[130%]'
 
 const timelineChipBaseClass =
-  'inline-flex h-[26px] shrink-0 items-center rounded-full border px-[10px] font-sans text-[14px] font-normal leading-none lg:h-[34px] lg:text-[12px] lg:font-semibold'
+  'inline-flex h-[26px] shrink-0 items-center rounded-full border px-[10px] font-sans text-[14px] font-normal leading-none lg:h-[34px] lg:text-[14px] lg:font-normal'
 
 const timelineChipClass: Record<'accent' | 'warning' | 'success', string> = {
   accent: cn(
@@ -115,8 +114,7 @@ export function ReviewStep() {
   return (
     <StepShell
       onContinue={confirm}
-      continueLoading={isPending}
-      continueLabel={isPending ? 'Creating flight…' : undefined}
+      continueDisabled={isPending}
       footerCompact
       bodyClassName="gap-3 p-4 lg:gap-4 lg:px-4 lg:pb-4 lg:pt-4"
       footerClassName="mt-[48px]"
@@ -124,10 +122,10 @@ export function ReviewStep() {
       asideClassName="max-lg:gap-2"
       aside={
         <>
-          <SidePanel title="Your trip so far" className="lg:hidden">
+          <SidePanel title="Your Trip so far" className="lg:hidden">
             <TripSummaryRows includeNotes />
           </SidePanel>
-          <TripSummaryPanel includeNotes className="hidden lg:block" />
+          <TripSummaryPanel includeNotes showEditButton={false} className="hidden lg:block" />
           <SidePanel title="What happens next">
             <ol className="space-y-3">
               {WHATS_NEXT.map((text, i) => (
@@ -176,7 +174,7 @@ export function ReviewStep() {
         </div>
       </div>
 
-      <div className={cn(reviewCardClass, 'flex flex-col gap-2')}>
+      <div className={cn(reviewCardClass, 'flex flex-col gap-4')}>
         <h3 className={timelineSectionTitleClass}>
           When you tap Create Shared Flight
         </h3>
@@ -192,12 +190,14 @@ export function ReviewStep() {
               <span className={timelineStepBadgeClass}>{index + 1}</span>
               <div className="min-w-0 flex-1">
                 <div className="flex items-start justify-between gap-2">
-                  <p className={cn(timelineTitleClass, 'min-w-0')}>{item.title}</p>
+                  <div className="flex min-w-0 flex-1 flex-col gap-2">
+                    <p className={cn(timelineTitleClass, 'min-w-0')}>{item.title}</p>
+                    <p className={timelineBodyClass}>{item.body}</p>
+                  </div>
                   {item.chip && (
                     <ReviewTimelineChip label={item.chip.label} tone={item.chip.tone} />
                   )}
                 </div>
-                <p className={cn('mt-2', timelineBodyClass)}>{item.body}</p>
               </div>
             </li>
           ))}

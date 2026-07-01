@@ -30,9 +30,9 @@ export const dashedAddSurfaceClass =
   'relative overflow-visible rounded-[16px] bg-[#CFE3F1]/20'
 
   
-/** Dashed outline for travel readiness (40% fill). */
+/** Dashed outline for travel readiness (Figma secondary fill at 20%). */
 export const dashedReadinessSurfaceClass =
-  'relative overflow-visible rounded-[16px] bg-[#F3F7FA]/40'
+  'relative overflow-visible rounded-[16px] bg-[#CFE3F1]/20'
 
 /** Dashed outline for legal / privacy callouts on white. */
 export const dashedPanelSurfaceClass = 'relative overflow-visible rounded-[16px] bg-white'

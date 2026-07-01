@@ -68,16 +68,18 @@ export function Stepper({ currentStepId }: StepperProps) {
             return (
               <div
                 key={`${step.id}-label`}
-                className={cn('mt-1.5 flex min-w-0 items-start', !isLast && 'flex-1')}
+                className={cn('mt-1.5 flex min-w-0', !isLast && 'flex-1')}
               >
-                <p
-                  className={cn(
-                    'w-[30px] shrink-0 text-center font-sans text-[10px] font-medium leading-3 sm:w-8 sm:text-[11px] sm:leading-[14px]',
-                    isCurrent ? 'text-[#000000]' : 'text-[#6D6D6D]',
-                  )}
-                >
-                  {step.label}
-                </p>
+                <div className="flex w-[30px] shrink-0 flex-col items-center sm:w-8">
+                  <p
+                    className={cn(
+                      'max-w-[4.75rem] text-center font-sans text-[12px] font-normal sm:font-medium leading-3 sm:max-w-[5.25rem] sm:text-[11px] sm:leading-[14px]',
+                      isCurrent ? 'text-[#6D6D6D]' : 'text-[#000000]',
+                    )}
+                  >
+                    {step.label}
+                  </p>
+                </div>
                 {!isLast && (
                   <div
                     className="min-w-[20px] flex-1 px-1 sm:min-w-[28px] sm:px-2"
@@ -90,7 +92,7 @@ export function Stepper({ currentStepId }: StepperProps) {
         </div>
       </div>
 
-      {/* Desktop: full icon node row. */}
+      {/* Desktop: full icon node row; trailing line after Review → Share. */}
       <ol className="hidden w-full items-start lg:flex">
         {STEPPER_STEPS.map((step, index) => {
           const isComplete = index < safeIndex
@@ -98,12 +100,10 @@ export function Stepper({ currentStepId }: StepperProps) {
           const isLast = index === total - 1
           const connectorState =
             index < safeIndex ? 'done' : index === safeIndex ? 'active' : 'upcoming'
+          const trailingConnectorState = safeIndex >= index ? 'active' : 'upcoming'
 
           return (
-            <li
-              key={step.id}
-              className={cn('flex min-w-0 flex-col', !isLast && 'flex-1')}
-            >
+            <li key={step.id} className="flex min-w-0 flex-1 flex-col">
               <div className="flex w-full items-center">
                 <div className="flex w-12 shrink-0 flex-col items-start">
                   <StepNode
@@ -111,10 +111,10 @@ export function Stepper({ currentStepId }: StepperProps) {
                     state={isComplete ? 'complete' : isCurrent ? 'current' : 'upcoming'}
                   />
                 </div>
-                {!isLast && <Connector state={connectorState} />}
+                <Connector state={isLast ? trailingConnectorState : connectorState} />
               </div>
               <div className="mt-2 shrink-0 text-left">
-                <p className="whitespace-nowrap font-sans text-[12px] font-medium leading-[15px] text-[#080B2B]">
+                <p className="whitespace-nowrap font-sans text-[12px] font-medium leading-[15px] text-[#6D6D6D]">
                   Step {index + 1}
                 </p>
                 <p

@@ -89,7 +89,7 @@ export function TopNav() {
                 className="size-9"
               />
             </button>
-            <span className="hidden rounded-[12px] bg-[linear-gradient(90deg,#1946C5_0%,#E96A6F_100%)] p-px lg:inline-flex">
+            <span className="hidden rounded-[12px] bg-[linear-gradient(90deg,#1946C5_0%,#E96A6F_100%)] p-px shadow-[0px_8px_24px_0px_rgba(233,106,111,0.15)] lg:inline-flex">
               <button
                 type="button"
                 className="flex h-8 items-center gap-2 rounded-[11px] bg-white px-4 font-sans text-[14px] font-medium leading-4 tracking-normal text-[#000000] transition-colors hover:bg-[#FAFAFA] focus-ring"

@@ -9,7 +9,7 @@
  * title + stepper chrome and renders its own header.
  */
 
-import type { ReactNode } from 'react'
+import { useEffect, type ReactNode } from 'react'
 import { TopNav } from './TopNav'
 import { Stepper } from './Stepper'
 import { useStepNavigation } from '@/features/flight-builder/hooks/useStepNavigation'
@@ -30,6 +30,10 @@ export function BuilderLayout({ children }: { children: ReactNode }) {
   useFounderIdentity()
   const { currentStep, currentStepId } = useStepNavigation()
   const showChrome = currentStep.showInStepper
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0 })
+  }, [currentStepId])
 
   return (
     <div className="flex min-h-svh flex-col">

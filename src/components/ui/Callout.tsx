@@ -47,22 +47,28 @@ export function ErrorBanner({ children, className }: ErrorBannerProps) {
     <div
       role="alert"
       className={cn(
-        'relative flex min-h-[40px] items-center gap-2 rounded-[12px] bg-error-banner-bg p-3',
+        'relative flex min-h-[40px] items-center gap-2 rounded-[12px] bg-error-banner-bg p-3 md:items-center',
         className,
       )}
     >
       <Icon
         name="alert"
         size={12}
-        className="mt-px h-3 w-3 shrink-0 text-danger-text md:h-4 md:w-4"
+        className="mt-0.5 h-3 w-3 shrink-0 text-danger-text md:mt-px md:h-4 md:w-4"
         strokeWidth={2}
       />
-      <p className="min-w-0 max-w-[307px] font-sans text-[12px] font-normal leading-4 tracking-normal text-danger-text md:max-w-[638.52px] md:text-[14px] md:font-medium">
-        {children}
-      </p>
+      <div className="flex min-w-0 flex-1 items-center gap-1.5 md:contents">
+        <p className="min-w-0 flex-1 font-sans text-[12px] font-normal leading-[15px] tracking-normal text-danger-text md:max-w-[638.52px] md:flex-none md:text-[14px] md:font-medium md:leading-4">
+          {children}
+        </p>
+        <div
+          aria-hidden="true"
+          className="h-[60%] min-h-[20px] w-[3.5px] shrink-0 self-center rounded-full bg-danger-text md:hidden"
+        />
+      </div>
       <div
         aria-hidden="true"
-        className="absolute right-3 top-1/2 h-[60%] w-1 -translate-y-1/2 rounded-full bg-danger-text"
+        className="absolute right-3 top-1/2 hidden h-[60%] w-[3.5px] -translate-y-1/2 rounded-full bg-danger-text md:block"
       />
     </div>
   )

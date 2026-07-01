@@ -37,8 +37,8 @@ export function PillGroup<T extends string>({
             className={cn(
               'inline-flex h-[34px] items-center rounded-[12px] border border-[#A8A8A8]/20 font-sans text-[12px] font-medium leading-[18px] transition-colors focus-ring',
               active
-                ? 'border-[#A8A8A8]/20 bg-[#112D7C] px-2 text-white'
-                : 'bg-[#F5F5F5]/45 px-3 text-[#000000]/90 hover:text-[#000000]',
+                ? 'border-[#A8A8A8]/20 bg-[#112D7C] px-[12px] py-[9px] text-white'
+                : 'bg-[#F5F5F5]/45 px-[12px] py-[9px] text-[#000000]/90 hover:text-[#000000]',
             )}
           >
             {opt}

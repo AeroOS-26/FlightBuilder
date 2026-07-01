@@ -115,9 +115,10 @@ export function PetsStep() {
     >
       <SectionHeading title="Pets & Passengers" />
 
-      {errors.banner && <ErrorBanner>{errors.banner}</ErrorBanner>}
-
-      <PetsSummaryStrip />
+      <div className="flex flex-col gap-4">
+        <PetsSummaryStrip />
+        {errors.banner && <ErrorBanner>{errors.banner}</ErrorBanner>}
+      </div>
 
       {/* Travelers */}
       <div>
