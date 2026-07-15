@@ -57,13 +57,13 @@ export function ErrorBanner({ children, className }: ErrorBannerProps) {
         className="mt-0.5 h-3 w-3 shrink-0 text-danger-text md:mt-px md:h-4 md:w-4"
         strokeWidth={2}
       />
-      <div className="flex min-w-0 flex-1 items-center gap-1.5 md:contents">
+      <div className="flex min-w-0 flex-1 items-stretch gap-1.5 md:contents">
         <p className="min-w-0 flex-1 font-sans text-[12px] font-normal leading-[15px] tracking-normal text-danger-text md:max-w-[638.52px] md:flex-none md:text-[14px] md:font-medium md:leading-4">
           {children}
         </p>
         <div
           aria-hidden="true"
-          className="h-[60%] min-h-[20px] w-[3.5px] shrink-0 self-center rounded-full bg-danger-text md:hidden"
+          className="w-[3.5px] shrink-0 self-stretch rounded-full bg-danger-text md:hidden"
         />
       </div>
       <div

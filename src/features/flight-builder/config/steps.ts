@@ -16,8 +16,8 @@ export const STEPS: readonly StepDefinition[] = [
     path: 'route',
     showInStepper: true,
     skippable: false,
-    continueLabel: 'Continue To Dates',
-    backLabel: 'Details',
+    continueLabel: 'Continue to dates',
+    backLabel: 'Route',
   },
   {
     id: 'dates',
@@ -26,7 +26,7 @@ export const STEPS: readonly StepDefinition[] = [
     path: 'dates',
     showInStepper: true,
     skippable: false,
-    continueLabel: 'Continue To Pets & Passengers',
+    continueLabel: 'Continue to pets & passengers',
     backLabel: 'Dates',
   },
   {
@@ -36,7 +36,7 @@ export const STEPS: readonly StepDefinition[] = [
     path: 'pets',
     showInStepper: true,
     skippable: false,
-    continueLabel: 'Continue To Notes',
+    continueLabel: 'Continue to notes',
     backLabel: 'Pets & Passengers',
   },
   {
@@ -46,7 +46,7 @@ export const STEPS: readonly StepDefinition[] = [
     path: 'notes',
     showInStepper: true,
     skippable: true,
-    continueLabel: 'Continue to Review',
+    continueLabel: 'Continue to review',
     backLabel: 'Notes',
   },
   {
@@ -56,7 +56,7 @@ export const STEPS: readonly StepDefinition[] = [
     path: 'review',
     showInStepper: true,
     skippable: false,
-    continueLabel: 'Create Shared Flight',
+    continueLabel: 'Create shared flight',
     backLabel: 'Review',
   },
   {

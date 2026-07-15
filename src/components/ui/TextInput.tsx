@@ -40,12 +40,15 @@ export const TextInput = forwardRef<HTMLInputElement, TextInputProps>(
           aria-invalid={invalid || undefined}
           className={cn(
             'min-h-[40px] w-full rounded-[12px] border py-3 font-sans text-[12px] font-medium leading-[18px] text-[#000000] transition-colors lg:text-[14px] lg:leading-4',
-            'placeholder:text-placeholder focus-visible:border-accent focus-visible:outline-none',
+            'placeholder:text-placeholder focus:border-accent focus-visible:border-accent focus-visible:outline-none',
             leadingIcon ? 'pl-11' : 'pl-[14px]',
             endAdornment || trailingIcon ? 'pr-11' : 'pr-[14px]',
             invalid
               ? 'border-danger-text bg-error-input-bg focus:outline-none focus:ring-0'
-              : 'border-[#1A45BD] bg-white',
+              : // Light blue when empty; dark blue once the field has a value
+                // (covers read-only date fields the user fills from the calendar)
+                // or is focused/typed into.
+                'border-[#98C3E1] bg-white focus:border-accent [&:not(:placeholder-shown)]:border-accent',
             className,
           )}
           {...props}

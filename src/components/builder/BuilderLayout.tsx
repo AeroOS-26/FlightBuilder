@@ -13,6 +13,7 @@ import { useEffect, type ReactNode } from 'react'
 import { TopNav } from './TopNav'
 import { Stepper } from './Stepper'
 import { useStepNavigation } from '@/features/flight-builder/hooks/useStepNavigation'
+import { useStepGuard } from '@/features/flight-builder/hooks/useStepGuard'
 import { useFounderIdentity } from '@/features/flight-builder/hooks/useFounderIdentity'
 import type { StepId } from '@/types'
 
@@ -29,6 +30,8 @@ export function BuilderLayout({ children }: { children: ReactNode }) {
   // Ensure the Founder is seeded as Traveler 1 / header identity.
   useFounderIdentity()
   const { currentStep, currentStepId } = useStepNavigation()
+  // Block deep-linking past incomplete steps; redirects to the first one if so.
+  const { ready } = useStepGuard(currentStepId)
   const showChrome = currentStep.showInStepper
 
   useEffect(() => {
@@ -60,7 +63,7 @@ export function BuilderLayout({ children }: { children: ReactNode }) {
             </>
           )}
           <div className={showChrome ? 'mt-5 sm:mt-7 lg:mt-9' : ''}>
-            {children}
+            {ready ? children : null}
           </div>
         </div>
       </main>

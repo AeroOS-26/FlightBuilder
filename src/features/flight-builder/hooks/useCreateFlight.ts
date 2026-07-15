@@ -15,15 +15,16 @@ import { useMutation } from '@tanstack/react-query'
 import { flightService } from '@/api/services'
 import { useFlightBuilderStore } from '@/features/flight-builder/store/flightBuilderStore'
 import { useStepNavigation } from './useStepNavigation'
-import type { ApiError, FlightDraft } from '@/types'
+import type { ApiError } from '@/types'
 
 export function useCreateFlight() {
   const draft = useFlightBuilderStore((s) => s.draft)
+  const founder = useFlightBuilderStore((s) => s.founder)
   const setCreatedFlight = useFlightBuilderStore((s) => s.setCreatedFlight)
   const { goTo } = useStepNavigation()
 
   const mutation = useMutation({
-    mutationFn: (input: FlightDraft) => flightService.createFlight(input),
+    mutationFn: () => flightService.createFlight({ draft, founder }),
     onSuccess: ({ flight }) => {
       // Persist the record so the Share step can read it, then advance.
       setCreatedFlight(flight)
@@ -33,7 +34,7 @@ export function useCreateFlight() {
 
   return {
     /** Trigger flight creation from the current draft. */
-    confirm: () => mutation.mutate(draft),
+    confirm: () => mutation.mutate(),
     isPending: mutation.isPending,
     isError: mutation.isError,
     error: mutation.error as ApiError | null,

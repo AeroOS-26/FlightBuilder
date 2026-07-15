@@ -12,8 +12,18 @@ export type RoutePlaceKind = 'city' | 'airport'
 
 /** A specific airport that serves a city. */
 export interface AirportOption {
-  /** IATA code, e.g. "JFK". */
+  /**
+   * ICAO code, e.g. "KJFK" — the canonical identifier sent to the backend in
+   * `airport_code`. ICAO is used because it is present on every field (many
+   * executive/GA fields have no IATA).
+   */
   code: string
+  /**
+   * Code shown in the UI: the IATA code when present (reads more naturally,
+   * e.g. "OPF"), falling back to the ICAO code when there is no IATA. Display
+   * only — never sent in the payload.
+   */
+  displayCode: string
   /** Display name, e.g. "John F. Kennedy International Airport". */
   name: string
   /** "Commercial" | "Executive" — drives the routing hint copy. */
@@ -29,8 +39,10 @@ export interface CityOption {
   city: string
   region: string
   country: string
-  /** Representative airport code used when the whole city is chosen. */
+  /** Representative ICAO code used (in the payload) when the whole city is chosen. */
   defaultCode: string
+  /** Display form of the representative code (IATA-preferred, ICAO fallback). */
+  defaultDisplayCode: string
   /** Airports serving this city, for the "lock to a specific airport" group. */
   airports: AirportOption[]
 }
@@ -47,8 +59,13 @@ export interface RoutePlace {
   city: string
   region: string
   country: string
-  /** Representative (city) or specific (airport) IATA code. */
+  /**
+   * Canonical code sent to the backend: ICAO for a locked airport, or the
+   * city's representative ICAO when the whole city is chosen.
+   */
   code: string
+  /** Code for UI display (IATA-preferred, ICAO fallback). Display only. */
+  displayCode: string
   /** Present only for airport selections. */
   airportName?: string
 }
@@ -101,6 +118,8 @@ export interface MemberIdentity {
   id: string
   name: string
   email: string
+  /** Founder phone; mapped to webhook members[].phone for Zoho Contact/Member. */
+  phone: string
   avatarUrl?: string
 }
 

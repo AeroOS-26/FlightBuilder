@@ -32,6 +32,7 @@ function cityToPlace(city: CityOption): RoutePlace {
     region: city.region,
     country: city.country,
     code: city.defaultCode,
+    displayCode: city.defaultDisplayCode,
   }
 }
 
@@ -39,11 +40,13 @@ function airportToPlace(a: AirportOption): RoutePlace {
   return {
     id: `${a.code}`,
     kind: 'airport',
-    label: `${a.code} — ${a.name}`,
+    // Show the friendly display code (IATA-preferred); the payload carries ICAO.
+    label: `${a.displayCode} — ${a.name}`,
     city: a.city,
     region: a.region,
     country: a.country,
     code: a.code,
+    displayCode: a.displayCode,
     airportName: a.name,
   }
 }
@@ -282,7 +285,7 @@ export function LocationField({
           <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-danger-text text-white md:h-[38px] md:w-[38px]">
             <Icon name="alert" size={14} className="text-white md:h-4 md:w-4" strokeWidth={2.25} />
           </span>
-          <div className="flex min-w-0 flex-1 items-center gap-1.5 md:contents">
+          <div className="flex min-w-0 flex-1 items-stretch gap-1.5 md:contents">
             <div className="min-w-0 flex-1 md:pr-4">
               <p className="font-sans text-[12px] font-medium leading-4 text-[#000000] md:text-[14px]">
                 We couldn’t find “{query.trim()}”.
@@ -293,7 +296,7 @@ export function LocationField({
             </div>
             <div
               aria-hidden="true"
-              className="h-[60%] min-h-[20px] w-1 shrink-0 self-center rounded-full bg-danger-text md:hidden"
+              className="w-1 shrink-0 self-stretch rounded-full bg-danger-text md:hidden"
             />
           </div>
           <div
@@ -461,7 +464,7 @@ function AirportRow({
         />
         <span className="min-w-0">
           <span className="block truncate font-sans text-[14px] font-medium leading-6 tracking-[-0.2px] text-[#000000] md:text-[16px] md:tracking-normal">
-            {airport.code}— {airport.name}
+            {airport.displayCode}— {airport.name}
           </span>
           <span className="block font-sans text-[12px] font-medium leading-[18px] tracking-[-0.2px] text-[#000000]/70 md:leading-normal md:tracking-normal md:text-[#000000]">
             {airport.category} · {airport.city}, {airport.region}

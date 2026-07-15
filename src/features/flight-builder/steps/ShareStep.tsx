@@ -240,7 +240,7 @@ export function ShareStep() {
           <div>
             <p className={cn('mb-2', shareSectionLabelClass)}>Your share link</p>
             <div className={shareLinkCardClass}>
-              <button
+              {/* <button
                 type="button"
                 aria-label="Edit share card"
                 className={cn(
@@ -254,7 +254,7 @@ export function ShareStep() {
                   aria-hidden="true"
                   className="size-[18px]"
                 />
-              </button>
+              </button> */}
               <p
                 className={cn(
                   'flex flex-wrap items-center gap-x-[6px] lg:pr-[56px]',
@@ -361,7 +361,7 @@ export function ShareStep() {
                       </span>
                     ) : (
                       <img
-                        src="/svg/blackedit.svg"
+                        src="/svg/copy-icon.svg"
                         alt=""
                         aria-hidden="true"
                         className="size-10"
@@ -369,11 +369,25 @@ export function ShareStep() {
                     )}
                   </button>
                 </div>
-                {copied && (
-                  <p className="font-sans text-[12px] font-medium text-success-text">
-                    Link copied to clipboard.
-                  </p>
-                )}
+                {/* <button
+                  type="button"
+                  onClick={copyLink}
+                  aria-label="Copy share link"
+                  className="shrink-0 transition-opacity hover:opacity-90 focus-ring"
+                >
+                  {copied ? (
+                    <span className="flex size-10 items-center justify-center rounded-[12px] border border-[#98C3E1] bg-[#F5F9FC]">
+                      <Icon name="check" size={18} />
+                    </span>
+                  ) : (
+                    <img
+                      src="/svg/copy-icon.svg"
+                      alt=""
+                      aria-hidden="true"
+                      className="size-10"
+                    />
+                  )}
+                </button> */}
               </div>
               <div className="grid grid-cols-3 gap-2">
                 <ChannelButton
@@ -418,7 +432,7 @@ export function ShareStep() {
                   className="size-[18px] shrink-0"
                 />
               }
-              onClick={goToDashboard}
+              // onClick={goToDashboard}
             >
               Go to My Dashboard
             </Button>

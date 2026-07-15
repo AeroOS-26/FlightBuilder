@@ -131,11 +131,15 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(function Select
         onClick={() => setOpen((current) => !current)}
         className={cn(
           'flex min-h-[40px] w-full items-center justify-between gap-2 rounded-[12px] border py-3 pl-[14px] pr-[14px] text-left font-sans text-[12px] font-medium leading-[18px] transition-colors lg:text-[14px] lg:leading-4',
-          'focus-visible:border-accent focus-visible:outline-none',
+          'focus:border-accent focus-visible:border-accent focus-visible:outline-none',
           isPlaceholder ? 'text-placeholder' : 'text-[#000000]',
           invalid
             ? 'border-danger-text bg-error-input-bg focus:outline-none focus:ring-0'
-            : 'border-[#1A45BD] bg-white',
+            : // Light blue when empty; dark blue once open or a value is chosen.
+              cn(
+                'bg-white focus:border-accent',
+                open || !isPlaceholder ? 'border-accent' : 'border-[#98C3E1]',
+              ),
           disabled && 'cursor-not-allowed opacity-60',
           className,
         )}

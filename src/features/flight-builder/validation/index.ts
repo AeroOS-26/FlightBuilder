@@ -9,7 +9,7 @@
  */
 
 import { isPastDate } from '@/utils/date'
-import type { DateSelection, FlightDraft, RouteSelection } from '@/types'
+import type { DateSelection, FlightDraft, RouteSelection, StepId } from '@/types'
 
 /* ------------------------------------------------------------------ Route */
 
@@ -168,4 +168,47 @@ export function validateNotes(notes: string): NotesErrors {
     return { notes: `Notes can be at most ${NOTES_MAX_LENGTH} characters.` }
   }
   return {}
+}
+
+/* ------------------------------------------------------- Step access guard */
+
+/**
+ * Per-step completion, used to gate deep-linking into the flow. A step is
+ * "complete" when its own gating validation passes; `notes` is skippable, so it
+ * never blocks. This is the same rule set the Continue buttons enforce — reused
+ * here so a manual URL change can't bypass it.
+ */
+export function isStepComplete(stepId: StepId, draft: FlightDraft): boolean {
+  switch (stepId) {
+    case 'route':
+      return !hasRouteErrors(validateRoute(draft.route))
+    case 'dates':
+      return !hasDateErrors(validateDates(draft.date))
+    case 'pets':
+      return !hasPetsErrors(validatePets(draft))
+    case 'notes':
+      // Skippable — the character-limit check is the only rule, and an
+      // over-length draft can't be produced through the UI.
+      return true
+    case 'review':
+    case 'share':
+      // Terminal steps: reachable only once every gated step above is complete.
+      return true
+    default:
+      return true
+  }
+}
+
+/**
+ * The first step (in flow order) the user has NOT yet legitimately completed —
+ * i.e. the furthest they're allowed to be. Returns `null` when every gated step
+ * is complete (the whole flow is reachable). `share` is excluded here because it
+ * is a post-creation screen gated separately by the presence of a created flight.
+ */
+export function firstIncompleteStep(draft: FlightDraft): StepId | null {
+  const GATED: StepId[] = ['route', 'dates', 'pets']
+  for (const stepId of GATED) {
+    if (!isStepComplete(stepId, draft)) return stepId
+  }
+  return null
 }

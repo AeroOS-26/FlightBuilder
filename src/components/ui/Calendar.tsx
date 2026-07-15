@@ -40,7 +40,10 @@ export function Calendar({ mode, start, end, onChange }: CalendarProps) {
       onChange({ start: iso, end: null })
       return
     }
-    // Range mode.
+    // Range mode. First pick sets the start; second pick completes the range.
+    // The two endpoints are ordered so the earlier date is always the start and
+    // the later the end — so clicking later-then-earlier still fills the whole
+    // span (ISO date strings sort chronologically).
     if (!start || (start && end)) {
       onChange({ start: iso, end: null })
     } else if (iso < start) {

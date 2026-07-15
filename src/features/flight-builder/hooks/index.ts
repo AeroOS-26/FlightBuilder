@@ -1,5 +1,6 @@
 /** Barrel export for Flight Builder hooks. */
 export { useStepNavigation } from './useStepNavigation'
+export { useStepGuard } from './useStepGuard'
 export { useCreateFlight } from './useCreateFlight'
 export { useFounderIdentity } from './useFounderIdentity'
 export { useTripSummary } from './useTripSummary'

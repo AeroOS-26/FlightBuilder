@@ -48,10 +48,10 @@ export function getBreedOptions(type: string): SelectOption[] {
   return list.map((b) => ({ value: b, label: b }))
 }
 
-/** Weight options in pounds (1–150 lbs). */
+/** Weight options in pounds (1–150 lb). Singular "1 lb", plural "2 lbs". */
 export const WEIGHT_OPTIONS: SelectOption[] = Array.from({ length: 150 }, (_, i) => {
   const lbs = i + 1
-  return { value: String(lbs), label: `${lbs} lbs` }
+  return { value: String(lbs), label: `${lbs} ${lbs === 1 ? 'lb' : 'lbs'}` }
 })
 
 export const TEMPERAMENTS: readonly PetTemperament[] = [

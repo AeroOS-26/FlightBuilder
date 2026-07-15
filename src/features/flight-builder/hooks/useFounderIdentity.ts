@@ -20,6 +20,7 @@ const PLACEHOLDER_FOUNDER: MemberIdentity = {
   id: 'member_self',
   name: '',
   email: 'margot@perroair.example',
+  phone: '+1-555-0100',
 }
 
 export function useFounderIdentity() {

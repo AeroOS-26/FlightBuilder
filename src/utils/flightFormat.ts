@@ -28,10 +28,13 @@ export function placeCity(place: RoutePlace | null): string {
   return place?.city ?? ''
 }
 
-/** "San Francisco (SFO)" — city with representative/specific code. */
+/**
+ * "San Francisco (SFO)" — city with the display code (IATA-preferred, ICAO
+ * fallback). Display helper; the payload uses `place.code` (ICAO) separately.
+ */
 export function placeWithCode(place: RoutePlace | null): string {
   if (!place) return ''
-  return place.code ? `${place.city} (${place.code})` : place.city
+  return place.displayCode ? `${place.city} (${place.displayCode})` : place.city
 }
 
 /** Both endpoints as a short "City → City" / "City ⇄ City" pair. */

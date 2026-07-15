@@ -58,6 +58,9 @@ Thumbs.db
 out/
 next-env.d.ts
 
+# OurAirports raw source CSVs (regenerate the dataset via the build script)
+scripts/ourairports-src/
+
 # Vite / build output (legacy)
 dist-ssr/
 *.local
