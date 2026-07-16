@@ -13,6 +13,7 @@
 
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
+import { MAX_TRAVELERS } from '@/features/flight-builder/config/capacity'
 import type {
   DateSelection,
   FlightDraft,
@@ -123,15 +124,21 @@ export const useFlightBuilderStore = create<FlightBuilderState>()(
         })),
 
       addTraveler: () =>
-        set((state) => ({
-          draft: {
-            ...state.draft,
-            travelers: [
-              ...state.draft.travelers,
-              { id: nextId('traveler'), name: '', isFounder: false },
-            ],
-          },
-        })),
+        set((state) => {
+          // Never add past the flight's total spaces — the payload's spaces_total
+          // is the same number, so this keeps members ≤ spaces (no "52 members in
+          // 4 spaces" contradiction).
+          if (state.draft.travelers.length >= MAX_TRAVELERS) return state
+          return {
+            draft: {
+              ...state.draft,
+              travelers: [
+                ...state.draft.travelers,
+                { id: nextId('traveler'), name: '', isFounder: false },
+              ],
+            },
+          }
+        }),
 
       updateTraveler: (id, name) =>
         set((state) => ({

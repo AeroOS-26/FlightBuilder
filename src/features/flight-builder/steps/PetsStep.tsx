@@ -25,18 +25,29 @@ import {
 } from '@/features/flight-builder/components'
 import { useFlightBuilderStore } from '@/features/flight-builder/store/flightBuilderStore'
 import { useStepNavigation } from '@/features/flight-builder/hooks'
+import { MAX_TRAVELERS } from '@/features/flight-builder/config/capacity'
 import { validatePets, hasPetsErrors } from '@/features/flight-builder/validation'
 
 const READINESS_TEXT =
   'I confirm my pet is travel-ready, will not disrupt other passengers or crew, and I accept responsibility for their behavior throughout the flight. I understand that operators reserve the right to refuse boarding for pets that appear unfit for travel.'
 
-function AddButton({ label, onClick }: { label: string; onClick: () => void }) {
+function AddButton({
+  label,
+  onClick,
+  disabled,
+}: {
+  label: string
+  onClick: () => void
+  disabled?: boolean
+}) {
   return (
     <button
       type="button"
       onClick={onClick}
+      disabled={disabled}
       className={cn(
         'flex h-11 w-full items-center justify-center gap-2 font-sans text-[14px] font-medium leading-4 text-[#112D7C] transition-colors hover:bg-[#CFE3F1]/30 focus-ring',
+        'disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent',
         dashedAddSurfaceClass,
       )}
     >
@@ -136,7 +147,16 @@ export function PetsStep() {
               onRemove={traveler.isFounder ? undefined : () => removeTraveler(traveler.id)}
             />
           ))}
-          <AddButton label="Add another traveler" onClick={addTraveler} />
+          <AddButton
+            label="Add another traveler"
+            onClick={addTraveler}
+            disabled={draft.travelers.length >= MAX_TRAVELERS}
+          />
+          {draft.travelers.length >= MAX_TRAVELERS && (
+            <p className="font-sans text-[12px] font-medium leading-[18px] text-[#000000]/60">
+              This flight has {MAX_TRAVELERS} spaces — the maximum number of travelers.
+            </p>
+          )}
         </div>
       </div>
 
@@ -174,17 +194,9 @@ export function PetsStep() {
       {/* Travel readiness — conditional on pets being on the flight. */}
       {petsOnFlight && (
         <DashedCard variant="readiness" padding="none" className="p-4">
-          <div className="flex flex-wrap items-center gap-2">
-            <h3 className="font-heading text-[20px] font-medium leading-6 text-[#000000]">
-              Travel readiness
-            </h3>
-            <span className="inline-flex h-[25px] shrink-0 items-center rounded-[12px] border border-[#98C3E1] bg-[#CFE3F1]/20 px-[14px] font-sans text-[12px] font-semibold uppercase leading-none tracking-[0.08em] text-[#112D7C] lg:text-[14px]">
-              Conditional
-            </span>
-          </div>
-          <p className="mt-2 font-heading text-[14px] font-medium leading-5 text-[#000000] lg:text-[16px] lg:leading-6">
-            Only shown when pets are added to the flight.
-          </p>
+          <h3 className="font-heading text-[20px] font-medium leading-6 text-[#000000]">
+            Travel readiness
+          </h3>
           <p className="mt-3 font-sans text-[14px] font-normal leading-5 text-[#000000]/70 lg:leading-[140%]">
             {READINESS_TEXT}
           </p>

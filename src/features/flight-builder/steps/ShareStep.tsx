@@ -110,7 +110,6 @@ const shareFooterClass =
 
 export function ShareStep() {
   const flight = useFlightBuilderStore((s) => s.createdFlight)
-  const reset = useFlightBuilderStore((s) => s.reset)
   const hasPets = useFlightBuilderStore(
     (s) => s.draft.petsEnabled && s.draft.pets.length > 0,
   )
@@ -165,11 +164,6 @@ export function ShareStep() {
     }
     setCopied(true)
     setTimeout(() => setCopied(false), 1800)
-  }
-
-  function goToDashboard() {
-    reset()
-    router.push(`/build/${FIRST_STEP}`)
   }
 
   return (
@@ -306,18 +300,6 @@ export function ShareStep() {
                 <div className="flex shrink-0 items-center justify-start sm:justify-end gap-2">
                   <button
                     type="button"
-                    aria-label="Edit share card"
-                    className={cn('inline-flex lg:hidden', shareLinkEditButtonClass)}
-                  >
-                    <img
-                      src="/svg/edittrip.svg"
-                      alt=""
-                      aria-hidden="true"
-                      className="size-[18px]"
-                    />
-                  </button>
-                  <button
-                    type="button"
                     className={shareLinkJoinButtonClass}
                     onClick={() => window.open(flight.shareUrl, '_blank', 'noopener')}
                   >
@@ -432,7 +414,6 @@ export function ShareStep() {
                   className="size-[18px] shrink-0"
                 />
               }
-              // onClick={goToDashboard}
             >
               Go to My Dashboard
             </Button>

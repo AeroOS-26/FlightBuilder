@@ -14,6 +14,7 @@
  * the integration questions doc).
  */
 
+import { SPACES_TOTAL } from '@/features/flight-builder/config/capacity'
 import type {
   FlightDraft,
   FlightGroupCreatedEvent,
@@ -23,9 +24,6 @@ import type {
   Pet,
   RoutePlace,
 } from '@/types'
-
-/** Default total Spaces when the flow doesn't capture capacity yet. */
-const DEFAULT_SPACES_TOTAL = 4 // CONFIRM: capacity source (default per sample)
 
 interface BuildArgs {
   draft: FlightDraft
@@ -48,8 +46,10 @@ export function buildFlightGroupCreated({
   const founderTraveler =
     draft.travelers.find((t) => t.isFounder) ?? draft.travelers[0] ?? null
 
-  const spacesTotal = DEFAULT_SPACES_TOTAL
-  const committed = Math.max(1, draft.travelers.length)
+  // Travelers are capped at SPACES_TOTAL upstream, so committed can never exceed
+  // spacesTotal — spaces_remaining stays a truthful 0..spacesTotal.
+  const spacesTotal = SPACES_TOTAL
+  const committed = Math.min(spacesTotal, Math.max(1, draft.travelers.length))
 
   return {
     event: 'flight_group.created',

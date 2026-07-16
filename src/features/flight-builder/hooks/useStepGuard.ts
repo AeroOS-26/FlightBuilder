@@ -78,6 +78,13 @@ function resolveRedirect(
     return hasCreatedFlight ? null : FIRST_STEP
   }
 
+  // Once a flight has been created, the flow is done: pin the user to Share so
+  // navigating back (or deep-linking to an earlier step) can't fire a second
+  // create with the same group id. Share is the only reachable step now.
+  if (hasCreatedFlight) {
+    return 'share'
+  }
+
   const blockedAt = firstIncompleteStep(draft)
   if (!blockedAt) return null // Whole gated flow is complete — any step allowed.
 

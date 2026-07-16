@@ -14,13 +14,14 @@ import { useFlightBuilderStore } from '@/features/flight-builder/store/flightBui
 import type { MemberIdentity } from '@/types'
 
 // Placeholder — replace with the real member lookup when auth is wired.
-// Name is left blank so Traveler 1's "Full name" isn't pre-filled; the user
-// enters their own name until the real member lookup provides it.
+// Name/email/phone are intentionally blank: email is the dedup key in Zoho, so a
+// seeded address would collapse every flight onto one Contact. Sending empty
+// values until auth provides the real member identity is safer.
 const PLACEHOLDER_FOUNDER: MemberIdentity = {
   id: 'member_self',
   name: '',
-  email: 'margot@perroair.example',
-  phone: '+1-555-0100',
+  email: '',
+  phone: '',
 }
 
 export function useFounderIdentity() {
