@@ -154,7 +154,7 @@ export function PetsStep() {
           />
           {draft.travelers.length >= MAX_TRAVELERS && (
             <p className="font-sans text-[12px] font-medium leading-[18px] text-[#000000]/60">
-              This flight has {MAX_TRAVELERS} spaces — the maximum number of travelers.
+              You’ve reached the maximum of {MAX_TRAVELERS} travelers for a flight.
             </p>
           )}
         </div>

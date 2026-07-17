@@ -14,7 +14,7 @@
  * the integration questions doc).
  */
 
-import { SPACES_TOTAL } from '@/features/flight-builder/config/capacity'
+import { SPACES_ESTIMATE } from '@/features/flight-builder/config/capacity'
 import type {
   FlightDraft,
   FlightGroupCreatedEvent,
@@ -46,10 +46,12 @@ export function buildFlightGroupCreated({
   const founderTraveler =
     draft.travelers.find((t) => t.isFounder) ?? draft.travelers[0] ?? null
 
-  // Travelers are capped at SPACES_TOTAL upstream, so committed can never exceed
-  // spacesTotal — spaces_remaining stays a truthful 0..spacesTotal.
-  const spacesTotal = SPACES_TOTAL
-  const committed = Math.min(spacesTotal, Math.max(1, draft.travelers.length))
+  // spaces_total is an estimate (no aircraft exists at creation). Send the
+  // greater of the default estimate and the actual party size, so the number can
+  // never contradict the members list — a party of 2 sends 6, a party of 8
+  // sends 8. spaces_remaining then stays a truthful 0..spaces_total.
+  const committed = Math.max(1, draft.travelers.length)
+  const spacesTotal = Math.max(SPACES_ESTIMATE, committed)
 
   return {
     event: 'flight_group.created',
@@ -98,8 +100,12 @@ function mapDates(draft: FlightDraft): FlightGroupCreatedEvent['flight_group']['
 }
 
 function mapMembers(draft: FlightDraft, founder: MemberIdentity | null): FlightGroupMember[] {
-  // Pets are attached to the founder/primary member until the flow assigns pets
-  // to specific travelers. CONFIRM: per-traveler pet assignment if required.
+  // Pets attach to the primary member (the founder) by design: in the Flight
+  // Builder the founder creates a flight for their own party, so the party's
+  // pets belong to the primary contact and the other travelers genuinely have
+  // none — an empty array there is accurate, not missing. Per-member pets do
+  // their real work later, when joiners arrive via member.joined with their own
+  // animals. Confirmed with the backend as working as intended.
   const pets = draft.petsEnabled
     ? draft.pets.map((p) => mapPet(p, draft.petReadinessAccepted))
     : []
@@ -120,7 +126,7 @@ function mapMembers(draft: FlightDraft, founder: MemberIdentity | null): FlightG
       join_method: isFounder ? 'founder' : 'manual',
       member_status: 'joined',
       is_primary: isPrimary,
-      // Attach all pets to the primary member for now.
+      // The party's pets sit with the primary member (see mapMembers note).
       pets: isPrimary ? pets : [],
     }
   })

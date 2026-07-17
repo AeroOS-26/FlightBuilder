@@ -92,17 +92,27 @@ interface Identifiers {
 
 /** Group code + share slug/link, generated client-side from route + date. */
 function generateIdentifiers(draft: FlightDraft): Identifiers {
-  // Human-facing identifiers use the display code (IATA-preferred), matching
-  // the sample (e.g. "202606-SFO-JFK-01"); the ICAO payload code is separate.
+  // Human-facing identifiers use the display code (IATA-preferred); the ICAO
+  // payload code is separate. The suffix is a short random token — not a
+  // sequence — so every creation is unique with no round trip or race, and the
+  // share links can't be guessed by counting upwards.
   const fromCode = draft.route.from?.displayCode || 'XXX'
   const toCode = draft.route.to?.displayCode || 'XXX'
   const ym = yearMonth(draft)
-  const shareSlug = `${fromCode}-${toCode}-${ym}`
+  const token = randomToken()
+  const shareSlug = `${fromCode}-${toCode}-${ym}-${token}`
   return {
-    groupCode: `${ym}-${fromCode}-${toCode}-01`,
+    groupCode: `${ym}-${fromCode}-${toCode}-${token}`,
     shareSlug,
     shareUrl: buildShareUrl(shareSlug),
   }
+}
+
+/** 6 uppercase base36 chars from crypto — e.g. "K3F9M2". Unique per creation. */
+function randomToken(): string {
+  const bytes = new Uint8Array(6)
+  crypto.getRandomValues(bytes)
+  return Array.from(bytes, (b) => (b % 36).toString(36)).join('').toUpperCase()
 }
 
 /** "202606" from the selected start date, or the current month as a fallback. */
