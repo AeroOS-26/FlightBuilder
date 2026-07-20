@@ -32,13 +32,9 @@ interface TravelerCardProps {
 
   index: number
 
-  isPrimaryContact: boolean
-
   error?: string
 
   onChangeName: (name: string) => void
-
-  onSetPrimaryContact: () => void
 
   onRemove?: () => void
 
@@ -52,13 +48,9 @@ export function TravelerCard({
 
   index,
 
-  isPrimaryContact,
-
   error,
 
   onChangeName,
-
-  onSetPrimaryContact,
 
   onRemove,
 
@@ -79,34 +71,36 @@ export function TravelerCard({
 
         </h4>
 
-        {isPrimaryContact ? (
+        {/* Founder: primary-contact label. Additional travelers: Remove button
+            in the same top-right slot, per the Figma. */}
+        {traveler.isFounder ? (
 
           <span className={cn(travelerBadgeClass, 'text-[#112D7C]')}>primary contact</span>
 
         ) : (
+          onRemove && (
+            <button
 
-          <button
+              type="button"
 
-            type="button"
+              onClick={onRemove}
 
-            onClick={onSetPrimaryContact}
+              aria-label={`Remove Traveler ${index + 1}`}
 
-            aria-label={`Set Traveler ${index + 1} as primary contact`}
+              className={cn(
 
-            className={cn(
+                travelerBadgeClass,
 
-              travelerBadgeClass,
+                'text-[#000000] transition-opacity hover:opacity-90 focus-ring',
 
-              'text-[#000000] transition-opacity hover:opacity-90 focus-ring',
+              )}
 
-            )}
+            >
 
-          >
+              Remove Traveler
 
-            primary contact
-
-          </button>
-
+            </button>
+          )
         )}
 
       </div>
@@ -128,24 +122,6 @@ export function TravelerCard({
         />
 
       </FormField>
-
-      {!traveler.isFounder && onRemove && (
-
-        <button
-
-          type="button"
-
-          onClick={onRemove}
-
-          className="mt-2 font-sans text-[12px] font-medium leading-[18px] text-[#000000]/70 underline-offset-2 hover:text-[#000000] hover:underline focus-ring"
-
-        >
-
-          Remove traveler
-
-        </button>
-
-      )}
 
     </div>
 

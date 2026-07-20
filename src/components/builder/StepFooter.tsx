@@ -37,29 +37,24 @@ export function StepFooter({
 
   const label = continueLabel ?? currentStep.continueLabel ?? 'Continue'
   const handleContinue = onContinue ?? goNext
-  const backText =
-    canGoBack && prevStep ? `Back to ${prevStep.backLabel}` : 'Save & Exit'
-  const useMobileStack = label.length > 22 || backText.length > 22
 
   return (
     <div
       className={cn(
-        'flex min-w-0 gap-3 px-4 py-4',
-        useMobileStack
-          ? 'max-md:flex-col max-md:gap-3'
-          : 'max-md:flex-row max-md:items-center max-md:justify-between max-md:gap-2',
-        'md:flex-row md:items-center md:justify-between',
-        className ?? (compact ? 'mt-[24px]' : 'mt-6 lg:mt-[94px]'),
+        // One row within the card: Back stays compact on the left, Continue takes
+        // the space it needs on the right. min-w-0 + overflow-hidden keep the row
+        // inside the card; a long Continue label truncates rather than spilling out.
+        'flex min-w-0 flex-row items-center justify-between gap-3 overflow-hidden px-4 py-4',
+        // Consistent gap above the footer on every step — matches the Figma's
+        // breathing room between the last content block and the buttons.
+        className ?? 'mt-10',
       )}
     >
       {canGoBack && prevStep ? (
         <Button
           variant="secondary"
           onClick={goBack}
-          className={cn(
-            'w-full md:w-auto',
-            !useMobileStack && 'max-md:w-auto max-md:shrink-0',
-          )}
+          className="w-auto shrink-0 whitespace-nowrap"
         >
           Back to {prevStep.backLabel}
         </Button>
@@ -67,10 +62,7 @@ export function StepFooter({
         <Button
           variant="secondary"
           onClick={onSaveAndExit}
-          className={cn(
-            'w-full md:w-auto',
-            !useMobileStack && 'max-md:w-auto max-md:shrink-0',
-          )}
+          className="w-auto shrink-0 whitespace-nowrap"
         >
           Save &amp; Exit
         </Button>
@@ -81,15 +73,12 @@ export function StepFooter({
           loading={continueLoading}
           disabled={continueDisabled}
           onClick={handleContinue}
-          className={cn(
-            'w-full pr-[11px]! md:w-auto',
-            !useMobileStack && 'max-md:w-auto max-md:shrink-0',
-          )}
+          className="w-auto min-w-0 whitespace-nowrap"
           trailingAdornment={
-            <img src="/svg/arrow.svg" alt="" aria-hidden="true" className="h-[18px] w-[18px]" />
+            <img src="/svg/arrow.svg" alt="" aria-hidden="true" className="h-[18px] w-[18px] shrink-0" />
           }
         >
-          {label}
+          <span className="truncate">{label}</span>
         </Button>
       )}
     </div>

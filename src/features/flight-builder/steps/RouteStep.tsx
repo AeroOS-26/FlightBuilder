@@ -39,6 +39,7 @@ export function RouteStep() {
     <StepShell
       onContinue={handleContinue}
       footerCompact={showCompactFooter}
+      bodyClassName="gap-6 p-4"
       aside={
         <>
           <HowItWorksPanel currentStepId={currentStepId} />
@@ -61,9 +62,9 @@ export function RouteStep() {
         description="Tell us where you’re going. We accept any location worldwide — we’ll work out the closest reachable airports once we know your full trip."
       />
 
-      {errors.banner && <ErrorBanner className="mt-5">{errors.banner}</ErrorBanner>}
+      {errors.banner && <ErrorBanner>{errors.banner}</ErrorBanner>}
 
-      <div className="mt-[24px] flex flex-col gap-[24px]">
+      <div className="flex flex-col gap-[24px]">
         <LocationField
           label="Where from"
           placeholder="Type any city, region, or airport — anywhere in the world"
@@ -84,7 +85,7 @@ export function RouteStep() {
         />
       </div>
 
-      <InfoNote className="mt-4">
+      <InfoNote>
         Don’t worry about exact airports yet. We’ll handle that once we know where you want
         to fly.
       </InfoNote>

@@ -21,7 +21,6 @@ export function NotesStep() {
   return (
     <StepShell
       continueDisabled={Boolean(error)}
-      footerClassName="mt-[24px]"
       bodyClassName="gap-6 p-4"
       stackClassName="max-lg:gap-[18px]"
       asideClassName="max-lg:gap-2"

@@ -115,9 +115,7 @@ export function ReviewStep() {
     <StepShell
       onContinue={confirm}
       continueDisabled={isPending}
-      footerCompact
-      bodyClassName="gap-3 p-4 lg:gap-4 lg:px-4 lg:pb-4 lg:pt-4"
-      footerClassName="mt-[48px]"
+      bodyClassName="gap-6 p-4"
       stackClassName="max-lg:gap-[18px]"
       asideClassName="max-lg:gap-2"
       aside={

@@ -63,7 +63,6 @@ export function PetsStep() {
   const addTraveler = useFlightBuilderStore((s) => s.addTraveler)
   const updateTraveler = useFlightBuilderStore((s) => s.updateTraveler)
   const removeTraveler = useFlightBuilderStore((s) => s.removeTraveler)
-  const setPrimaryContact = useFlightBuilderStore((s) => s.setPrimaryContact)
   const setPetsEnabled = useFlightBuilderStore((s) => s.setPetsEnabled)
   const addPet = useFlightBuilderStore((s) => s.addPet)
   const updatePet = useFlightBuilderStore((s) => s.updatePet)
@@ -77,11 +76,6 @@ export function PetsStep() {
     : { travelers: {}, pets: {}, readiness: undefined, banner: undefined }
 
   const petsOnFlight = draft.petsEnabled && draft.pets.length > 0
-  const founderId = draft.travelers.find((t) => t.isFounder)?.id
-  const primaryContactId =
-    draft.primaryContactId && draft.travelers.some((t) => t.id === draft.primaryContactId)
-      ? draft.primaryContactId
-      : (founderId ?? null)
 
   function handleContinue() {
     setSubmitted(true)
@@ -140,10 +134,8 @@ export function PetsStep() {
               key={traveler.id}
               traveler={traveler}
               index={index}
-              isPrimaryContact={traveler.id === primaryContactId}
               error={errors.travelers[traveler.id]}
               onChangeName={(name) => updateTraveler(traveler.id, name)}
-              onSetPrimaryContact={() => setPrimaryContact(traveler.id)}
               onRemove={traveler.isFounder ? undefined : () => removeTraveler(traveler.id)}
             />
           ))}
