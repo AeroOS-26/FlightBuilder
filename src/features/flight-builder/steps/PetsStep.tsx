@@ -29,7 +29,7 @@ import { MAX_TRAVELERS } from '@/features/flight-builder/config/capacity'
 import { validatePets, hasPetsErrors } from '@/features/flight-builder/validation'
 
 const READINESS_TEXT =
-  'I confirm my pet is travel-ready, will not disrupt other passengers or crew, and I accept responsibility for their behavior throughout the flight. I understand that operators reserve the right to refuse boarding for pets that appear unfit for travel.'
+  'All pets must meet our behavior and cleanliness standards. Aggressive, reactive, or excessively barking dogs cannot fly, and dogs with any history of biting are not eligible. Dogs must be freshly washed and brushed, and must remain on a client-provided blanket for the entire flight. All non-dog pets must remain inside their carrier for the duration of travel. Missed flights due to pet behavior or non-compliance are non-refundable.'
 
 function AddButton({
   label,

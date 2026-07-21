@@ -23,21 +23,21 @@ interface TimelineItem {
 const TIMELINE: TimelineItem[] = [
   {
     title: 'We review your route and post an estimate',
-    body: 'An advisor checks the corridor, aircraft fit, and any pet or party constraints, then posts a shared and private estimate to your Shared Flight page.',
+    body: 'An advisor checks the route, available aircraft, and any pet or party constraints, then posts a shared and private estimate to your Shared Flight page.',
   },
   {
     title: 'You get a shareable link',
-    body: 'Send it to friends, your relocation group, or post it publicly to invite other travelers on the same route.',
+    body: 'Send it to friends, your relocation groups, and post it publicly to invite other travelers on the same route.',
     chip: { label: 'Immediately', tone: 'accent' },
   },
   {
     title: 'Members join, we source the aircraft',
-    body: 'As members commit, we line up the operator quote and lock the aircraft category for the group.',
+    body: 'As members commit, we line up the operator and confirm the aircraft for the group.',
     chip: { label: 'Rolling', tone: 'warning' },
   },
   {
     title: 'Group confirms and we book',
-    body: 'Once the group is full or you decide to lock at current size, we collect payment and confirm the operator.',
+    body: 'Once the group is full or you decide to lock at current size, we confirm the group, collect payment from group members, confirm the charter with the operator, pay the operator, and send out exact flight details.',
     chip: { label: 'On Fill', tone: 'success' },
   },
 ]

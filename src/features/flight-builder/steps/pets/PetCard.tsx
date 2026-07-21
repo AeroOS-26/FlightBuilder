@@ -1,9 +1,8 @@
 'use client'
 
 /**
- * A single pet form card inside the Pets & Passengers step: name, type, breed,
- * weight, and a single-select temperament. Changing the species resets the
- * breed so the options stay coherent.
+ * A single pet form card inside the Pets & Passengers step: name, type, breed
+ * (free text), weight, and a single-select temperament.
  */
 
 import { FormField, PillGroup, Select, TextInput } from '@/components/ui'
@@ -11,7 +10,6 @@ import {
   PET_TYPES,
   TEMPERAMENTS,
   WEIGHT_OPTIONS,
-  getBreedOptions,
 } from '@/features/flight-builder/config/petOptions'
 import type { PetFieldErrors } from '@/features/flight-builder/validation'
 import type { Pet, PetTemperament } from '@/types'
@@ -59,15 +57,14 @@ export function PetCard({ pet, index, errors, onChange, onRemove }: PetCardProps
             options={PET_TYPES}
             value={pet.type}
             invalid={Boolean(errors?.type)}
-            onChange={(e) => onChange({ type: e.target.value, breed: '' })}
+            onChange={(e) => onChange({ type: e.target.value })}
           />
         </FormField>
 
         <FormField label="Breed" htmlFor={`${idBase}-breed`} error={errors?.breed}>
-          <Select
+          <TextInput
             id={`${idBase}-breed`}
-            placeholder="Select breed"
-            options={getBreedOptions(pet.type)}
+            placeholder="e.g. Labrador Retriever"
             value={pet.breed}
             invalid={Boolean(errors?.breed)}
             onChange={(e) => onChange({ breed: e.target.value })}

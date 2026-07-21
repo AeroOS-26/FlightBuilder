@@ -17,7 +17,7 @@ import { SidePanel } from '@/features/flight-builder/components'
 import { useFlightBuilderStore } from '@/features/flight-builder/store/flightBuilderStore'
 import { FIRST_STEP } from '@/features/flight-builder/config/steps'
 import { displayShareUrl } from '@/utils/shareLink'
-import { formatDateSelection, placeCity, placeWithCode } from '@/utils/flightFormat'
+import { formatDateSelection, placeCity } from '@/utils/flightFormat'
 import { formatMonthLabel, fromISODate } from '@/utils/date'
 import { cn } from '@/utils/cn'
 
@@ -207,7 +207,7 @@ export function ShareStep() {
             <p className={flightSummaryEyebrowClass}>Group ID · {flight.groupCode}</p>
             <div className="mt-1.5 flex flex-nowrap items-center gap-2 lg:flex-wrap lg:gap-[20px]">
               <span className={cn(flightSummaryRouteClass, 'shrink-0')}>
-                {placeWithCode(flight.route.from)}
+                {placeCity(flight.route.from)}
               </span>
               <img
                 src="/svg/soFar.svg"
@@ -216,7 +216,7 @@ export function ShareStep() {
                 className="size-[18px] shrink-0"
               />
               <span className={cn(flightSummaryRouteClass, 'min-w-0 truncate')}>
-                {placeWithCode(flight.route.to)}
+                {placeCity(flight.route.to)}
               </span>
             </div>
             <p className={cn('mt-1.5', flightSummaryMetaClass)}>{summaryLine}</p>
