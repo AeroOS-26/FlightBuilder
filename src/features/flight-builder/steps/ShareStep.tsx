@@ -21,11 +21,29 @@ import { formatDateSelection, placeCity } from '@/utils/flightFormat'
 import { formatMonthLabel, fromISODate } from '@/utils/date'
 import { cn } from '@/utils/cn'
 
-const SHARE_TIPS = [
-  'Post in pet relocation groups on Facebook.',
-  'Share with friends and family who travel with pets.',
-  'Members join, group fills, operator quotes.',
-  'We notify members in your area when the flight forms.',
+/** Charles's post-creation "what happens next" steps (Share screen). */
+interface NextStep {
+  title: string
+  body: string
+}
+
+const NEXT_STEPS: NextStep[] = [
+  {
+    title: 'We review your route and post an estimate',
+    body: 'An advisor checks the route, available aircraft, and any pet or party constraints, then posts a shared and private estimate to your Shared Flight page.',
+  },
+  {
+    title: 'You get a shareable link',
+    body: 'Send it to friends, your relocation groups, and post it publicly to invite other travelers on the same route.',
+  },
+  {
+    title: 'Members join, we source the aircraft',
+    body: 'As members commit, we line up the operator and confirm the aircraft for the group.',
+  },
+  {
+    title: 'Group confirms and we book',
+    body: 'Once the group is full or you decide to lock at current size, we confirm the group, collect payment from group members, confirm the charter with the operator, pay the operator, and send out exact flight details.',
+  },
 ]
 
 const flightCreatedBadgeClass =
@@ -392,20 +410,35 @@ export function ShareStep() {
           </div>
 
           <DashedCard padding="sm" className={shareTipsPanelClass}>
-            <h3 className={shareTipsTitleClass}>Get the most out of your shared flight</h3>
+            <h3 className={shareTipsTitleClass}>What happens next</h3>
             <ol className="mt-4 space-y-3">
-              {SHARE_TIPS.map((tip, i) => (
-                <li key={tip} className="flex items-center gap-2">
+              {NEXT_STEPS.map((step, i) => (
+                <li key={step.title} className="flex items-start gap-2">
                   <span className={shareTipsStepBadgeClass}>{i + 1}</span>
-                  <span className={sidebarStepTextClass}>{tip}</span>
+                  <div className="min-w-0 flex-1">
+                    {/* No status chips post-creation — they belong on the Review
+                        preview, not the created-flight Share screen. */}
+                    <p className={cn(sidebarStepTextClass, 'font-medium')}>
+                      {step.title}
+                    </p>
+                    <p className="mt-1 font-sans text-[13px] font-normal leading-[130%] text-[#000000]/70 lg:text-[14px]">
+                      {step.body}
+                    </p>
+                  </div>
                 </li>
               ))}
             </ol>
           </DashedCard>
 
+          {/* Flight Group Detail and My Dashboard are Flight Club screens in the
+              next phase. They are intentionally inactive here — disabled so they
+              read as inactive rather than active-but-dead. Do not wire handlers. */}
           <div className={shareFooterClass}>
-            <Button variant="secondary">Go to Flight Group Detail</Button>
+            <Button variant="secondary" disabled>
+              Go to Flight Group Detail
+            </Button>
             <Button
+              disabled
               trailingAdornment={
                 <img
                   src="/svg/whiteArrow.svg"
