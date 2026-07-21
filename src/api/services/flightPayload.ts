@@ -132,6 +132,18 @@ function mapMembers(draft: FlightDraft, founder: MemberIdentity | null): FlightG
   })
 }
 
+/**
+ * Display label -> payload value for temperament. Explicit map (not a blind
+ * lowercase) so the stored value is an agreed key, confirmed with the backend:
+ * "Experienced Traveler" is shown to the user but sent as "travel_experienced".
+ */
+const TEMPERAMENT_PAYLOAD_VALUE: Record<string, string> = {
+  Calm: 'calm',
+  Excitable: 'excitable',
+  Anxious: 'anxious',
+  'Experienced Traveler': 'travel_experienced',
+}
+
 function mapPet(pet: Pet, readinessAccepted: boolean): FlightGroupPet {
   return {
     name: pet.name,
@@ -141,7 +153,9 @@ function mapPet(pet: Pet, readinessAccepted: boolean): FlightGroupPet {
     // Parse a leading number when present, else null.
     weight_lbs: parseWeight(pet.weight),
     crate_size: null, // CONFIRM: crate size not captured in the flow.
-    temperament: pet.temperament ? pet.temperament.toLowerCase() : '',
+    temperament: pet.temperament
+      ? (TEMPERAMENT_PAYLOAD_VALUE[pet.temperament] ?? pet.temperament.toLowerCase())
+      : '',
     travel_readiness_accepted: readinessAccepted,
   }
 }

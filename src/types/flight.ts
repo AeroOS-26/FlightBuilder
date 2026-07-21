@@ -96,7 +96,7 @@ export interface Traveler {
   isFounder: boolean
 }
 
-export type PetTemperament = 'Calm' | 'Excitable' | 'Anxious' | 'Travel-experienced'
+export type PetTemperament = 'Calm' | 'Excitable' | 'Anxious' | 'Experienced Traveler'
 
 /** A pet traveling on the flight. */
 export interface Pet {

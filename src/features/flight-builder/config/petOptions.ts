@@ -26,5 +26,5 @@ export const TEMPERAMENTS: readonly PetTemperament[] = [
   'Calm',
   'Excitable',
   'Anxious',
-  'Travel-experienced',
+  'Experienced Traveler',
 ] as const
