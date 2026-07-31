@@ -17,16 +17,41 @@ interface ServerEnv {
    * https://www.zohoapis.com/crm/v7/functions/aeroos/actions/execute?auth_type=apikey&zapikey=...
    */
   zohoWebhookUrl: string
+  /**
+   * Zoho CRM Function URL (with zapikey) for the public-flight read. POSTed a
+   * `{ group_id }` body; returns the public_view. Server-only — the zapikey must
+   * never reach the browser. Empty → the read-relay falls back to sample data.
+   */
+  zohoPublicViewUrl: string
+  /**
+   * Zoho CRM Function URL (with zapikey) for the interest-lead write. POSTed the
+   * `interest_lead.created` event; creates a Lead and attaches it to the Flight
+   * Group. Server-only. Empty → the lead-write stub accepts and returns a
+   * placeholder id (nothing lands in the CRM).
+   */
+  zohoLeadWriteUrl: string
   /** Request timeout (ms) for the upstream Zoho call. */
   zohoTimeoutMs: number
 }
 
 export const serverEnv: ServerEnv = {
   zohoWebhookUrl: process.env.ZOHO_WEBHOOK_URL ?? '',
+  zohoPublicViewUrl: process.env.ZOHO_PUBLIC_VIEW_URL ?? '',
+  zohoLeadWriteUrl: process.env.ZOHO_LEAD_WRITE_URL ?? '',
   zohoTimeoutMs: Number(process.env.ZOHO_TIMEOUT_MS) || 15000,
 }
 
 /** True when the webhook URL is configured (lets the relay fail clearly). */
 export function isZohoConfigured(): boolean {
   return serverEnv.zohoWebhookUrl.length > 0
+}
+
+/** True when the public-view read URL is configured (else use sample data). */
+export function isPublicViewConfigured(): boolean {
+  return serverEnv.zohoPublicViewUrl.length > 0
+}
+
+/** True when the interest-lead write URL is configured (else use the stub). */
+export function isLeadWriteConfigured(): boolean {
+  return serverEnv.zohoLeadWriteUrl.length > 0
 }

@@ -66,7 +66,7 @@ export function TravelerCard({
 
         <h4 className="font-heading text-[16px] font-medium leading-[19px] text-[#000000]">
 
-          {traveler.isFounder ? 'Traveler 1 · Founder' : `Traveler ${index + 1}`}
+          {traveler.isFounder ? 'Traveler 1 · Group Organizer' : `Traveler ${index + 1}`}
           {traveler.isFounder && <span className="text-[#000000]/70"> (You)</span>}
 
         </h4>

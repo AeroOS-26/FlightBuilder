@@ -201,7 +201,7 @@ export function ShareStep() {
             <ol className="space-y-3">
               {[
                 `Group created — ${flight.groupCode}`,
-                'You’re listed as Founder.',
+                'You’re listed as Group Organizer.',
                 'Members in your area are getting notified.',
                 'We synced your group to our CRM.',
               ].map((text, i) => (

@@ -14,4 +14,8 @@ export const queryKeys = {
     all: ['flight'] as const,
     detail: (id: string) => ['flight', 'detail', id] as const,
   },
+  publicFlight: {
+    all: ['public-flight'] as const,
+    byToken: (token: string) => ['public-flight', token] as const,
+  },
 } as const

@@ -122,8 +122,10 @@ function mapMembers(draft: FlightDraft, founder: MemberIdentity | null): FlightG
       name: t.name,
       email: isFounder && founder ? founder.email : '',
       phone: isFounder && founder ? founder.phone : '',
-      role: isFounder ? 'founder' : 'joiner',
-      join_method: isFounder ? 'founder' : 'manual',
+      // "group_organizer" per the 2026-07-24 contract (Founder renamed). The
+      // field NAMES are unchanged; only these role/join_method VALUES changed.
+      role: isFounder ? 'group_organizer' : 'joiner',
+      join_method: isFounder ? 'group_organizer' : 'manual',
       member_status: 'joined',
       is_primary: isPrimary,
       // The party's pets sit with the primary member (see mapMembers note).

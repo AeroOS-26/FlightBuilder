@@ -80,8 +80,9 @@ export interface FlightGroupMember {
   email: string
   /** Contact phone; Zoho maps to Flight Group Member + Contact (not Flight Group). */
   phone: string
-  role: 'founder' | 'joiner'
-  join_method: 'founder' | 'shared_link' | 'manual'
+  /** Organizer is "group_organizer" (Founder renamed per the 2026-07-24 contract). */
+  role: 'group_organizer' | 'joiner'
+  join_method: 'group_organizer' | 'shared_link' | 'manual'
   member_status: 'joined'
   is_primary: boolean
   pets: FlightGroupPet[]
