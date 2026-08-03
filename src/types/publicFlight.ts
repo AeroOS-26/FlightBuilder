@@ -56,8 +56,9 @@ export type PublicFlightResult =
 
 /**
  * The MVP join-page interest lead the visitor submits — the client-side shape.
- * Mirrors `interest_lead.created` in the contract (section 5, v2026-07-24):
- * a lighter interest capture than a full member join. No pets, no account.
+ * Mirrors `interest_lead.created`: a lighter interest capture than a full member
+ * join — no account, and pets as a single optional free-text note (not the full
+ * structured pet records the member join carries), matching the hi-fi.
  *
  * `zoho_flight_group_record_id` is intentionally absent here: it is resolved
  * server-side from the share token, never sent by the browser.
@@ -71,6 +72,12 @@ export interface InterestLeadRequest {
   phone: string | null
   /** Required. Identifies which flight the person is interested in. */
   group_id: string
+  /**
+   * Optional free-text pet note (e.g. "Bella, golden retriever") — the hi-fi's
+   * "Tell us about your pet" field. Context for the manual follow-up, not the
+   * structured pet records. Sent as null (not omitted) when not provided.
+   */
+  pet: string | null
 }
 
 /**

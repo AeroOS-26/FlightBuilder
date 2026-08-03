@@ -1,15 +1,16 @@
 /**
  * Lead-write seam — server-only.
  *
- * Forwards an interest lead to the CRM. When ZOHO_LEAD_WRITE_URL is configured
- * it POSTs the `interest_lead.created` event to Pavan's Deluge function, which
- * creates a Lead and attaches it to the Flight Group via the record id, then
- * normalizes the response to { success, lead_id }. When the URL is not set it
- * falls back to a stub that accepts the lead and returns a placeholder id, so
- * local dev / previews work without the endpoint.
+ * Forwards an interest lead to the CRM. It POSTs the `interest_lead.created`
+ * event to the shared `aeroos` Deluge function (the same webhook that handles
+ * flight-group creation and member.joined — it routes on the event field),
+ * which creates a Lead and attaches it to the Flight Group via the record id,
+ * then normalizes the response to { success, lead_id }. When no endpoint
+ * resolves it falls back to a stub that accepts the lead and returns a
+ * placeholder id, so local dev / previews work without the endpoint.
  */
 
-import { serverEnv, isLeadWriteConfigured } from '@/config/serverEnv'
+import { serverEnv, isLeadWriteConfigured, leadWriteUrl } from '@/config/serverEnv'
 
 /** The `interest_lead.created` event, shaped per contract section 5. */
 export interface InterestLeadEvent {
@@ -20,6 +21,8 @@ export interface InterestLeadEvent {
     name: string
     email: string
     phone: string | null
+    /** Optional free-text pet note; null when not provided. */
+    pet: string | null
   }
 }
 
@@ -62,7 +65,7 @@ export async function forwardInterestLead(
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), serverEnv.zohoTimeoutMs)
   try {
-    const res = await fetch(serverEnv.zohoLeadWriteUrl, {
+    const res = await fetch(leadWriteUrl(), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),

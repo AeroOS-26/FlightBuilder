@@ -63,6 +63,7 @@ interface LeadRequestBody {
   name?: unknown
   email?: unknown
   phone?: unknown
+  pet?: unknown
   group_id?: unknown
   /** Honeypot — a real user leaves this empty. */
   company_website?: unknown
@@ -109,6 +110,7 @@ export async function POST(request: Request) {
   const name = typeof body.name === 'string' ? body.name.trim() : ''
   const email = typeof body.email === 'string' ? body.email.trim() : ''
   const phoneRaw = typeof body.phone === 'string' ? body.phone.trim() : ''
+  const petRaw = typeof body.pet === 'string' ? body.pet.trim() : ''
   const groupId = typeof body.group_id === 'string' ? body.group_id.trim() : ''
 
   if (!name) return fail('Please enter your name.', 422)
@@ -124,7 +126,7 @@ export async function POST(request: Request) {
     source: 'mvp_join_page',
     group_id: resolved.group_id,
     zoho_flight_group_record_id: resolved.zoho_flight_group_record_id,
-    lead: { name, email, phone: phoneRaw || null },
+    lead: { name, email, phone: phoneRaw || null, pet: petRaw || null },
   })
 
   const response: InterestLeadResponse = result.success

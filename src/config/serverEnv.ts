@@ -24,10 +24,11 @@ interface ServerEnv {
    */
   zohoPublicViewUrl: string
   /**
-   * Zoho CRM Function URL (with zapikey) for the interest-lead write. POSTed the
-   * `interest_lead.created` event; creates a Lead and attaches it to the Flight
-   * Group. Server-only. Empty → the lead-write stub accepts and returns a
-   * placeholder id (nothing lands in the CRM).
+   * Optional override URL (with zapikey) for the interest-lead write. The
+   * `aeroos` CRM function that handles flight-group creation and member.joined
+   * also handles the `interest_lead.created` event — it routes on the event
+   * field — so the lead write reuses ZOHO_WEBHOOK_URL by default. Set this only
+   * to point the lead write at a dedicated function URL instead. Server-only.
    */
   zohoLeadWriteUrl: string
   /** Request timeout (ms) for the upstream Zoho call. */
@@ -51,7 +52,15 @@ export function isPublicViewConfigured(): boolean {
   return serverEnv.zohoPublicViewUrl.length > 0
 }
 
-/** True when the interest-lead write URL is configured (else use the stub). */
+/**
+ * Resolved endpoint for the interest-lead write: the dedicated override if set,
+ * otherwise the shared `aeroos` webhook (which handles the lead event too).
+ */
+export function leadWriteUrl(): string {
+  return serverEnv.zohoLeadWriteUrl || serverEnv.zohoWebhookUrl
+}
+
+/** True when a lead-write endpoint resolves (dedicated URL or the webhook). */
 export function isLeadWriteConfigured(): boolean {
-  return serverEnv.zohoLeadWriteUrl.length > 0
+  return leadWriteUrl().length > 0
 }

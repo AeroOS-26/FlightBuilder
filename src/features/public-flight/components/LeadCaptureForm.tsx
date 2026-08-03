@@ -1,16 +1,18 @@
 'use client'
 
 /**
- * "Save your spot" — the MVP interest-capture form.
+ * The MVP interest-capture form ("Register your interest").
  *
- * Collects name, email, and optional phone and submits the interest lead to our
- * own API route (which forwards to the CRM server-side). On success the caller
- * advances to the confirmation state; failures surface a handled error with a
- * retry. There is no account and no auto-join — this is a lighter interest
- * capture per the contract (section 5).
+ * Built to the hi-fi (frame 10C): name, email, an optional phone, and an
+ * optional free-text "Tell us about your pet" note. Submits the interest lead to
+ * our own API route (which forwards to the CRM server-side). On success the
+ * caller advances to the confirmation state; failures surface a handled error
+ * with a retry. There is no account and no auto-join — a lighter interest
+ * capture than a full member join.
  *
- * Two contract-driven choices, where section 5 overrides the hi-fi:
- *  - No pet field. The MVP form does not collect pet details.
+ * Two implementation notes:
+ *  - Pet is a single free-text note (context for the manual follow-up), not the
+ *    structured pet records a full member join carries.
  *  - A honeypot field (visually hidden, off to assistive tech) is submitted with
  *    the form; the server rejects any submission that fills it.
  */
@@ -40,6 +42,7 @@ export function LeadCaptureForm({ groupId, onSuccess }: LeadCaptureFormProps) {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
+  const [pet, setPet] = useState('')
   const [honeypot, setHoneypot] = useState('')
   const [errors, setErrors] = useState<FieldErrors>({})
 
@@ -63,6 +66,7 @@ export function LeadCaptureForm({ groupId, onSuccess }: LeadCaptureFormProps) {
         name: name.trim(),
         email: email.trim(),
         phone: phone.trim() ? phone.trim() : null,
+        pet: pet.trim() ? pet.trim() : null,
         group_id: groupId,
         company_website: honeypot,
       })
@@ -146,6 +150,15 @@ export function LeadCaptureForm({ groupId, onSuccess }: LeadCaptureFormProps) {
             autoComplete="tel"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
+          />
+        </FormField>
+
+        <FormField label="Tell us about your pet (optional)" htmlFor="lead-pet">
+          <TextInput
+            id="lead-pet"
+            placeholder="e.g. Bella, golden retriever"
+            value={pet}
+            onChange={(e) => setPet(e.target.value)}
           />
         </FormField>
 
