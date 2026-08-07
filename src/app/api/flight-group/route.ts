@@ -12,6 +12,7 @@
 
 import { NextResponse } from 'next/server'
 import { serverEnv, isZohoConfigured } from '@/config/serverEnv'
+import { forwardFreshworksContact } from '@/api/services/freshworksContact'
 import type { CreateFlightRelayResponse, FlightGroupCreatedEvent } from '@/types'
 
 /** Shape the backend function returns (per spec), plus legacy fallbacks. */
@@ -38,6 +39,13 @@ export async function POST(request: Request) {
   } catch {
     return NextResponse.json({ message: 'Invalid request body.' }, { status: 400 })
   }
+
+  // Independent, decoupled Freshworks contact write off the SAME submission.
+  // Fired now so it runs alongside the Zoho call, awaited in `finally` so it
+  // completes before the function returns. It never throws and self-skips when
+  // unconfigured, so it can neither delay nor break flight creation, and it
+  // does not depend on the Zoho outcome (uses an AER id, never the Zoho id).
+  const freshworksWrite = forwardFreshworksContact(payload)
 
   // Forward to Zoho with a timeout so a hung upstream doesn't hang the request.
   const controller = new AbortController()
@@ -87,6 +95,9 @@ export async function POST(request: Request) {
     )
   } finally {
     clearTimeout(timer)
+    // Ensure the independent Freshworks write finishes before the serverless
+    // function returns (it never throws and never changes the response above).
+    await freshworksWrite
   }
 }
 

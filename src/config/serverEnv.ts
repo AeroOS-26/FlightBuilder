@@ -33,6 +33,23 @@ interface ServerEnv {
   zohoLeadWriteUrl: string
   /** Request timeout (ms) for the upstream Zoho call. */
   zohoTimeoutMs: number
+  /**
+   * Freshworks contact-write endpoint URL (with its key embedded, same pattern
+   * as the Zoho URLs). Server-only. A second, independent POST off the Flight
+   * Builder submission, decoupled from Zoho. Empty → the Freshworks write is
+   * skipped entirely (no-op), so nothing posts until this is configured.
+   */
+  freshworksWebhookUrl: string
+  /** Freshworks API key — sent as `Authorization: Token token=<key>`. Server-only. */
+  freshworksApiKey: string
+  /** Request timeout (ms) for the upstream Freshworks call. */
+  freshworksTimeoutMs: number
+  /**
+   * When true, Freshworks writes are marked as test records (last_name="TEST",
+   * synthetic external_id) so they can be filtered and cleared from the live
+   * instance afterwards — there is no Freshworks sandbox.
+   */
+  freshworksTestMode: boolean
 }
 
 export const serverEnv: ServerEnv = {
@@ -40,6 +57,10 @@ export const serverEnv: ServerEnv = {
   zohoPublicViewUrl: process.env.ZOHO_PUBLIC_VIEW_URL ?? '',
   zohoLeadWriteUrl: process.env.ZOHO_LEAD_WRITE_URL ?? '',
   zohoTimeoutMs: Number(process.env.ZOHO_TIMEOUT_MS) || 15000,
+  freshworksWebhookUrl: process.env.FRESHWORKS_WEBHOOK_URL ?? '',
+  freshworksApiKey: process.env.FRESHWORKS_API_KEY ?? '',
+  freshworksTimeoutMs: Number(process.env.FRESHWORKS_TIMEOUT_MS) || 15000,
+  freshworksTestMode: process.env.FRESHWORKS_TEST_MODE === 'true',
 }
 
 /** True when the webhook URL is configured (lets the relay fail clearly). */
@@ -63,4 +84,9 @@ export function leadWriteUrl(): string {
 /** True when a lead-write endpoint resolves (dedicated URL or the webhook). */
 export function isLeadWriteConfigured(): boolean {
   return leadWriteUrl().length > 0
+}
+
+/** True when the Freshworks endpoint is configured (else the write is skipped). */
+export function isFreshworksConfigured(): boolean {
+  return serverEnv.freshworksWebhookUrl.length > 0
 }

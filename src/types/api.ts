@@ -99,6 +99,38 @@ export interface FlightGroupPet {
 }
 
 /**
+ * Freshworks contact — the frozen 27-July mapping (Sheet1). ONE contact per
+ * Flight Builder inquiry, built from the person who created the flight; extra
+ * travellers and pets ride as detail on this single contact. Sent as an
+ * independent, decoupled POST alongside the Zoho write — NOT a Zoho event.
+ * `external_id` is the only field that must be unique per entry (dedup key).
+ */
+export interface FreshworksContact {
+  /** Full name of the creator (whole name in first_name, per the sheet). */
+  first_name: string
+  /** Empty in production; "TEST" during testing so records can be cleared. */
+  last_name: string
+  emails: string
+  /** Creator phone; null/empty until account login carries it (Flight Club). */
+  mobile_number: string
+  cf_flying_from: string
+  cf_flying_to: string
+  /** YYYY-MM (earliest date when the trip is a range). */
+  cf_flight_date: string
+  /** Estimated party size at creation; does not update as members join. */
+  cf_number_of_people: number
+  cf_trip_details: string
+  cf_number_of_dogs: number
+  cf_dog_details: string
+  /** Cats + other (non-dog) pets. */
+  cf_number_of_cats: number
+  cf_other_pet_details: string
+  cf_additional_comments: string
+  /** AER + flight group id + creator member id. Unique per entry. */
+  external_id: string
+}
+
+/**
  * Relay/backend response, matching the spec's flat JSON:
  *   { flight_group_id, group_id, success, message? }
  */
