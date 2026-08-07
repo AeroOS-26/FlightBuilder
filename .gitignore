@@ -49,8 +49,6 @@ Thumbs.db
 *.wmv
 
 # Environment variables / secrets
-.env
-.env.*
 !.env.example
 
 # Next.js build output
@@ -89,3 +87,4 @@ coverage/
 .cache/
 .eslintcache
 
+config.bat

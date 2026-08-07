@@ -36,9 +36,11 @@ interface CreateFlightArgs {
 /**
  * Create the flight record on confirm.
  *
- * Sends the payload to Zoho via the relay. If the relay reports the integration
- * isn't configured (no webhook URL yet), we still return a usable record so the
- * flow is testable locally — the share link is generated either way.
+ * Sends the payload to Zoho via the relay and returns the created record only on
+ * success. Any non-OK response — including a 503 when the integration isn't
+ * configured on the server — is thrown, so the caller stays on Review and shows
+ * an error rather than advancing to the Share screen with a flight that was
+ * never saved.
  */
 export async function createFlight({
   draft,
@@ -66,16 +68,19 @@ export async function createFlight({
     const data = (await res.json()) as CreateFlightRelayResponse
     // Backend record id (empty string when not created); keep null if absent.
     recordId = data.flight_group_id || null
-  } else if (res.status === 503) {
-    // Integration not configured on the server yet — proceed with local record
-    // so the flow remains demonstrable until the webhook URL is set.
-    recordId = null
   } else {
-    // Real failure from Zoho/relay — surface it for the failure state.
+    // Any non-OK response is a real failure: the flight was NOT saved. Surface
+    // it so the caller stays on Review and shows an error — never advance to the
+    // Share screen with a flight that doesn't exist. A 503 means the server is
+    // misconfigured (missing webhook URL); treat it as a failure too, not a
+    // silent success, with a user-facing message rather than the raw config text.
     const data = await res.json().catch(() => null)
     throw {
       status: res.status,
-      message: data?.message ?? 'We could not create your flight. Please try again.',
+      message:
+        res.status === 503
+          ? 'We couldn’t create your flight right now.'
+          : data?.message ?? 'We could not create your flight. Please try again.',
       code: data?.code,
       retryable: res.status >= 500 || res.status === 0,
     }
