@@ -17,6 +17,7 @@
 
 import { buildShareUrl } from '@/utils/shareLink'
 import { fromISODate } from '@/utils/date'
+import { SPACES_ESTIMATE } from '@/features/flight-builder/config/capacity'
 import { buildFlightGroupCreated } from './flightPayload'
 import type {
   CreateFlightRelayResponse,
@@ -138,6 +139,10 @@ function assembleRecord(
     draft.travelers.find((t) => t.isFounder) ??
     draft.travelers[0]
   const memberCount = Math.max(1, draft.travelers.length)
+  // The same rule the payload uses (see buildFlightGroupCreated): the estimate,
+  // or the actual party size when that is larger. Derived from the one constant
+  // in config/capacity.ts so this screen can never contradict what Zoho was sent.
+  const spacesTotal = Math.max(SPACES_ESTIMATE, memberCount)
 
   return {
     // Prefer the backend record id (for reconciliation); fall back to a local id.
@@ -147,9 +152,9 @@ function assembleRecord(
     route: draft.route,
     date: draft.date,
     // "Spaces", never "Seats".
-    availableSpaces: Math.max(0, 4 - memberCount),
+    availableSpaces: Math.max(0, spacesTotal - memberCount),
     memberCount,
-    estimatedMembers: 4,
+    estimatedMembers: spacesTotal,
     aircraftClass: 'Light Jet',
     founder: {
       id: founder?.id ?? 'member_self',

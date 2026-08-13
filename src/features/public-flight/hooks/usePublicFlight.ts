@@ -13,12 +13,19 @@
 import { useQuery } from '@tanstack/react-query'
 import { queryKeys } from '@/api/queryKeys'
 import { fetchPublicFlight } from '@/api/services/publicFlightService'
+import type { PublicFlightResult } from '@/types'
 
-export function usePublicFlight(token: string) {
+/**
+ * `initialData` is the server-rendered read handed down by /share/[token]. With
+ * it the page paints straight away and, because it is seeded fresh against the
+ * staleTime below, the browser does not repeat the upstream read on mount.
+ */
+export function usePublicFlight(token: string, initialData?: PublicFlightResult) {
   return useQuery({
     queryKey: queryKeys.publicFlight.byToken(token),
     queryFn: () => fetchPublicFlight(token),
     enabled: token.length > 0,
+    initialData,
     // Public data is as-of page load per the milestone; no polling.
     staleTime: 60_000,
   })

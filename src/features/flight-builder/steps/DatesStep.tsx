@@ -104,7 +104,7 @@ export function DatesStep() {
                   value={date.start ? formatLongDate(date.start) : ''}
                 />
               </FormField>
-              <FormField label="Travel date">
+              <FormField label="Latest travel date">
                 <TextInput
                   readOnly
                   placeholder="Select an end date"

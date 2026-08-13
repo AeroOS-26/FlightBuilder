@@ -17,10 +17,20 @@ import { NotFoundState } from './states/NotFoundState'
 import { PublicFlightSkeleton } from './components/PublicFlightSkeleton'
 import { PublicFlightError } from './components/PublicFlightError'
 import { usePublicFlight } from './hooks/usePublicFlight'
-import type { PublicView } from '@/types'
+import type { PublicFlightResult, PublicView } from '@/types'
 
-export function PublicFlightPage({ token }: { token: string }) {
-  const { data, isLoading, isError, refetch } = usePublicFlight(token)
+interface PublicFlightPageProps {
+  token: string
+  /**
+   * The server-rendered read from /share/[token]. Present on a resolved flight,
+   * absent when the upstream read failed — in which case the query below fetches
+   * and owns the error / retry state.
+   */
+  initialData?: PublicFlightResult
+}
+
+export function PublicFlightPage({ token, initialData }: PublicFlightPageProps) {
+  const { data, isLoading, isError, refetch } = usePublicFlight(token, initialData)
 
   return (
     <PublicPageShell>
