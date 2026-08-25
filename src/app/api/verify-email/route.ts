@@ -36,6 +36,7 @@ export async function POST(request: Request) {
   if (!email) return NextResponse.json({ message: 'Email is required.' }, { status: 422 })
 
   const member = await findByEmail(email)
+  
 
   // Always answer the same way. Confirming whether an address is registered
   // here would leak exactly what the sign-in screen's enumeration question is
