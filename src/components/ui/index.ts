@@ -4,6 +4,7 @@ export { Card, DashedCard, DashedOutline, dashedAddSurfaceClass, dashedPanelSurf
 export { InfoTooltip, SubHeadingInfoTooltip } from './InfoTooltip'
 export { Badge } from './Badge'
 export { InfoNote, ErrorBanner } from './Callout'
+export { Form } from './Form'
 export { FormField, FieldError } from './FormField'
 export { TextInput } from './TextInput'
 export { Select } from './Select'

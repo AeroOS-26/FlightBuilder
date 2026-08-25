@@ -37,6 +37,9 @@ export type IconName =
   | 'mail'
   | 'whatsapp'
   | 'alert'
+  | 'eye'
+  | 'eye-off'
+  | 'user'
   | 'arrow-right'
   | 'grid'
   | 'sparkle'
@@ -119,6 +122,26 @@ const paths: Record<IconName, ReactElement> = {
     <>
       <rect x="3.5" y="5.5" width="17" height="13" rx="2.5" />
       <path d="m4 7 8 6 8-6" />
+    </>
+  ),
+  // Password reveal toggle on the auth screens (frames 30, 32, 38, 38B).
+  eye: (
+    <>
+      <path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12Z" />
+      <circle cx="12" cy="12" r="2.75" />
+    </>
+  ),
+  'eye-off': (
+    <>
+      <path d="M9.9 5.7A9.9 9.9 0 0 1 12 5.5c6.4 0 10 6.5 10 6.5a17.6 17.6 0 0 1-3.4 4.2M6.4 7.8A17.4 17.4 0 0 0 2 12s3.6 6.5 10 6.5c1.6 0 3-.4 4.2-1" />
+      <path d="M10.1 10.1a2.75 2.75 0 0 0 3.8 3.8" />
+      <path d="m3.5 3.5 17 17" />
+    </>
+  ),
+  user: (
+    <>
+      <circle cx="12" cy="8" r="3.5" />
+      <path d="M4.5 19.5a7.5 7.5 0 0 1 15 0" />
     </>
   ),
   whatsapp: (

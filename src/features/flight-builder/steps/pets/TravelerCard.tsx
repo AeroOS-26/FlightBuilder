@@ -38,6 +38,14 @@ interface TravelerCardProps {
 
   onRemove?: () => void
 
+  /**
+   * Show the "· Group Organizer" role and the "primary contact" pill.
+   * True in the Flight Builder, where a group exists. Frame 31 (onboarding)
+   * runs before any group is created, so it reads plain "Traveler 1 (You)"
+   * with a "primary" pill — pass false there.
+   */
+  showRole?: boolean
+
 }
 
 
@@ -54,6 +62,8 @@ export function TravelerCard({
 
   onRemove,
 
+  showRole = true,
+
 }: TravelerCardProps) {
 
   const fieldId = `traveler-${traveler.id}`
@@ -66,7 +76,9 @@ export function TravelerCard({
 
         <h4 className="font-heading text-[16px] font-medium leading-[19px] text-[#000000]">
 
-          {traveler.isFounder ? 'Traveler 1 · Group Organizer' : `Traveler ${index + 1}`}
+          {traveler.isFounder && showRole
+            ? 'Traveler 1 · Group Organizer'
+            : `Traveler ${index + 1}`}
           {traveler.isFounder && <span className="text-[#000000]/70"> (You)</span>}
 
         </h4>
@@ -75,7 +87,9 @@ export function TravelerCard({
             in the same top-right slot, per the Figma. */}
         {traveler.isFounder ? (
 
-          <span className={cn(travelerBadgeClass, 'text-[#112D7C]')}>primary contact</span>
+          <span className={cn(travelerBadgeClass, 'text-[#112D7C]')}>
+            {showRole ? 'primary contact' : 'primary'}
+          </span>
 
         ) : (
           onRemove && (

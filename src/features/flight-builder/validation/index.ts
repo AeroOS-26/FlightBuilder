@@ -9,7 +9,7 @@
  */
 
 import { isPastDate } from '@/utils/date'
-import type { DateSelection, FlightDraft, RouteSelection, StepId } from '@/types'
+import type { DateSelection, FlightDraft, Pet, RouteSelection, StepId, Traveler } from '@/types'
 
 /* ------------------------------------------------------------------ Route */
 
@@ -115,15 +115,33 @@ export interface PetsErrors {
   readiness?: string
 }
 
-export function validatePets(draft: FlightDraft): PetsErrors {
+/**
+ * The traveler and pet input, independent of a flight draft.
+ *
+ * Frame 31 ("Complete your profile") reuses `TravelerCard` and `PetCard`
+ * verbatim from this step, so it has to apply the same rules with the same copy
+ * — otherwise a field is required on one screen and optional on another while
+ * looking identical on both. Taking a plain shape rather than a `FlightDraft`
+ * is what lets onboarding share these rules instead of restating them.
+ */
+export interface TravelerPetInput {
+  travelers: Traveler[]
+  pets: Pet[]
+  petsEnabled: boolean
+  /** Travel-readiness acceptance — required only when pets are actually coming. */
+  readinessAccepted: boolean
+}
+
+/** The shared rules. `validatePets` is this, applied to a flight draft. */
+export function validateTravelersAndPets(input: TravelerPetInput): PetsErrors {
   const travelers: Record<string, string> = {}
-  for (const t of draft.travelers) {
+  for (const t of input.travelers) {
     if (t.name.trim().length === 0) travelers[t.id] = 'Full name required.'
   }
 
   const pets: Record<string, PetFieldErrors> = {}
-  if (draft.petsEnabled) {
-    for (const p of draft.pets) {
+  if (input.petsEnabled) {
+    for (const p of input.pets) {
       const fieldErrors: PetFieldErrors = {}
       if (p.name.trim().length === 0) fieldErrors.name = 'Pet name is required.'
       if (p.type.trim().length === 0) fieldErrors.type = 'Pet type is required.'
@@ -134,9 +152,9 @@ export function validatePets(draft: FlightDraft): PetsErrors {
     }
   }
 
-  const petsOnFlight = draft.petsEnabled && draft.pets.length > 0
+  const petsPresent = input.petsEnabled && input.pets.length > 0
   const readiness =
-    petsOnFlight && !draft.petReadinessAccepted
+    petsPresent && !input.readinessAccepted
       ? 'Please confirm Travel Readiness before continuing.'
       : undefined
 
@@ -149,6 +167,15 @@ export function validatePets(draft: FlightDraft): PetsErrors {
     pets,
     readiness,
   }
+}
+
+export function validatePets(draft: FlightDraft): PetsErrors {
+  return validateTravelersAndPets({
+    travelers: draft.travelers,
+    pets: draft.pets,
+    petsEnabled: draft.petsEnabled,
+    readinessAccepted: draft.petReadinessAccepted,
+  })
 }
 
 export function hasPetsErrors(errors: PetsErrors): boolean {

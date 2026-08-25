@@ -18,7 +18,7 @@
  */
 
 import { useState } from 'react'
-import { Button, FieldError, FormField, TextInput, ErrorBanner } from '@/components/ui'
+import { Button, Form, FormField, TextInput, ErrorBanner } from '@/components/ui'
 import { Icon } from '@/components/common'
 import { useSubmitLead } from '../hooks/useSubmitLead'
 
@@ -92,7 +92,7 @@ export function LeadCaptureForm({ groupId, onSuccess }: LeadCaptureFormProps) {
         <ErrorBanner className="mt-4">{error.message}</ErrorBanner>
       )}
 
-      <form className="mt-5 flex flex-col gap-4" onSubmit={handleSubmit} noValidate>
+      <Form className="mt-5 flex flex-col gap-4" onSubmit={handleSubmit}>
         {/* Honeypot — hidden from users and assistive tech; the server rejects
             any submission that fills it. */}
         <div aria-hidden="true" className="absolute left-[-9999px] h-0 w-0 overflow-hidden">
@@ -185,7 +185,7 @@ export function LeadCaptureForm({ groupId, onSuccess }: LeadCaptureFormProps) {
           <Icon name="info" size={14} className="shrink-0" />
           No account needed — we’ll email you as the group fills.
         </p>
-      </form>
+      </Form>
     </section>
   )
 }

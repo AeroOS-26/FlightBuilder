@@ -117,11 +117,18 @@ function mapMembers(draft: FlightDraft, founder: MemberIdentity | null): FlightG
       : isFounder
     return {
       flight_group_member_id: memberId(t.id),
-      // CONFIRM: account_id comes from member identity once auth is wired.
+      // The account id from the signed-in member, in the contract's `acct_`
+      // form. Empty only while no account exists — confirmed by the client as
+      // the intended behaviour, and what we agreed in July when the seeded
+      // placeholder was swapped for an empty string.
       account_id: isFounder && founder ? founder.id : '',
       name: t.name,
       email: isFounder && founder ? founder.email : '',
-      phone: isFounder && founder ? founder.phone : '',
+      // Always sent, null when unknown, per the 2026-08-19 contract. Only the
+      // organizer has an identity at creation; the other travelers on the party
+      // are names, so null there is accurate rather than missing. An empty
+      // string would assert "no phone" where we simply do not have one.
+      phone: (isFounder && founder ? founder.phone?.trim() : '') || null,
       // "group_organizer" per the 2026-07-24 contract (Founder renamed). The
       // field NAMES are unchanged; only these role/join_method VALUES changed.
       role: isFounder ? 'group_organizer' : 'joiner',

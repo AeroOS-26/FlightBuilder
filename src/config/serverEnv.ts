@@ -1,5 +1,13 @@
+import 'server-only'
+
 /**
  * Server-only environment configuration.
+ *
+ * The `server-only` import above is the enforcement, not a comment: importing
+ * this file from a Client Component is now a build error rather than a silent
+ * leak of every secret here into the browser bundle. It holds the Zoho zapikey,
+ * the Freshworks key and the Postmark token — the whole file is one accident
+ * away from being public without it.
  *
  * These values are read exclusively in server contexts (Route Handlers) and
  * are NEVER exposed to the browser — they have no NEXT_PUBLIC_ prefix, so Next
@@ -34,6 +42,16 @@ interface ServerEnv {
   /** Request timeout (ms) for the upstream Zoho call. */
   zohoTimeoutMs: number
   /**
+   * Postmark server token. Provider settled by the client 19 Aug; the token and
+   * sender domain follow once DNS is through. Empty → the three link flows
+   * report not-configured instead of sending. Server-only.
+   */
+  postmarkServerToken: string
+  /** Verified sender, e.g. "Perro Air <no-reply@perroair.com>". Server-only. */
+  emailFrom: string
+  /** Postmark message stream; defaults to "outbound". */
+  postmarkStream: string
+  /**
    * Freshworks contact-write endpoint URL (with its key embedded, same pattern
    * as the Zoho URLs). Server-only. A second, independent POST off the Flight
    * Builder submission, decoupled from Zoho. Empty → the Freshworks write is
@@ -57,6 +75,9 @@ export const serverEnv: ServerEnv = {
   zohoPublicViewUrl: process.env.ZOHO_PUBLIC_VIEW_URL ?? '',
   zohoLeadWriteUrl: process.env.ZOHO_LEAD_WRITE_URL ?? '',
   zohoTimeoutMs: Number(process.env.ZOHO_TIMEOUT_MS) || 15000,
+  postmarkServerToken: process.env.POSTMARK_SERVER_TOKEN ?? '',
+  emailFrom: process.env.EMAIL_FROM ?? '',
+  postmarkStream: process.env.POSTMARK_MESSAGE_STREAM ?? 'outbound',
   freshworksWebhookUrl: process.env.FRESHWORKS_WEBHOOK_URL ?? '',
   freshworksApiKey: process.env.FRESHWORKS_API_KEY ?? '',
   freshworksTimeoutMs: Number(process.env.FRESHWORKS_TIMEOUT_MS) || 15000,

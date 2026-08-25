@@ -78,8 +78,15 @@ export interface FlightGroupMember {
   account_id: string
   name: string
   email: string
-  /** Contact phone; Zoho maps to Flight Group Member + Contact (not Flight Group). */
-  phone: string
+  /**
+   * Contact phone; Zoho maps to Flight Group Member + Contact (not Flight Group).
+   *
+   * ALWAYS PRESENT, MAY BE NULL — added to this event by the 2026-08-19 contract.
+   * Flight Club does not require a phone at signup, so a member can legitimately
+   * have none. Null and absent are handled identically on the Zoho side, but the
+   * contract asks for the key to be sent, so it is never omitted.
+   */
+  phone: string | null
   /** Organizer is "group_organizer" (Founder renamed per the 2026-07-24 contract). */
   role: 'group_organizer' | 'joiner'
   join_method: 'group_organizer' | 'shared_link' | 'manual'
