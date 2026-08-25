@@ -23,10 +23,8 @@ import {
 } from '@/features/auth/server/email'
 import { isDatabaseConfigured } from '@/features/auth/server/db'
 import { validateNewPassword, isClean, validateEmail } from '@/features/auth/validation'
+import { appUrl } from '@/config/appUrl'
 
-function appUrl(): string {
-  return process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '') || 'http://localhost:3000'
-}
 
 export async function POST(request: Request) {
   if (!isDatabaseConfigured()) {

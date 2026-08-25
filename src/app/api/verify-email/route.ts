@@ -22,10 +22,8 @@ import {
   emitAccountCreated,
 } from '@/features/auth/server/accountCreated'
 import { isDatabaseConfigured } from '@/features/auth/server/db'
+import { appUrl } from '@/config/appUrl'
 
-function appUrl(): string {
-  return process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '') || 'http://localhost:3000'
-}
 
 /** Issue and send a verification link. Used at sign-up and by Resend on frame 36. */
 export async function POST(request: Request) {
