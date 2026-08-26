@@ -41,6 +41,27 @@ export default async function WelcomePage({
   const member = viewer ? await findByEmail(viewer.email) : null
   const verifiedAt = member?.emailVerified ?? null
 
+  /**
+   * The identity card is shown only when there is an identity to show.
+   *
+   * This page deliberately has no auth guard — the verification link can land
+   * in a browser with no session, and it must still render. But an anonymous
+   * visitor was being shown "John Doe · acct_5001 · Verified", which is a
+   * stranger's screen asserting a verified account that does not exist. It is
+   * the same defect the client reported, reached by opening /welcome directly
+   * instead of through the link.
+   *
+   * `?name=` and `?accountId=` still drive it, so the frame stays reviewable
+   * without a session; what is gone is the invented default.
+   */
+  const identity =
+    viewer?.email || name || viewer?.accountId || accountId
+      ? {
+          label: viewer?.email ?? name ?? '',
+          accountId: viewer?.accountId ?? accountId ?? '',
+        }
+      : null
+
   return (
     <AuthShell
       contentWidth="card"
@@ -49,6 +70,7 @@ export default async function WelcomePage({
       heroCardBelow
       heroSubtitle="Email verified. Your Flight Club account is active and your member ID is locked in."
       heroCard={
+        identity && (
         <HeroStatusCard>
           {/* The id is the row's trailing element, not a second item beside the
               name: on the frame it sits hard right at x=354 of a 370 row, while
@@ -57,12 +79,12 @@ export default async function WelcomePage({
           <HeroStatusRow
             trailing={
               <span className="shrink-0 font-sans text-[12px] font-normal text-white">
-                ID: {viewer?.accountId ?? accountId ?? 'acct_5001'}
+                ID: {identity.accountId}
               </span>
             }
           >
             <span className="truncate font-sans text-[16px] font-semibold">
-              {viewer?.email ?? name ?? 'John Doe'}
+              {identity.label}
             </span>
           </HeroStatusRow>
           <HeroStatusRow trailing={<VerifiedPill />}>
@@ -74,6 +96,7 @@ export default async function WelcomePage({
             </span>
           </HeroStatusRow>
         </HeroStatusCard>
+        )
       }
     >
       <AuthResultCard
