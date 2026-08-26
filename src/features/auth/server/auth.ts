@@ -39,6 +39,7 @@ import {
   clearFailedAttempts,
   verifyPassword,
 } from './members'
+import { consumeToken } from './tokens'
 
 /**
  * Sign-in failures, tagged so the page can render frame 32's three variants.
@@ -93,6 +94,50 @@ export const authConfig: NextAuthConfig = {
         }
 
         await clearFailedAttempts(member.id)
+        return {
+          id: String(member.id),
+          email: member.email,
+          name: member.name,
+        }
+      },
+    }),
+
+    /**
+     * Signs in a member who has just clicked their verification link.
+     *
+     * Frame 35 reads "You're in." and offers "Create Your Own Shared Flight" —
+     * it is written as an arrival, not as a prompt to go and log in. Without
+     * this, verification marked the account and then dropped the member on a
+     * page whose every link bounced to sign-in.
+     *
+     * The password is not available on that path and must not be: clicking a
+     * link sent to their own address is the proof of ownership. What stands in
+     * for it is a `session-grant` token — issued by the verification handler
+     * moments earlier, single-use, and dead within a minute.
+     *
+     * This callback is a public endpoint like every other provider's, which is
+     * exactly why it takes a token rather than an address. Handing out a session
+     * for an unproven email here would be an authentication bypass.
+     */
+    Credentials({
+      id: 'email-verified',
+      name: 'Email verification',
+      credentials: {
+        email: { label: 'Email', type: 'email' },
+        token: { label: 'Grant', type: 'text' },
+      },
+      async authorize(raw) {
+        const email = typeof raw?.email === 'string' ? raw.email : ''
+        const token = typeof raw?.token === 'string' ? raw.token : ''
+        if (!email || !token) return null
+
+        // Redeeming deletes it, so a replayed grant fails here.
+        const granted = await consumeToken('session-grant', email, token)
+        if (!granted.ok) return null
+
+        const member = await findByEmail(granted.email)
+        if (!member) return null
+
         return {
           id: String(member.id),
           email: member.email,

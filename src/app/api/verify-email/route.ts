@@ -16,6 +16,7 @@
 import { NextResponse } from 'next/server'
 import { findByEmail, markEmailVerified } from '@/features/auth/server/members'
 import { issueToken, consumeToken } from '@/features/auth/server/tokens'
+import { signIn } from '@/features/auth/server/auth'
 import { sendVerificationEmail, isEmailConfigured } from '@/features/auth/server/email'
 import {
   buildAccountCreated,
@@ -98,6 +99,27 @@ export async function GET(request: Request) {
     if (!emitted.ok) {
       console.error('[account.created] not delivered:', emitted.reason, emitted.message)
     }
+  }
+
+  // Sign them in. Frame 35 is written as an arrival — "You're in.", with
+  // "Create Your Own Shared Flight" as the primary action — so landing there
+  // without a session left every link on it bouncing back to sign-in, and the
+  // identity card falling back to its design-review placeholders.
+  //
+  // The grant is redeemed by the `email-verified` provider inside this same
+  // request; it exists so that public callback needs a token rather than
+  // trusting an address. Non-fatal: a member who is verified but not signed in
+  // can still sign in normally, so a failure here must not lose the
+  // verification that just succeeded.
+  try {
+    const grant = await issueToken('session-grant', member.email)
+    await signIn('email-verified', {
+      email: member.email,
+      token: grant.token,
+      redirect: false,
+    })
+  } catch (err) {
+    console.error('[verify-email] could not establish a session:', err)
   }
 
   return NextResponse.redirect(`${appUrl()}/welcome`)

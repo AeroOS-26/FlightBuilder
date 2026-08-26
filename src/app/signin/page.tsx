@@ -42,13 +42,7 @@ export default async function SignInPage({
 
   return (
     <AuthShell
-      heroTitle={
-        <>
-          Sign in to
-          <br />
-          continue.
-        </>
-      }
+      heroTitle="Sign in to continue."
       heroSubtitle="One membership for all. Create and manage shared flights and pets."
       heroCard={<MembershipCard />}
       footerNote={

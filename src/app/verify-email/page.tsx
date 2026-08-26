@@ -28,7 +28,6 @@ export default async function VerifyEmailPage({
       heroTitle="Verify your email."
       heroSubtitle="A verification link was sent to your email. Click to activate your account."
       heroCard={<MembershipCard />}
-      activeDot={1}
     >
       <AuthResultCard
         title="Email sent"

@@ -18,16 +18,9 @@ export default async function SetNewPasswordPage({
 
   return (
     <AuthShell
-      heroTitle={
-        <>
-          Set a new
-          <br />
-          password.
-        </>
-      }
+      heroTitle="Set a new password."
       heroSubtitle="Pick something you'll remember. We'll sign you in as soon as it's set."
       heroCard={<MembershipCard />}
-      activeDot={3}
     >
       <SetNewPasswordForm email={email} token={token} />
     </AuthShell>

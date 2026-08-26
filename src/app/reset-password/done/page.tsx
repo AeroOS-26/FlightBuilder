@@ -15,6 +15,8 @@ import {
   HeroStatusRow,
   VerifiedPill,
 } from '@/features/auth/components'
+import { findByEmail } from '@/features/auth/server/members'
+import { formatStampUtc } from '@/utils/stamp'
 
 export default async function PasswordUpdatedPage({
   searchParams,
@@ -24,28 +26,31 @@ export default async function PasswordUpdatedPage({
   const { email } = await searchParams
   const address = email || 'margot@example.com'
 
+  // Read the real change time rather than printing a date from the frame. The
+  // address arrives in the query string and is display-only either way, so a
+  // lookup that finds nothing simply omits the stamp.
+  const member = email ? await findByEmail(email) : null
+  const updatedAt = member?.password_updated_at ?? null
+
   return (
     <AuthShell
       heroHeightMobile={607}
-      heroTitle={
-        <>
-          You&apos;re
-          <br />
-          back in.
-        </>
-      }
+      heroTitle={<>You&apos;re back in.</>}
+      // Frames 35 and 38B stack the status card under the copy.
+      heroCardBelow
       heroSubtitle="Your password is set and you're signed in. Pick up where you left off or jump back into the dashboard."
       heroCard={
         <HeroStatusCard>
           <HeroStatusRow trailing={<VerifiedPill />}>
             <span className="font-sans text-[14px] font-medium">{address}</span>
           </HeroStatusRow>
-          <p className="font-sans text-[12px] font-normal text-white">
-            Password Updated at 2026-06-25 11:42 UTC
-          </p>
+          {updatedAt && (
+            <p className="font-sans text-[12px] font-normal text-white">
+              Password Updated at {formatStampUtc(updatedAt)}
+            </p>
+          )}
         </HeroStatusCard>
       }
-      activeDot={3}
     >
       <div className="flex w-full flex-col gap-6 rounded-[20px] border border-black/10 bg-white p-6">
         <header className="flex flex-col gap-[6px]">

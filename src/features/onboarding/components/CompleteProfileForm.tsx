@@ -27,6 +27,7 @@ import { Icon } from '@/components/common'
 import { TravelerCard } from '@/features/flight-builder/steps/pets/TravelerCard'
 import { PetCard } from '@/features/flight-builder/steps/pets/PetCard'
 import { MAX_TRAVELERS } from '@/features/flight-builder/config/capacity'
+import { AUTH_ROUTES } from '@/features/auth/server/routing'
 import {
   validateTravelersAndPets,
   hasPetsErrors,
@@ -179,8 +180,14 @@ export function CompleteProfileForm({ memberName = '' }: { memberName?: string }
         setError(body?.message ?? 'We couldn’t save your details. Please try again.')
         return
       }
-      // Step 3 is "Join Flight": onboarding hands over to the flight surfaces.
-      window.location.href = '/welcome'
+      // Step 3 on the frame's stepper is "Join Flight", so a completed profile
+      // hands over to the flight surfaces. This used to return to /welcome —
+      // the screen most members arrive from — which made completing the form
+      // indistinguishable from "Skip for now" just below it.
+      //
+      // A full navigation, not a router push: the profile just changed and the
+      // server components downstream read it.
+      window.location.href = AUTH_ROUTES.home
     } catch {
       setError('Network error. Check your connection and try again.')
     } finally {

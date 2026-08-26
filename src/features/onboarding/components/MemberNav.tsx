@@ -11,6 +11,7 @@
  */
 
 import { Logo } from '@/components/common'
+import { AccountMenu } from '@/features/auth/components/AccountMenu'
 
 const LINKS = [
   { label: 'Home', href: '/' },
@@ -24,9 +25,11 @@ const LINKS = [
 interface MemberNavProps {
   name: string
   avatarSrc?: string
+  /** Shown in the account menu, so a member can tell which account they are in. */
+  email?: string | null
 }
 
-export function MemberNav({ name, avatarSrc }: MemberNavProps) {
+export function MemberNav({ name, avatarSrc, email }: MemberNavProps) {
   const avatar = (
     <span className="relative block size-9 shrink-0 overflow-hidden rounded-[12px] bg-[#E7EAF2]">
       {avatarSrc && (
@@ -61,7 +64,12 @@ export function MemberNav({ name, avatarSrc }: MemberNavProps) {
               />
             </svg>
           </button>
-          {avatar}
+          {/* The avatar is the only account affordance on mobile, so the menu
+              has to hang off it here too — otherwise a member on a phone has
+              no way to sign out at all. */}
+          <AccountMenu email={email} triggerClassName="flex items-center">
+            {avatar}
+          </AccountMenu>
         </div>
       </div>
 
@@ -81,13 +89,13 @@ export function MemberNav({ name, avatarSrc }: MemberNavProps) {
           ))}
         </nav>
 
-        <div className="flex shrink-0 items-center gap-2">
-          <div className="flex items-center gap-[10px]">
+        <AccountMenu email={email} triggerClassName="flex shrink-0 items-center gap-2">
+          <span className="flex items-center gap-[10px]">
             {avatar}
             <span className="font-sans text-[14px] font-medium leading-4 text-[#28262D]">
               {name}
             </span>
-          </div>
+          </span>
           <svg viewBox="0 0 24 24" width={18} height={18} fill="none" aria-hidden="true">
             <path
               d="m6 9 6 6 6-6"
@@ -97,7 +105,7 @@ export function MemberNav({ name, avatarSrc }: MemberNavProps) {
               strokeLinejoin="round"
             />
           </svg>
-        </div>
+        </AccountMenu>
       </div>
     </header>
   )

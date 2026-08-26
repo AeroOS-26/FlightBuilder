@@ -31,8 +31,19 @@ interface AuthShellProps {
   heroSubtitle: string
   /** Optional card pinned to the hero (membership card on 30/32, verified badge on 38B). */
   heroCard?: ReactNode
-  /** Which carousel dot is active. The hi-fi shows four. */
-  activeDot?: 0 | 1 | 2 | 3
+  /**
+   * Stack the hero card under the copy instead of beside it.
+   *
+   * The file has exactly two hero layouts, and they split by what the screen is
+   * for. The seven form screens (30, 30B, 32, 33, 34, 36, 37, 38) put the card
+   * to the right at x=492 with the subtitle held to 222. The two arrival
+   * screens — 35 "You're in." and 38B "You're back in." — run the subtitle to
+   * 402 and drop the status card beneath it, left-aligned.
+   *
+   * Those two are also the only frames whose title fits on one line, which is
+   * what frees the width.
+   */
+  heroCardBelow?: boolean
   /** The form panel content. */
   children: ReactNode
   /** Small print pinned to the bottom of the form column. */
@@ -60,7 +71,7 @@ export function AuthShell({
   heroTitle,
   heroSubtitle,
   heroCard,
-  activeDot = 0,
+  heroCardBelow = false,
   children,
   footerNote,
   contentWidth = 'form',
@@ -107,10 +118,38 @@ export function AuthShell({
 
           {/* Desktop-only: the mobile artboards show photography and nothing else. */}
           <div className="relative hidden flex-col gap-[54px] px-[30px] pb-3 lg:flex">
-            <div className="flex items-end justify-between gap-6">
-              <div className="flex flex-col gap-[14px]">
+            <div
+              className={cn(
+                'flex gap-6',
+                // Arrival screens stack; form screens sit side by side. See the
+                // note on `heroCardBelow`.
+                heroCardBelow ? 'flex-col items-start' : 'items-end justify-between',
+              )}
+            >
+              <div className="flex shrink-0 flex-col gap-[14px]">
                 <h2
-                  className="max-w-[315px] font-heading text-[46px] font-semibold leading-[1.21] text-transparent"
+                  // A fixed 315px box, exactly as the file has it — every hero
+                  // title there is one string in a 315-wide frame with
+                  // textAutoResize: HEIGHT, and the line breaks are natural
+                  // wraps inside it, not authored breaks. At this width
+                  // "Sign in to continue." falls to two lines and "You're in."
+                  // stays on one, which is what each frame shows.
+                  //
+                  // It must be a width, not a max-width: as a max-width the box
+                  // collapsed to whatever the flex row allowed (220px at 1440,
+                  // 155px at 1220), so the wrap point moved with the viewport.
+                  //
+                  // The two arrival frames (35 "You're in." and 38B "You're
+                  // back in.") are the single-line ones — both 56 tall in the
+                  // file where every other hero title is 112. Our Inter Display
+                  // renders about 3% wider than the file's, which is enough to
+                  // tip "You're back in." (323.6px) over the 315 box and break
+                  // it in two. Holding those two on one line states the intent
+                  // directly rather than relying on a metric that is off by 9px.
+                  className={cn(
+                    'w-[315px] font-heading text-[46px] font-semibold leading-[1.21] text-transparent',
+                    heroCardBelow && 'whitespace-nowrap',
+                  )}
                   style={{
                     backgroundImage:
                       'linear-gradient(90deg, rgba(255,255,255,1) 24%, rgba(193,193,193,1) 77%)',
@@ -121,21 +160,37 @@ export function AuthShell({
                   {heroTitle}
                 </h2>
                 <div className="flex flex-col gap-[22px]">
-                  <p className="max-w-[223px] font-sans text-[14px] font-normal leading-[1.3] text-white">
+                  {/* 222 beside the card, 402 above it — the file widens the
+                      line once it has the whole column to run across. */}
+                  <p
+                    className={cn(
+                      'font-sans text-[14px] font-normal leading-[1.3] text-white',
+                      heroCardBelow ? 'max-w-[402px]' : 'max-w-[223px]',
+                    )}
+                  >
                     {heroSubtitle}
                   </p>
-                  {/* Carousel dots — decorative in the hi-fi, so not controls. */}
-                  <div aria-hidden="true" className="flex items-center gap-[5px]">
-                    {DOTS.map((d) => (
-                      <span
-                        key={d}
-                        className={cn(
-                          'h-[1.5px] w-[35px]',
-                          d === activeDot ? 'bg-white' : 'bg-white/[0.38]',
-                        )}
-                      />
-                    ))}
-                  </div>
+                  {/* Decorative dashes, not a progress indicator.
+                      Two facts from the file, both measured rather than assumed:
+                      the seven form frames carry four dashes with the FIRST one
+                      at full opacity and the rest at 0.38 — identical on every
+                      one, so there is no per-screen state to track — and frames
+                      35 and 38B carry none at all. Those are the same two
+                      arrival screens that stack the hero card, which is why the
+                      one flag governs both. */}
+                  {!heroCardBelow && (
+                    <div aria-hidden="true" className="flex items-center gap-[5px]">
+                      {DOTS.map((d) => (
+                        <span
+                          key={d}
+                          className={cn(
+                            'h-[1.5px] w-[35px]',
+                            d === 0 ? 'bg-white' : 'bg-white/[0.38]',
+                          )}
+                        />
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
               {heroCard}

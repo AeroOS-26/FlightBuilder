@@ -33,14 +33,26 @@ import {
   MAGIC_LINK_TTL_MINUTES,
   EMAIL_VERIFICATION_TTL_MINUTES,
   PASSWORD_RESET_TTL_MINUTES,
+  SESSION_GRANT_TTL_MINUTES,
 } from '../config/authConfig'
 
-export type TokenPurpose = 'magic-link' | 'verify-email' | 'reset-password'
+/**
+ * `session-grant` is not a link anyone receives. It is issued and redeemed
+ * server-side within one request, to hand a just-verified member a session
+ * without asking for the password they have already proven they own by
+ * clicking a link sent to their address.
+ */
+export type TokenPurpose =
+  | 'magic-link'
+  | 'verify-email'
+  | 'reset-password'
+  | 'session-grant'
 
 const TTL_MINUTES: Record<TokenPurpose, number> = {
   'magic-link': MAGIC_LINK_TTL_MINUTES,
   'verify-email': EMAIL_VERIFICATION_TTL_MINUTES,
   'reset-password': PASSWORD_RESET_TTL_MINUTES,
+  'session-grant': SESSION_GRANT_TTL_MINUTES,
 }
 
 const identifierFor = (purpose: TokenPurpose, email: string) =>

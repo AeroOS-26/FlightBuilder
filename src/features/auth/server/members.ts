@@ -23,6 +23,7 @@ export interface MemberRow {
   zoho_contact_id: string | null
   failed_attempts: number
   locked_until: Date | null
+  password_updated_at: Date | null
 }
 
 const BCRYPT_ROUNDS = 12
@@ -49,7 +50,7 @@ export function hashPassword(plain: string): Promise<string> {
 export function findByEmail(email: string): Promise<MemberRow | null> {
   return queryOne<MemberRow>(
     `SELECT id, name, email, "emailVerified", password_hash, phone, account_id,
-            zoho_contact_id, failed_attempts, locked_until
+            zoho_contact_id, failed_attempts, locked_until, password_updated_at
        FROM users WHERE LOWER(email) = $1`,
     [normaliseEmail(email)],
   )
@@ -119,7 +120,8 @@ export async function verifyPassword(
 export async function setPassword(memberId: number, plain: string): Promise<void> {
   const hash = await hashPassword(plain)
   await pool.query(
-    `UPDATE users SET password_hash = $2, failed_attempts = 0, locked_until = NULL
+    `UPDATE users SET password_hash = $2, failed_attempts = 0, locked_until = NULL,
+            password_updated_at = NOW()
       WHERE id = $1`,
     [memberId, hash],
   )

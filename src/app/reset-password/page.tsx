@@ -11,16 +11,9 @@ import { PASSWORD_RESET_TTL_MINUTES } from '@/features/auth/config/authConfig'
 export default function ResetPasswordPage() {
   return (
     <AuthShell
-      heroTitle={
-        <>
-          Reset your
-          <br />
-          password.
-        </>
-      }
+      heroTitle="Reset your password."
       heroSubtitle={`Enter your email for a new password link. Valid for ${PASSWORD_RESET_TTL_MINUTES} minutes.`}
       heroCard={<MembershipCard />}
-      activeDot={2}
       footerNote={
         <span className="text-black">
           By creating an account, you agree to our{' '}

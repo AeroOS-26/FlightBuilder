@@ -26,16 +26,9 @@ export default async function MagicLinkSentPage({
   return (
     <AuthShell
       contentWidth="card"
-      heroTitle={
-        <>
-          Sign-in link
-          <br />
-          sent.
-        </>
-      }
+      heroTitle="Sign-in link sent."
       heroSubtitle={`Check your inbox. The link signs you straight in and expires in ${MAGIC_LINK_TTL_MINUTES} minutes.`}
       heroCard={<MembershipCard />}
-      activeDot={1}
     >
       <AuthResultCard
         badge="mail"

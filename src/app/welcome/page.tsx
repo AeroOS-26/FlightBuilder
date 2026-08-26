@@ -23,6 +23,8 @@ import {
   VerifiedPill,
 } from '@/features/auth/components'
 import { currentViewer } from '@/features/auth/server/guard'
+import { findByEmail } from '@/features/auth/server/members'
+import { formatStampUtc } from '@/utils/stamp'
 
 export default async function WelcomePage({
   searchParams,
@@ -32,27 +34,47 @@ export default async function WelcomePage({
   const { name, accountId } = await searchParams
   const viewer = await currentViewer()
 
+  // The verification timestamp is real, read from the member. It used to be a
+  // fixed string lifted from the frame, which read as live data and was months
+  // out of date. Only fetched when there is a viewer — the fallbacks below are
+  // for design review, where no member exists to time-stamp.
+  const member = viewer ? await findByEmail(viewer.email) : null
+  const verifiedAt = member?.emailVerified ?? null
+
   return (
     <AuthShell
       contentWidth="card"
       heroTitle="You're in."
+      // Frames 35 and 38B stack the status card under the copy.
+      heroCardBelow
       heroSubtitle="Email verified. Your Flight Club account is active and your member ID is locked in."
       heroCard={
         <HeroStatusCard>
-          <HeroStatusRow>
-            <span className="font-sans text-[16px] font-semibold">
+          {/* The id is the row's trailing element, not a second item beside the
+              name: on the frame it sits hard right at x=354 of a 370 row, while
+              the name starts at x=70. Passed as a child it rendered flush
+              against the name instead. */}
+          <HeroStatusRow
+            trailing={
+              <span className="shrink-0 font-sans text-[12px] font-normal text-white">
+                ID: {viewer?.accountId ?? accountId ?? 'acct_5001'}
+              </span>
+            }
+          >
+            <span className="truncate font-sans text-[16px] font-semibold">
               {viewer?.email ?? name ?? 'John Doe'}
-            </span>
-            <span className="font-sans text-[12px] font-normal">
-              ID: {viewer?.accountId ?? accountId ?? 'acct_5001'}
             </span>
           </HeroStatusRow>
           <HeroStatusRow trailing={<VerifiedPill />}>
-            <span className="font-sans text-[12px] font-normal">2026-05-17 09:14 UTC</span>
+            {/* Empty rather than a placeholder date when there is no member to
+                time-stamp: a fixed date here is what the client reported, and
+                the word "Verified" beside the Verified pill read as a stutter. */}
+            <span className="font-sans text-[12px] font-normal">
+              {verifiedAt ? formatStampUtc(verifiedAt) : ''}
+            </span>
           </HeroStatusRow>
         </HeroStatusCard>
       }
-      activeDot={3}
     >
       <AuthResultCard
         title="Welcome to Flight Club."

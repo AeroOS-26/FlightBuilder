@@ -30,7 +30,7 @@ export default async function CompleteProfilePage({
 
   return (
     <div className="flex min-h-screen flex-col bg-[#EFF1F5]">
-      <MemberNav name={memberName} />
+      <MemberNav name={memberName} email={viewer.email} />
 
       <main className="flex-1 px-4 py-8 lg:py-[50px]">
         <div className="mx-auto flex w-full max-w-[804px] flex-col gap-[30px]">
@@ -47,7 +47,10 @@ export default async function CompleteProfilePage({
                 flight. You can edit anything anytime in your dashboard.
               </p>
             </div>
-            <OnboardingStepper current={0} />
+            {/* Profile is Step 2 on the frame. This read `current={0}`, so the
+                indicator claimed you were still on Account while you filled in
+                the Profile screen. */}
+            <OnboardingStepper current={1} />
           </header>
 
           <CompleteProfileForm memberName={memberName} />

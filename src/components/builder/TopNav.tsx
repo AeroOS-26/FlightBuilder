@@ -12,6 +12,7 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { Logo, Icon } from '@/components/common'
 import { useFlightBuilderStore } from '@/features/flight-builder/store/flightBuilderStore'
+import { AccountMenu } from '@/features/auth/components/AccountMenu'
 
 const NAV_LINKS = [
   { label: 'How it works' },
@@ -99,9 +100,11 @@ export function TopNav() {
               </button>
             </span>
             <span className="hidden h-[21px] w-px bg-[#CFE3F1] sm:block"></span>
-            <button
-              type="button"
-              className="flex items-center gap-2 rounded-[16px] py-1 pl-1 pr-1 sm:pr-2"
+            {/* The chevron always implied a menu; until 26 Aug there was none,
+                which is where the missing sign-out was hiding. */}
+            <AccountMenu
+              email={founder?.email}
+              triggerClassName="flex items-center gap-2 rounded-[16px] py-1 pl-1 pr-1 sm:pr-2"
             >
               <span className="relative shrink-0">
                 <img
@@ -118,7 +121,7 @@ export function TopNav() {
                 {founder?.name ?? 'Member'}
               </span>
               <Icon name="chevron-down" size={20} className="hidden text-[#E96A6F] sm:block" />
-            </button>
+            </AccountMenu>
           </div>
         </div>
 

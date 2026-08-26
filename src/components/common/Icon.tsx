@@ -48,11 +48,20 @@ export type IconName =
   | 'plane'
   | 'help'
   | 'pin'
+  | 'sign-out'
 
 /** Stroke-based 24×24 glyphs (fill:none, stroke:currentColor). */
 const paths: Record<IconName, ReactElement> = {
   route: (
     <path d="M16.5 3.5 21 8l-4.5 4.5M21 8H8a4 4 0 0 0-4 4v0a4 4 0 0 0 4 4h8.5" />
+  ),
+  // Door with an arrow leaving it — the conventional sign-out glyph, so it
+  // reads without a label even at 16px.
+  'sign-out': (
+    <>
+      <path d="M9 21H5.5A1.5 1.5 0 0 1 4 19.5v-15A1.5 1.5 0 0 1 5.5 3H9" />
+      <path d="M16 16.5 20.5 12 16 7.5M20.5 12H9" />
+    </>
   ),
   calendar: (
     <>

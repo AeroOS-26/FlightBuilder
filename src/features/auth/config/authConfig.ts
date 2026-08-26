@@ -34,6 +34,17 @@ export const PASSWORD_RESET_TTL_MINUTES = 60
 export const LOCKOUT_THRESHOLD = 5
 export const LOCKOUT_MINUTES = 15
 
+/**
+ * Lifetime of the one-time grant that signs a member in straight after they
+ * click their verification link.
+ *
+ * Deliberately tiny. It is issued and redeemed inside a single request, so it
+ * never needs to survive longer than that — and because the credentials
+ * callback it feeds is a public endpoint, a short window is what keeps a leaked
+ * grant worthless. One minute is generous cover for a slow round trip.
+ */
+export const SESSION_GRANT_TTL_MINUTES = 1
+
 /** Minimum password length, per the rule printed under the field. */
 export const PASSWORD_MIN_LENGTH = 8
 

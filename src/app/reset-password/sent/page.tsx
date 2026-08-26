@@ -23,16 +23,9 @@ export default async function ResetLinkSentPage({
   return (
     <AuthShell
       contentWidth="card"
-      heroTitle={
-        <>
-          Reset link
-          <br />
-          sent.
-        </>
-      }
+      heroTitle="Reset link sent."
       heroSubtitle={`A reset link was sent to your email. Use it within ${PASSWORD_RESET_TTL_MINUTES} minutes.`}
       heroCard={<MembershipCard />}
-      activeDot={2}
     >
       <AuthResultCard
         title="Email sent"
