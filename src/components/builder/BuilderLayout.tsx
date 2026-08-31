@@ -15,7 +15,7 @@ import { Stepper } from './Stepper'
 import { useStepNavigation } from '@/features/flight-builder/hooks/useStepNavigation'
 import { useStepGuard } from '@/features/flight-builder/hooks/useStepGuard'
 import { useFounderIdentity } from '@/features/flight-builder/hooks/useFounderIdentity'
-import type { StepId } from '@/types'
+import type { MemberIdentity, StepId } from '@/types'
 
 const SUBTITLES: Record<StepId, string> = {
   route: 'Where are you flying from and to?',
@@ -26,9 +26,17 @@ const SUBTITLES: Record<StepId, string> = {
   share: '',
 }
 
-export function BuilderLayout({ children }: { children: ReactNode }) {
-  // Ensure the Founder is seeded as Traveler 1 / header identity.
-  useFounderIdentity()
+export function BuilderLayout({
+  children,
+  member,
+}: {
+  children: ReactNode
+  /** The signed-in member, read from the session by the server layout. */
+  member?: MemberIdentity | null
+}) {
+  // Seeds the Group Organizer — Traveler 1, the header identity, and the
+  // organizer fields on flight_group.created.
+  useFounderIdentity(member)
   const { currentStep, currentStepId } = useStepNavigation()
   // Block deep-linking past incomplete steps; redirects to the first one if so.
   const { ready } = useStepGuard(currentStepId)
