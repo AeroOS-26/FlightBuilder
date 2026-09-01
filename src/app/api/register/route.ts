@@ -54,7 +54,28 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: errors.email ?? errors.password }, { status: 422 })
   }
 
-  const member = await createMember({ email, password, name })
+  /**
+   * A database fault here used to escape as a bare 500 with an empty body.
+   * That is indistinguishable from a bug in this route, and it cost a day of
+   * hunting: the real cause was a connection timeout that named itself
+   * nowhere the browser could see.
+   *
+   * `reason` carries the driver's error code only — `ETIMEDOUT`, `42P01`,
+   * `28P01`. Short tokens, no host, credentials or SQL, so they are safe to
+   * return, and they turn "please try again" into a diagnosis.
+   */
+  let member: Awaited<ReturnType<typeof createMember>>
+  try {
+    member = await createMember({ email, password, name })
+  } catch (err) {
+    const reason = (err as { code?: string })?.code ?? 'unknown'
+    console.error('[register] createMember failed:', reason, err)
+    return NextResponse.json(
+      { message: 'Accounts are temporarily unavailable. Please try again.', reason },
+      { status: 503 },
+    )
+  }
+
   if (!member) {
     return NextResponse.json({ code: 'email-exists' }, { status: 409 })
   }

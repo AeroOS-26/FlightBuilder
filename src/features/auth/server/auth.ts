@@ -59,6 +59,19 @@ export class AccountLockedError extends CredentialsSignin {
   code = 'locked'
 }
 
+/**
+ * The database could not be reached.
+ *
+ * Not a sign-in failure, but it has to travel as one: anything else thrown from
+ * `authorize` reaches the browser as `error=Configuration`, which reads as a
+ * broken Auth.js config and sends you looking in exactly the wrong place. It
+ * did — for a day. This makes the redirect say `code=service-unavailable`
+ * instead, and the real driver error is logged beside it.
+ */
+export class ServiceUnavailableError extends CredentialsSignin {
+  code = 'service-unavailable'
+}
+
 export const authConfig: NextAuthConfig = {
   adapter: PostgresAdapter(pool),
   session: { strategy: 'jwt', maxAge: 30 * 24 * 60 * 60 },
@@ -79,7 +92,18 @@ export const authConfig: NextAuthConfig = {
         const password = typeof raw?.password === 'string' ? raw.password : ''
         if (!email || !password) throw new AccountNotFoundError()
 
-        const member = await findByEmail(email)
+        let member
+        try {
+          member = await findByEmail(email)
+        } catch (err) {
+          // Infrastructure, not credentials — see ServiceUnavailableError.
+          console.error(
+            '[auth] findByEmail failed:',
+            (err as { code?: string })?.code ?? 'unknown',
+            err,
+          )
+          throw new ServiceUnavailableError()
+        }
         if (!member) throw new AccountNotFoundError()
 
         // Checked before the password so a locked account cannot be probed.
