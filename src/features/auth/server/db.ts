@@ -10,7 +10,33 @@ import 'server-only'
  * in this file knows about Zoho.
  */
 
+import net from 'node:net'
 import { Pool } from 'pg'
+
+/**
+ * Give a connection attempt long enough to actually complete.
+ *
+ * Node 20 enables `autoSelectFamily` (Happy Eyeballs) by default and allows
+ * each address **250 ms**. Neon publishes A *and* AAAA records, and accepting a
+ * connection takes roughly 640 ms from outside its own region — so every
+ * attempt was cancelled before it finished and the pool raised
+ * `AggregateError` with an empty message and `code: 'ETIMEDOUT'`.
+ *
+ * That error names nothing, arrives on the first query of any request, and is
+ * reported by Auth.js as `error=Configuration` — which reads as a broken auth
+ * config rather than a network budget. It cost most of a day. Measured against
+ * the deployed database: 250 ms fails every time, warm or cold; 5 s connects in
+ * about 2 s. Credentials, TLS and schema were correct throughout.
+ *
+ * Raised rather than disabled: Happy Eyeballs still helps here, because an
+ * unreachable IPv6 address fails in ~1 ms and falls straight through to IPv4.
+ * Turning it off would pin us to whichever family DNS happened to list first.
+ *
+ * This is process-wide, which is why it sits beside the pool that needs it.
+ */
+if (typeof net.setDefaultAutoSelectFamilyAttemptTimeout === 'function') {
+  net.setDefaultAutoSelectFamilyAttemptTimeout(5_000)
+}
 
 declare global {
   // eslint-disable-next-line no-var
@@ -30,6 +56,9 @@ function createPool(): Pool {
     ssl: process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : undefined,
     max: 10,
     idleTimeoutMillis: 30_000,
+    // Bound the wait so an unreachable database fails as a timeout we can read,
+    // rather than holding a request open until the platform kills it.
+    connectionTimeoutMillis: 10_000,
   })
 }
 
