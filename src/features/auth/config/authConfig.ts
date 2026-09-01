@@ -111,22 +111,37 @@ export function passwordProblem(value: string): string | null {
 /**
  * Third-party sign-in providers shown on frames 30 and 32.
  *
- * PENDING CLIENT DECISION: Google and Apple appear in the hi-fi but are not in
- * the Milestone 1 scope, task list, or backend list — OAuth, the Apple Developer
- * Program, and account linking against Zoho's email dedup key are all
- * unestimated. They render disabled until the scope question is answered, so the
- * screens match the design without promising a flow that does not exist yet.
- * Flip `enabled` once confirmed; nothing else needs to change.
+ * **Google and Apple are out of Phase One.** Settled by the client on 29 Aug:
+ * *"Hide both buttons for now… Rather than accept M1 with them sitting there,
+ * they come off until we decide it properly."* They are hidden rather than
+ * disabled, which is the same call already made for the Flight Builder's
+ * unwired controls — a greyed button still occupies the screen and still
+ * invites a click.
+ *
+ * `visible` is separate from `enabled` on purpose. `enabled: false` means
+ * "here, but not yet"; `visible: false` means "not here at all". Collapsing
+ * them into one flag would lose the distinction the next time a provider is
+ * half-ready.
+ *
+ * Nothing else has to be undone when SSO does arrive: `created_via` stays
+ * reserved for `google` and `apple` in the payload contract, so the field is
+ * already there.
  */
 export interface SsoProvider {
   id: 'google' | 'apple' | 'email-link'
   label: string
+  /** Rendered at all. False = out of scope, not merely unavailable. */
+  visible: boolean
+  /** Clickable. Only meaningful when `visible`. */
   enabled: boolean
 }
 
 export const SSO_PROVIDERS: SsoProvider[] = [
-  { id: 'google', label: 'Google', enabled: false },
-  { id: 'apple', label: 'Apple', enabled: false },
+  { id: 'google', label: 'Google', visible: false, enabled: false },
+  { id: 'apple', label: 'Apple', visible: false, enabled: false },
   // The email link IS in scope for M1 — it is the magic-link flow (frames 33/34).
-  { id: 'email-link', label: 'Email Link', enabled: true },
+  { id: 'email-link', label: 'Email Link', visible: true, enabled: true },
 ]
+
+/** What the screens actually render. */
+export const VISIBLE_SSO_PROVIDERS = SSO_PROVIDERS.filter((p) => p.visible)

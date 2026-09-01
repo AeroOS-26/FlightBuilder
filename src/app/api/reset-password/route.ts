@@ -16,6 +16,7 @@
 import { NextResponse } from 'next/server'
 import { findByEmail, setPassword } from '@/features/auth/server/members'
 import { issueToken, consumeToken } from '@/features/auth/server/tokens'
+import { signIn } from '@/features/auth/server/auth'
 import {
   sendPasswordResetEmail,
   isEmailConfigured,
@@ -96,7 +97,41 @@ export async function PUT(request: Request) {
     return NextResponse.json({ code: 'invalid-token', message: 'That link is no longer valid.' }, { status: 410 })
   }
 
-  // setPassword also zeroes failed_attempts and clears locked_until.
+  // setPassword also zeroes failed_attempts, clears locked_until, and bumps
+  // session_version — which ends every session this member has, including any
+  // the attacker holds. That is the point of the change.
   await setPassword(member.id, password)
-  return NextResponse.json({ success: true }, { status: 200 })
+
+  /**
+   * Now sign this device back in.
+   *
+   * The bump above signed out *everything*, this browser included. Frame 38B
+   * says "You are signed in on this device", so without this the screen would
+   * be describing the opposite of what happened — and the member would be
+   * bounced to sign-in by the first guarded route they touched.
+   *
+   * A `session-grant` is the right instrument: completing a reset link sent to
+   * their own address is the proof of ownership, exactly as it is on the
+   * verification path, and the grant is single-use and short-lived. We do not
+   * have their password here and must not ask for it again.
+   *
+   * Non-fatal. The password change has already succeeded and is the thing that
+   * mattered; if the session cannot be established the member signs in with
+   * their new password, which works. Failing the request here would tell them
+   * the reset did not work when it did.
+   */
+  let signedIn = false
+  try {
+    const grant = await issueToken('session-grant', member.email)
+    await signIn('email-verified', {
+      email: member.email,
+      token: grant.token,
+      redirect: false,
+    })
+    signedIn = true
+  } catch (err) {
+    console.error('[reset-password] could not establish a session:', err)
+  }
+
+  return NextResponse.json({ success: true, signedIn }, { status: 200 })
 }

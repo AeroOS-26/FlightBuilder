@@ -57,9 +57,18 @@ export default async function PasswordUpdatedPage({
           <h1 className="font-heading text-[24px] font-medium leading-[1.21] text-black">
             Password updated
           </h1>
+          {/*
+            Frame 38B. Charles's exact string, 29 Aug, replacing all three
+            sentences that were here.
+
+            He flagged the old block as carrying two faults, not one: it
+            described the pre-revocation behaviour, and its "use it next time
+            you sign in" contradicted the "you're signed in" message directly
+            above it. Both are gone.
+          */}
           <p className="font-sans text-[14px] font-normal leading-[1.3] text-black">
-            Your new password is saved. Use it next time you sign in. Other devices will stay
-            signed in.
+            You are signed in on this device. We signed you out everywhere else, so anyone
+            using your old password no longer has access.
           </p>
         </header>
 

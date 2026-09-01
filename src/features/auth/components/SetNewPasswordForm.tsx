@@ -157,7 +157,10 @@ export function SetNewPasswordForm({
           {!pending && <Icon name="arrow-right" size={18} />}
         </button>
         <p className="font-sans text-[14px] font-normal leading-[1.14] text-[#7D7B7B]">
-          Your other devices stay signed in.
+          {/* Frame 38. Charles's exact string, 29 Aug — it replaces "Your other
+              devices stay signed in", which described the behaviour before
+              instant revocation and is now the opposite of what happens. */}
+          Setting a new password signs you out on all your other devices.
         </p>
       </div>
     </Form>

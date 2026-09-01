@@ -35,6 +35,11 @@ import 'server-only'
  */
 
 import { serverEnv } from '@/config/serverEnv'
+import {
+  MAGIC_LINK_TTL_MINUTES,
+  EMAIL_VERIFICATION_TTL_MINUTES,
+  PASSWORD_RESET_TTL_MINUTES,
+} from '../config/authConfig'
 
 /**
  * Postmark's template send. Overridable so the flows can be exercised against a
@@ -56,6 +61,8 @@ export type TemplateAlias = 'email-verification' | 'magic-link' | 'password-rese
 interface TemplateModel {
   product_name: string
   action_url: string
+  /** "15 minutes", "24 hours", "60 minutes" — see `expiresIn`. */
+  expires_in: string
   name?: string
   operating_system?: string
   browser_name?: string
@@ -107,11 +114,36 @@ export function describeClient(userAgent: string | null | undefined): ClientDesc
 }
 
 /** Build the model, leaving out every key we have no value for. */
-function buildModel(actionUrl: string, name?: string, client?: ClientDescription): TemplateModel {
+/**
+ * `expires_in` is the human phrase, not a number: the three flows have three
+ * different lifetimes and one of them is measured in hours. Sending "60
+ * minutes" and "24 hours" rather than 60 and 1440 keeps the unit out of the
+ * template, where it would have to be guessed per alias.
+ */
+function expiresIn(minutes: number): string {
+  if (minutes % 60 === 0 && minutes >= 60) {
+    const hours = minutes / 60
+    return `${hours} ${hours === 1 ? 'hour' : 'hours'}`
+  }
+  return `${minutes} ${minutes === 1 ? 'minute' : 'minutes'}`
+}
+
+function buildModel(
+  actionUrl: string,
+  ttlMinutes: number,
+  name?: string,
+  client?: ClientDescription,
+): TemplateModel {
   const trimmed = name?.trim()
   return {
     product_name: PRODUCT_NAME,
     action_url: actionUrl,
+    // Requested by the client 25 Aug. The templates render it when present and
+    // fall back to their own wording when absent, so this cannot break a send —
+    // it stops the lifetime in the copy drifting from the one we enforce. It is
+    // derived from the same constants the screens render, so the email, the
+    // screen and the token can never disagree.
+    expires_in: expiresIn(ttlMinutes),
     // Omitted rather than blanked — the template decides how to read its absence.
     ...(trimmed ? { name: trimmed } : {}),
     ...(client?.operatingSystem ? { operating_system: client.operatingSystem } : {}),
@@ -185,11 +217,11 @@ export function sendVerificationEmail(
   url: string,
   name?: string,
 ): Promise<SendResult> {
-  return send(to, 'email-verification', buildModel(url, name))
+  return send(to, 'email-verification', buildModel(url, EMAIL_VERIFICATION_TTL_MINUTES, name))
 }
 
 export function sendMagicLinkEmail(to: string, url: string, name?: string): Promise<SendResult> {
-  return send(to, 'magic-link', buildModel(url, name))
+  return send(to, 'magic-link', buildModel(url, MAGIC_LINK_TTL_MINUTES, name))
 }
 
 export function sendPasswordResetEmail(
@@ -198,5 +230,5 @@ export function sendPasswordResetEmail(
   name?: string,
   client?: ClientDescription,
 ): Promise<SendResult> {
-  return send(to, 'password-reset', buildModel(url, name, client))
+  return send(to, 'password-reset', buildModel(url, PASSWORD_RESET_TTL_MINUTES, name, client))
 }

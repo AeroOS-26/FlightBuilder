@@ -14,6 +14,15 @@ interface CheckboxProps {
   checked: boolean
   onChange: (checked: boolean) => void
   invalid?: boolean
+  /**
+   * Renders unusable and announces itself as such. Used where the box depends
+   * on something else being filled in first — frame 31's "Text me" has no
+   * meaning until there is a phone number to text.
+   *
+   * A real `disabled` attribute rather than pointer-events styling, so keyboard
+   * users skip it and screen readers say so.
+   */
+  disabled?: boolean
   id?: string
   className?: string
   children: ReactNode
@@ -23,6 +32,7 @@ export function Checkbox({
   checked,
   onChange,
   invalid,
+  disabled = false,
   id,
   className,
   children,
@@ -33,7 +43,8 @@ export function Checkbox({
     <label
       htmlFor={inputId}
       className={cn(
-        'inline-flex cursor-pointer items-center gap-2 font-sans text-[14px] font-normal leading-[140%] text-[#000000]',
+        'inline-flex items-center gap-2 font-sans text-[14px] font-normal leading-[140%] text-[#000000]',
+        disabled ? 'cursor-not-allowed' : 'cursor-pointer',
         className,
       )}
     >
@@ -42,6 +53,7 @@ export function Checkbox({
           id={inputId}
           type="checkbox"
           checked={checked}
+          disabled={disabled}
           onChange={(e) => onChange(e.target.checked)}
           className="peer sr-only"
         />

@@ -102,3 +102,34 @@ export async function updateMemberName(userId: string, name: string): Promise<vo
   if (!trimmed) return
   await pool.query(`UPDATE users SET name = $2 WHERE id = $1`, [Number(userId), trimmed])
 }
+
+/**
+ * The phone number captured on frame 31.
+ *
+ * Added 2026-08-29 at the client's instruction: the "Text me" preference had
+ * no number behind it, so the toggle promised a message that could never be
+ * sent. The field is **optional** — a member who leaves it blank must still be
+ * able to finish their profile.
+ *
+ * Stored on `users`, not `member_profile`, because it is member identity
+ * rather than a preference: the payload contract reads the organizer's phone
+ * from there, and it is `null` when unknown. Which is why blank writes NULL
+ * rather than an empty string — the contract distinguishes "we do not have
+ * one" from "they have none", and `''` would assert the second.
+ *
+ * Unlike `updateMemberName` this does not return early on a blank value:
+ * clearing the field is a legitimate edit and must reach the database.
+ */
+/** The stored phone, so frame 31 can show what the member already gave us. */
+export async function memberPhone(userId: string): Promise<string> {
+  const { rows } = await pool.query(`SELECT phone FROM users WHERE id = $1`, [Number(userId)])
+  return (rows[0]?.phone as string | null | undefined) ?? ''
+}
+
+export async function updateMemberPhone(userId: string, phone: string): Promise<void> {
+  const trimmed = phone.trim()
+  await pool.query(`UPDATE users SET phone = $2 WHERE id = $1`, [
+    Number(userId),
+    trimmed || null,
+  ])
+}

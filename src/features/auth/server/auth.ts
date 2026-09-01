@@ -9,16 +9,18 @@ import 'server-only'
  *
  * Two decisions worth knowing:
  *
- *  - **JWT sessions, not database sessions.** Database rows would be revocable,
- *    which Milestone 4's close-account needs, but Auth.js only supports the
- *    Credentials provider with the JWT strategy — and frames 30 and 32 are an
- *    email-and-password form, so Credentials is not optional. The adapter still
- *    owns the users and verification-token tables; only the session lives in a
- *    cookie. When close-account arrives, revocation is a `session_version`
- *    column compared in the `jwt` callback, which is the standard remedy.
- *    Worth knowing this cuts with the grain of the design: frames 38 and 38B
- *    both state "other devices stay signed in" after a password change, so a
- *    reset is not expected to end other sessions.
+ *  - **JWT sessions, not database sessions.** Database rows would be revocable
+ *    for free, but Auth.js only supports the Credentials provider with the JWT
+ *    strategy — and frames 30 and 32 are an email-and-password form, so
+ *    Credentials is not optional. The adapter still owns the users and
+ *    verification-token tables; only the session lives in a cookie.
+ *
+ *    **Revocation is now built** — `users.session_version`, bumped by
+ *    `setPassword` and compared in the `jwt` callback below. This reverses the
+ *    earlier design: frames 38 and 38B used to say other devices stay signed
+ *    in, and Charles reversed that on 29 Aug ("end every other session, go with
+ *    instant revocation"), supplying new copy for both screens. The same
+ *    mechanism is what close-account will use in Milestone 4.
  *
  *  - **Sign-in failures are deliberately distinguishable.** `authorize` throws
  *    a tagged error so the UI can render frame 32's three variants. That reveals
@@ -38,6 +40,7 @@ import {
   registerFailedAttempt,
   clearFailedAttempts,
   verifyPassword,
+  sessionVersionFor,
 } from './members'
 import { consumeToken } from './tokens'
 
@@ -182,8 +185,45 @@ export const authConfig: NextAuthConfig = {
           token.memberDbId = String(member.id)
           token.accountId = member.account_id
           token.isEmailVerified = Boolean(member.emailVerified)
+          token.sessionVersion = member.session_version ?? 0
         }
+        return token
       }
+
+      /**
+       * Session revocation, on every authenticated request after sign-in.
+       *
+       * Sessions are JWTs, so there is no row to delete when a password
+       * changes — the cookie stays valid on every device until it expires.
+       * `setPassword` bumps `users.session_version`; this compares what the
+       * token carries against what the database now says, and any token minted
+       * before the bump stops validating here.
+       *
+       * Returning null ends the session: Auth.js clears the cookie and the
+       * request continues as anonymous, so the existing route guards take it
+       * from there. There is no separate sign-out to trigger.
+       *
+       * Two deliberate choices:
+       *
+       *  - **A token carrying no version is treated as version 0**, not as a
+       *    forgery. Sessions issued before this shipped are legitimate; they
+       *    are ended by the first password change, like any other.
+       *  - **A failed read leaves the session alone.** Refusing every
+       *    authenticated request when the database is unreachable would turn a
+       *    database blip into a site-wide forced sign-out. Revocation lags by
+       *    the length of the outage instead, which is the safer failure.
+       */
+      const memberId = Number(token.memberDbId)
+      if (!Number.isFinite(memberId) || memberId <= 0) return token
+
+      try {
+        const current = await sessionVersionFor(memberId)
+        if (current === null) return null // member no longer exists
+        if (current !== ((token.sessionVersion as number | undefined) ?? 0)) return null
+      } catch (err) {
+        console.error('[auth] session_version check failed; session kept:', err)
+      }
+
       return token
     },
 

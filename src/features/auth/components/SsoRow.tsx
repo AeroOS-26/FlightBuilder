@@ -1,31 +1,57 @@
 'use client'
 
 /**
- * The third-party sign-in row from frames 30 and 32: Google · Apple · Email Link.
+ * The third-party sign-in row from frames 30 and 32.
  *
- * Google and Apple render but are disabled — see SSO_PROVIDERS in
- * config/authConfig.ts for why. The design shows them, the milestone does not
- * cover them, and the honest middle is to match the layout without offering a
- * flow that would fail. A disabled control with a title attribute says "not yet"
- * rather than breaking under a click.
+ * The design draws three buttons — Google · Apple · Email Link — but Google and
+ * Apple are out of Phase One and the client asked for them **hidden**, not
+ * greyed (29 Aug). Only Email Link remains, and it is the magic-link flow,
+ * which IS in Milestone 1. See `SSO_PROVIDERS` for the distinction between
+ * `visible` and `enabled`.
  *
- * Email Link is enabled: it is the magic-link flow, which IS in Milestone 1.
+ * Two consequences of hiding rather than disabling, both handled here:
+ *
+ *  - **The grid can no longer be `grid-cols-3`.** One button in a three-column
+ *    grid renders at a third of the width with two empty cells beside it,
+ *    which looks like a layout fault rather than a deliberate omission. The
+ *    column count follows the number actually rendered.
+ *  - **With none visible the whole block goes**, divider included. "or continue
+ *    with" above an empty space is worse than no divider at all.
  */
 
 import { cn } from '@/utils/cn'
 import { Icon } from '@/components/common'
-import { SSO_PROVIDERS, type SsoProvider } from '../config/authConfig'
+import { VISIBLE_SSO_PROVIDERS, type SsoProvider } from '../config/authConfig'
 
 interface SsoRowProps {
   onEmailLink?: () => void
+  /** The link request is in flight: spinner on that button, the row inert. */
+  emailLinkPending?: boolean
+  /**
+   * Something else on the screen is submitting — the password sign-in, usually.
+   * The row goes inert without claiming the work is happening here.
+   */
+  busy?: boolean
 }
 
-export function SsoRow({ onEmailLink }: SsoRowProps) {
+export function SsoRow({ onEmailLink, emailLinkPending = false, busy = false }: SsoRowProps) {
+  const providers = VISIBLE_SSO_PROVIDERS
+  if (providers.length === 0) return null
+
   return (
     <div className="flex w-full flex-col gap-6">
-      <div className="grid grid-cols-3 gap-[10px]">
-        {SSO_PROVIDERS.map((p) => (
-          <SsoButton key={p.id} provider={p} onClick={p.id === 'email-link' ? onEmailLink : undefined} />
+      <div
+        className="grid gap-[10px]"
+        style={{ gridTemplateColumns: `repeat(${providers.length}, minmax(0, 1fr))` }}
+      >
+        {providers.map((p) => (
+          <SsoButton
+            key={p.id}
+            provider={p}
+            onClick={p.id === 'email-link' ? onEmailLink : undefined}
+            loading={p.id === 'email-link' && emailLinkPending}
+            busy={busy || emailLinkPending}
+          />
         ))}
       </div>
       <div className="flex items-center gap-[15.75px]">
@@ -39,14 +65,29 @@ export function SsoRow({ onEmailLink }: SsoRowProps) {
   )
 }
 
-function SsoButton({ provider, onClick }: { provider: SsoProvider; onClick?: () => void }) {
-  const disabled = !provider.enabled
+function SsoButton({
+  provider,
+  onClick,
+  loading = false,
+  busy = false,
+}: {
+  provider: SsoProvider
+  onClick?: () => void
+  loading?: boolean
+  busy?: boolean
+}) {
+  // Out of scope, mid-request, or something else on the page is working.
+  const disabled = !provider.enabled || busy
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={disabled}
-      title={disabled ? 'Coming soon' : undefined}
+      aria-busy={loading || undefined}
+      // "Coming soon" belongs only to a provider that is genuinely out of
+      // scope. A button disabled because a request is in flight is not coming
+      // soon, it is happening now.
+      title={!provider.enabled ? 'Coming soon' : undefined}
       className={cn(
         // 40 tall, #98C3E1 hairline on a 20%-opacity wash, radius 12 — per the frame.
         'flex h-10 items-center justify-center gap-2 rounded-[12px] border border-[#98C3E1] bg-[#CFE3F1]/20',
@@ -55,11 +96,28 @@ function SsoButton({ provider, onClick }: { provider: SsoProvider; onClick?: () 
         // "Email Link" onto two lines; the artboard keeps all three on one line.
         'px-2 lg:pl-[14px] lg:pr-[18px]',
         'whitespace-nowrap',
-        disabled ? 'cursor-not-allowed opacity-45' : 'hover:bg-[#CFE3F1]/40',
+        // Relative so the spinner can sit over the label rather than beside it,
+        // which would change the button's width mid-request.
+        'relative',
+        disabled ? 'cursor-not-allowed' : 'hover:bg-[#CFE3F1]/40',
+        // A loading button is disabled but must not look unavailable — it is
+        // the one thing on the screen that IS doing something.
+        disabled && !loading && 'opacity-45',
       )}
     >
-      <ProviderMark id={provider.id} />
-      <span>{provider.label}</span>
+      {loading && (
+        <span
+          className="absolute h-4 w-4 animate-spin rounded-full border-2 border-current/30 border-t-current"
+          aria-hidden="true"
+        />
+      )}
+      <span className={cn('inline-flex items-center gap-2', loading && 'opacity-0')}>
+        <ProviderMark id={provider.id} />
+        <span>{provider.label}</span>
+      </span>
+      {/* Announced rather than drawn: the spinner is aria-hidden, so without
+          this a screen-reader user gets silence while the request runs. */}
+      {loading && <span className="sr-only">Sending sign-in link…</span>}
     </button>
   )
 }

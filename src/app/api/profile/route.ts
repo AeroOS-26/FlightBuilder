@@ -14,7 +14,13 @@
 
 import { NextResponse } from 'next/server'
 import { requireViewerOrUnauthorized } from '@/features/auth/server/guard'
-import { getProfile, saveProfile, updateMemberName } from '@/features/auth/server/profile'
+import {
+  getProfile,
+  saveProfile,
+  updateMemberName,
+  updateMemberPhone,
+  memberPhone,
+} from '@/features/auth/server/profile'
 import type { Pet, Traveler } from '@/types'
 
 export async function GET() {
@@ -22,7 +28,10 @@ export async function GET() {
   if (viewer instanceof Response) return viewer
 
   const profile = await getProfile(viewer.id)
-  return NextResponse.json({ profile }, { status: 200 })
+  // The phone lives on `users`, not `member_profile`, so it is returned
+  // alongside rather than inside the profile object.
+  const phone = await memberPhone(viewer.id)
+  return NextResponse.json({ profile, phone }, { status: 200 })
 }
 
 export async function POST(request: Request) {
@@ -62,6 +71,11 @@ export async function POST(request: Request) {
 
   const primary = travelers.find((t) => t.isFounder) ?? travelers[0]
   if (primary?.name) await updateMemberName(viewer.id, primary.name)
+
+  // Optional, and blank is a real answer — see updateMemberPhone. Only skipped
+  // when the key is absent entirely, so a caller that does not know about the
+  // field cannot wipe a number the member already gave us.
+  if (typeof body.phone === 'string') await updateMemberPhone(viewer.id, body.phone)
 
   return NextResponse.json({ success: true }, { status: 200 })
 }

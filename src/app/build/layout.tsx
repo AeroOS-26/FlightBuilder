@@ -39,10 +39,11 @@ export default async function BuildLayout({
         id: member.account_id ?? '',
         name: member.name ?? '',
         email: member.email,
-        // Nothing in Milestone 1 collects a phone number: sign-up takes an
-        // address and a password, and frame 31 asks for travellers and pets.
-        // So this is empty until there is a screen that asks for it, and the
-        // payload sends null rather than a fabricated value.
+        // Frame 31 now collects this — an optional field beside the "Text me"
+        // preference, added 1 Sep at the client's request so the toggle has
+        // something behind it. Members who skip the profile, or leave it
+        // blank, still send an empty string here and null in the payload,
+        // which the contract reads as "we do not have one".
         phone: member.phone ?? '',
       }
     : null

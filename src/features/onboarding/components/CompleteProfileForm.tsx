@@ -22,7 +22,15 @@
 
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { Checkbox, ErrorBanner, FieldError, Form, Toggle } from '@/components/ui'
+import {
+  Checkbox,
+  ErrorBanner,
+  FieldError,
+  Form,
+  FormField,
+  TextInput,
+  Toggle,
+} from '@/components/ui'
 import { Icon } from '@/components/common'
 import { TravelerCard } from '@/features/flight-builder/steps/pets/TravelerCard'
 import { PetCard } from '@/features/flight-builder/steps/pets/PetCard'
@@ -33,6 +41,7 @@ import {
   hasPetsErrors,
   type PetsErrors,
 } from '@/features/flight-builder/validation'
+import { cn } from '@/utils/cn'
 import type { Pet, Traveler } from '@/types'
 
 let seq = 0
@@ -98,16 +107,31 @@ function AddMoreButton({ children, onClick }: { children: string; onClick: () =>
   )
 }
 
-export function CompleteProfileForm({ memberName = '' }: { memberName?: string }) {
+export function CompleteProfileForm({
+  memberName = '',
+  memberPhone = '',
+}: {
+  memberName?: string
+  memberPhone?: string
+}) {
   const [travelers, setTravelers] = useState<Traveler[]>([
     { id: 'traveler_self', name: memberName, isFounder: true },
   ])
   const [petsEnabled, setPetsEnabled] = useState(true)
   const [pets, setPets] = useState<Pet[]>([emptyPet()])
   const [readiness, setReadiness] = useState(false)
+  /**
+   * Optional, per the client (29 Aug). A member who leaves it blank must still
+   * be able to finish the profile, so it is deliberately absent from the
+   * validation rules below.
+   */
+  const [phone, setPhone] = useState(memberPhone)
+  const hasPhone = phone.trim().length > 0
   const [prefs, setPrefs] = useState<Record<string, boolean>>({
     email: true,
-    sms: true,
+    // Starts off, not on: without a number there is nothing to text, and a
+    // ticked box would be promising a message we cannot send.
+    sms: false,
     routes: false,
   })
   const [pending, setPending] = useState(false)
@@ -165,8 +189,10 @@ export function CompleteProfileForm({ memberName = '' }: { memberName?: string }
           pets,
           petsEnabled,
           travelReadinessAccepted: readiness,
+          phone,
           notifyEmail: prefs.email,
-          notifySms: prefs.sms,
+          // Cannot be true without a number, whatever the state says.
+          notifySms: hasPhone && prefs.sms,
           notifyRoutes: prefs.routes,
         }),
       })
@@ -361,24 +387,60 @@ export function CompleteProfileForm({ memberName = '' }: { memberName?: string }
               Tell us how to reach you about your flights and any new ones forming on your routes.
             </p>
           </div>
+          {/*
+            The phone number sits with the preferences rather than with the
+            traveller details, because this is the only thing that uses it.
+            Client's instruction, 29 Aug: "a phone field goes onto frame 31
+            next to the notification toggle, so the toggle has something behind
+            it". Optional — no rule in `validateTravelersAndPets` touches it.
+          */}
+          <FormField label="Mobile number" htmlFor="member-phone">
+            <TextInput
+              id="member-phone"
+              type="tel"
+              inputMode="tel"
+              autoComplete="tel"
+              placeholder="+1 555 000 1234"
+              value={phone}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPhone(e.target.value)}
+            />
+            <p className="mt-1.5 font-sans text-[13px] font-normal leading-[1.4] text-black/60">
+              Optional. Only used for the flight updates you choose below.
+            </p>
+          </FormField>
+
           <div className="flex flex-col gap-5">
-            {PREFERENCES.map((p) => (
-              <Checkbox
-                key={p.id}
-                checked={prefs[p.id] ?? false}
-                onChange={(v) => setPrefs((prev) => ({ ...prev, [p.id]: v }))}
-                className="!items-start gap-3"
-              >
-                <span className="flex flex-col gap-1">
-                  <span className="font-sans text-[16px] font-medium leading-[1.2] text-black">
-                    {p.title}
-                  </span>
-                  <span className="font-sans text-[14px] font-medium leading-[1.4] text-black/70">
-                    {p.detail}
-                  </span>
-                </span>
-              </Checkbox>
-            ))}
+            {PREFERENCES.map((p) => {
+              // "Text me" is the one preference with a dependency. With no
+              // number it renders disabled and unticked, so the checkbox never
+              // promises a text we could not send.
+              const needsPhone = p.id === 'sms'
+              const blocked = needsPhone && !hasPhone
+              return (
+                <div key={p.id} className="flex flex-col gap-1.5">
+                  <Checkbox
+                    checked={blocked ? false : (prefs[p.id] ?? false)}
+                    disabled={blocked}
+                    onChange={(v) => setPrefs((prev) => ({ ...prev, [p.id]: v }))}
+                    className={cn('!items-start gap-3', blocked && 'opacity-50')}
+                  >
+                    <span className="flex flex-col gap-1">
+                      <span className="font-sans text-[16px] font-medium leading-[1.2] text-black">
+                        {p.title}
+                      </span>
+                      <span className="font-sans text-[14px] font-medium leading-[1.4] text-black/70">
+                        {p.detail}
+                      </span>
+                    </span>
+                  </Checkbox>
+                  {blocked && (
+                    <p className="pl-8 font-sans text-[13px] font-medium leading-[1.4] text-black/60">
+                      Add a phone number to turn this on
+                    </p>
+                  )}
+                </div>
+              )
+            })}
           </div>
         </div>
       </SectionCard>

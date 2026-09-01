@@ -109,3 +109,20 @@ CREATE TABLE IF NOT EXISTS member_profile (
 -- already exists on deployed databases and CREATE TABLE IF NOT EXISTS will not
 -- add a column to one.
 ALTER TABLE users ADD COLUMN IF NOT EXISTS password_updated_at TIMESTAMPTZ;
+
+-- Added 2026-09-01. Session revocation.
+--
+-- Sessions are JWTs, so there is no row to delete when we need to end one. The
+-- standard remedy is a version the token carries and the server compares: bump
+-- this column and every token minted before the bump stops validating, while
+-- the device that caused the bump is re-issued a token carrying the new value
+-- and stays signed in.
+--
+-- Client's instruction, 29 Aug: a password reset signs in the device that
+-- completed it and ends every other session; changing a password while signed
+-- in behaves the same way for the device doing the changing.
+--
+-- NOT NULL DEFAULT 0 so existing rows are valid immediately and a token minted
+-- before this column existed (which carries no version) can be treated as
+-- version 0 rather than as a forgery.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS session_version INTEGER NOT NULL DEFAULT 0;

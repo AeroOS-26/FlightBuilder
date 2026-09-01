@@ -17,6 +17,7 @@ import {
   CompleteProfileForm,
 } from '@/features/onboarding/components'
 import { requireVerifiedViewer } from '@/features/auth/server/guard'
+import { memberPhone } from '@/features/auth/server/profile'
 
 export default async function CompleteProfilePage({
   searchParams,
@@ -27,6 +28,9 @@ export default async function CompleteProfilePage({
   // Protected: an anonymous visitor is sent to sign-in and returned here after.
   const viewer = await requireVerifiedViewer('/complete-profile')
   const memberName = name || viewer.email
+  // Show the number already on file, so returning to this screen does not look
+  // like it was never saved.
+  const phone = await memberPhone(viewer.id)
 
   return (
     <div className="flex min-h-screen flex-col bg-[#EFF1F5]">
@@ -53,7 +57,7 @@ export default async function CompleteProfilePage({
             <OnboardingStepper current={1} />
           </header>
 
-          <CompleteProfileForm memberName={memberName} />
+          <CompleteProfileForm memberName={memberName} memberPhone={phone} />
         </div>
       </main>
 

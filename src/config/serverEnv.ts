@@ -85,8 +85,49 @@ export const serverEnv: ServerEnv = {
 }
 
 /** True when the webhook URL is configured (lets the relay fail clearly). */
+/**
+ * True when a *usable* Zoho webhook is configured.
+ *
+ * The extra condition is a safety interlock, not configuration. Running a dev
+ * server against `.env.local` points every CRM write at the client's live
+ * account, and the events that go there — `account.created` at verification,
+ * `flight_group.created` on submit — arrive as real Contacts and real records
+ * in a system we do not own and cannot tidy up.
+ *
+ * The handoff has warned about this since August and it still happened, on
+ * 1 Sep, because the guard was a sentence in a document and the mistake was
+ * omitting one variable from a restarted command. A rule that depends on
+ * remembering is not a rule.
+ *
+ * So: in development, refuse any webhook that is not local. Point
+ * `ZOHO_WEBHOOK_URL` at `scratchpad/zoho-double.mjs` (`http://localhost:3902/zoho`)
+ * and everything works exactly as it does in production, captured instead of
+ * sent. Production and preview are unaffected — `NODE_ENV` is `production`
+ * there, and this returns as it always did.
+ */
 export function isZohoConfigured(): boolean {
-  return serverEnv.zohoWebhookUrl.length > 0
+  const url = serverEnv.zohoWebhookUrl
+  if (url.length === 0) return false
+
+  if (process.env.NODE_ENV === 'development' && !isLocalUrl(url)) {
+    console.error(
+      '[serverEnv] REFUSING to send CRM events to a non-local webhook from a dev ' +
+        'server. Start the Zoho double and set ZOHO_WEBHOOK_URL=http://localhost:3902/zoho. ' +
+        'Set ALLOW_REMOTE_ZOHO_IN_DEV=true only if you genuinely intend to write to the ' +
+        "client's CRM.",
+    )
+    return process.env.ALLOW_REMOTE_ZOHO_IN_DEV === 'true'
+  }
+  return true
+}
+
+function isLocalUrl(url: string): boolean {
+  try {
+    const { hostname } = new URL(url)
+    return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1'
+  } catch {
+    return false
+  }
 }
 
 /** True when the public-view read URL is configured (else use sample data). */

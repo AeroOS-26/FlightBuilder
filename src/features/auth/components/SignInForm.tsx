@@ -31,7 +31,7 @@ import { AuthAlert } from './AuthAlert'
 import { AuthNotice } from './AuthNotice'
 import { signIn, generalMessage } from '../data/authService'
 import { safeInternalPath } from '../server/routing'
-import { validateSignIn, isClean, type SignInErrors } from '../validation'
+import { validateSignIn, validateEmail, isClean, type SignInErrors } from '../validation'
 
 /** Which inline error the form is showing, if any. */
 export type LoginError = 'none' | 'account-not-found' | 'wrong-password' | 'account-locked'
@@ -62,6 +62,50 @@ export function SignInForm({ error = 'none', callbackUrl }: SignInFormProps) {
   const [notice, setNotice] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
 
+  /**
+   * "Email Link" — the magic-link flow.
+   *
+   * It reads the email already typed above rather than opening a second screen
+   * to ask for it again: the field is right there, and on this screen the
+   * member has usually filled it before noticing the button. The password is
+   * deliberately ignored — possession of the inbox is the whole proof.
+   *
+   * The response is identical for a known and an unknown address, so this
+   * always lands on frame 34. See the route for why.
+   */
+  const [linkPending, setLinkPending] = useState(false)
+
+  async function handleEmailLink() {
+    if (linkPending) return
+    const invalid = validateEmail(email)
+    if (invalid) {
+      setFieldErrors((prev) => ({ ...prev, email: invalid }))
+      return
+    }
+    setLinkPending(true)
+    try {
+      const res = await fetch('/api/magic-link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      })
+      if (!res.ok) {
+        const body = (await res.json().catch(() => null)) as { message?: string } | null
+        setFieldErrors((prev) => ({
+          ...prev,
+          email: body?.message ?? 'We couldn’t send that link. Please try again.',
+        }))
+        return
+      }
+      window.location.href = `/magic-link/sent?email=${encodeURIComponent(email)}`
+    } catch {
+      setFieldErrors((prev) => ({ ...prev, email: 'Network error. Please try again.' }))
+    } finally {
+      setLinkPending(false)
+    }
+  }
+
+
   // A live submit takes precedence over the review parameter.
   const active: LoginError = serverError !== 'none' ? serverError : error
 
@@ -72,6 +116,7 @@ export function SignInForm({ error = 'none', callbackUrl }: SignInFormProps) {
     setNotice(null)
     setServerError('none')
 
+    if (linkPending) return
     const errors = validateSignIn({ email, password })
     setFieldErrors(errors)
     if (!isClean(errors)) return
@@ -131,7 +176,7 @@ export function SignInForm({ error = 'none', callbackUrl }: SignInFormProps) {
         </p>
       </header>
 
-      <SsoRow />
+      <SsoRow onEmailLink={handleEmailLink} emailLinkPending={linkPending} busy={pending} />
 
       <div className="flex flex-col items-center gap-[22px]">
         {locked && (
@@ -148,6 +193,7 @@ export function SignInForm({ error = 'none', callbackUrl }: SignInFormProps) {
             <TextInput
               id="signin-email"
               type="email"
+              disabled={linkPending}
               name="email"
               autoComplete="email"
               placeholder="you@example.com"
@@ -216,7 +262,7 @@ export function SignInForm({ error = 'none', callbackUrl }: SignInFormProps) {
       <div className="flex flex-col items-center gap-[18px]">
         <button
           type="submit"
-          disabled={pending || locked}
+          disabled={pending || linkPending || locked}
           className="flex h-10 w-full items-center justify-center rounded-[12px] bg-black px-[14px] py-[10px] font-sans text-[14px] font-medium leading-[1.14] text-white transition-colors hover:bg-[#101114] disabled:opacity-60"
         >
           {pending ? 'Signing in…' : 'Sign In'}
