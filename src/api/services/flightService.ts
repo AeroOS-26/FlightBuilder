@@ -158,7 +158,10 @@ function assembleRecord(
     aircraftClass: 'Light Jet',
     founder: {
       id: founder?.id ?? 'member_self',
-      name: founder?.name ?? founderTraveler?.name ?? 'Founder',
+      // Omitted rather than substituted. "Founder" is a role, not a person's
+      // name, and printing it where a name belongs states something untrue.
+      // Same call as the email templates: absent beats invented.
+      name: founder?.name ?? founderTraveler?.name ?? '',
       email: founder?.email ?? '',
       phone: founder?.phone ?? '',
     },

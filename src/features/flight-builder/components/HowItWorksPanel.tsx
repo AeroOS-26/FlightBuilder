@@ -6,7 +6,7 @@
  * On mobile, the panel collapses to a header row with a chevron.
  */
 
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { Card } from '@/components/ui'
 import { Icon } from '@/components/common'
 import { cn } from '@/utils/cn'
@@ -31,6 +31,7 @@ interface HowItWorksPanelProps {
 
 export function HowItWorksPanel({ currentStepId }: HowItWorksPanelProps) {
   const [open, setOpen] = useState(false)
+  const panelId = useId()
 
   return (
     <Card
@@ -45,30 +46,33 @@ export function HowItWorksPanel({ currentStepId }: HowItWorksPanelProps) {
           5 quick steps · about 2 min
         </span>
       </div>
-      <div className="flex items-center justify-between gap-3 lg:hidden">
-        <div className="flex min-w-0 flex-1 items-center justify-start md:justify-between gap-2">
-          <h3 className="font-heading text-[16px] font-medium leading-none text-[#000000]">
-            How it works
-          </h3>
-          <span className="shrink-0 font-sans text-[12px] font-medium uppercase tracking-normal text-[#080B2B]">
-            5 quick steps · about 2 min
-          </span>
-        </div>
+      {/* The whole header row is the control — see the note in SidePanel. The
+          button used to wrap the 20px chevron alone, so tapping "How it works"
+          did nothing. */}
+      <h3 className="w-full lg:hidden">
         <button
           type="button"
           aria-expanded={open}
-          aria-label={open ? 'Collapse How it works' : 'Expand How it works'}
+          aria-controls={panelId}
           onClick={() => setOpen((value) => !value)}
-          className="shrink-0 text-accent"
+          className="flex min-h-[44px] w-full items-center justify-between gap-3 text-left"
         >
+          <span className="flex min-w-0 flex-1 items-center justify-start gap-2 md:justify-between">
+            <span className="font-heading text-[16px] font-medium leading-none text-[#000000]">
+              How it works
+            </span>
+            <span className="shrink-0 font-sans text-[12px] font-medium uppercase tracking-normal text-[#080B2B]">
+              5 quick steps · about 2 min
+            </span>
+          </span>
           <Icon
             name="chevron-down"
             size={20}
-            className={cn('transition-transform', open && 'rotate-180')}
+            className={cn('shrink-0 text-accent transition-transform', open && 'rotate-180')}
           />
         </button>
-      </div>
-      <ol className={cn('space-y-4', open ? 'block' : 'hidden lg:block')}>
+      </h3>
+      <ol id={panelId} className={cn('space-y-4', open ? 'block' : 'hidden lg:block')}>
         {ITEMS.map((item, index) => {
           const active = item.step === currentStepId
           return (

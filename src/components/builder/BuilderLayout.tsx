@@ -11,6 +11,7 @@
 
 import { useEffect, type ReactNode } from 'react'
 import { TopNav } from './TopNav'
+import { BrokerDisclosureFooter } from '@/components/common'
 import { Stepper } from './Stepper'
 import { useStepNavigation } from '@/features/flight-builder/hooks/useStepNavigation'
 import { useStepGuard } from '@/features/flight-builder/hooks/useStepGuard'
@@ -67,6 +68,12 @@ export function BuilderLayout({ children }: { children: ReactNode }) {
           </div>
         </div>
       </main>
+
+      {/* The builder had no footer at all. The Part 295 disclosure is required
+          on any screen where a charter group is created, which is every step
+          here — and it is the same component the share page renders, so the two
+          surfaces cannot drift apart. */}
+      <BrokerDisclosureFooter />
     </div>
   )
 }

@@ -11,6 +11,12 @@ interface AppEnv {
   apiBaseUrl: string
   /** Base URL used to build share links, e.g. the public app origin. */
   shareBaseUrl: string
+  /**
+   * The marketing site. Every way *out* of the builder points here, because
+   * there is no member dashboard to land on yet — the brand mark and "Exit".
+   * One value, so it is a single edit when that changes.
+   */
+  marketingSiteUrl: string
   /** Active brand id, drives the theme. Defaults to "perro-air". */
   brand: string
   /** Request timeout in milliseconds. */
@@ -41,6 +47,10 @@ export const env: AppEnv = {
   shareBaseUrl: readString(
     process.env.NEXT_PUBLIC_SHARE_BASE_URL,
     defaultShareOrigin(),
+  ),
+  marketingSiteUrl: readString(
+    process.env.NEXT_PUBLIC_MARKETING_SITE_URL,
+    'https://perroair.com',
   ),
   brand: readString(process.env.NEXT_PUBLIC_BRAND, 'perro-air'),
   apiTimeoutMs: readNumber(process.env.NEXT_PUBLIC_API_TIMEOUT_MS, 15000),

@@ -19,8 +19,9 @@ import {
   PAYLOAD_CODE_FORMAT,
   RADIUS_KM,
 } from '@/features/flight-builder/config/routeConfig'
-import { findOverride } from '@/features/flight-builder/config/executiveOverrides'
+import { findOverride, containsWord } from '@/features/flight-builder/config/executiveOverrides'
 import type { RawAirport } from './airportsDataset'
+import { fold } from '@/utils/text'
 
 const EARTH_RADIUS_KM = 6371
 
@@ -77,6 +78,8 @@ function toAirportOption(a: RawAirport): AirportOption {
   }
 }
 
+
+
 /**
  * Pick the "anchor" airports a query matches on — these define the candidate
  * metros. We match on municipality first (the metro name), then airport name
@@ -84,20 +87,43 @@ function toAirportOption(a: RawAirport): AirportOption {
  * Teterboro field.
  */
 function findAnchors(query: string, airports: RawAirport[]): RawAirport[] {
-  const q = query.trim().toLowerCase()
-  if (q.length < 2) return []
+  const raw = fold(query.trim())
+  if (raw.length < 2) return []
+
+  /**
+   * People type "Fort Lauderdale, Florida", and no municipality in the dataset
+   * is spelled that way — `mun` is just "Fort Lauderdale". Matching the whole
+   * string found nothing, so being *more* specific returned fewer results than
+   * being vague, which is the opposite of what anyone expects.
+   *
+   * The part before the first comma is the place; anything after it is the
+   * region or country the person added to disambiguate. We match on the first
+   * and use the rest to rank, so the extra detail helps instead of hurting.
+   */
+  const [placePart, ...restParts] = raw.split(',').map((s) => s.trim())
+  const q = placePart || raw
+  const qualifiers = restParts.filter(Boolean)
+
+  /** True when the typed region/country agrees with this airport's. */
+  const matchesQualifier = (a: RawAirport) =>
+    qualifiers.length > 0 &&
+    qualifiers.every((part) => {
+      const rg = fold(a.rg)
+      const co = fold(a.co)
+      return rg.startsWith(part) || co.startsWith(part) || part === rg || part === co
+    })
 
   const byMunicipality: RawAirport[] = []
   const byOther: RawAirport[] = []
 
   for (const a of airports) {
-    const mun = a.mun.toLowerCase()
+    const mun = fold(a.mun)
     if (mun && (mun === q || mun.startsWith(q) || mun.includes(q))) {
       byMunicipality.push(a)
       continue
     }
     if (
-      a.nm.toLowerCase().includes(q) ||
+      fold(a.nm).includes(q) ||
       a.ic.toLowerCase() === q ||
       a.ia.toLowerCase() === q
     ) {
@@ -111,8 +137,11 @@ function findAnchors(query: string, airports: RawAirport[]): RawAirport[] {
   //  - exact municipality match beats prefix beats substring,
   //  - larger fields (L > M > S) and scheduled service break remaining ties.
   const rank = (a: RawAirport) => {
-    const mun = a.mun.toLowerCase()
+    const mun = fold(a.mun)
     let score = 0
+    // A typed region wins over everything: someone who wrote "Fort Lauderdale,
+    // Florida" has told us which one they mean.
+    if (!matchesQualifier(a)) score += 8
     if (!findOverride(a.mun || a.nm)) score += 4 // override metros first
     if (mun === q) score += 0
     else if (mun.startsWith(q)) score += 1
@@ -201,9 +230,51 @@ function overrideAnchor(query: string, airports: RawAirport[]): RawAirport | nul
   const ov = findOverride(query)
   if (!ov) return null
 
+  /**
+   * A curated metro is pinned to the top of the results, so it must not
+   * override a region the person actually typed.
+   *
+   * Several aliases are legitimate names of somewhere else: "salvador" is a
+   * city in Brazil as well as the country El Salvador, "panama city" is in
+   * Florida as well as Panama, "san jose" is in California as well as Costa
+   * Rica. Matching the alias alone sent all three to the served market, so
+   * adding the region made the answer wrong rather than more precise.
+   *
+   * When the query carries a qualifier after a comma, the override has to
+   * agree with it or step aside and let the normal search answer.
+   */
+  const qualifiers = query
+    .toLowerCase()
+    .split(',')
+    .slice(1)
+    .map((s) => s.trim())
+    .filter(Boolean)
+
+  /**
+   * A typed qualifier has to agree with either the metro we curated or the
+   * field we would anchor on. Both are needed, because they disagree in
+   * opposite directions:
+   *
+   *  - the curated labels abbreviate ("Los Angeles, CA"), so "california"
+   *    only matches the field's real region;
+   *  - a metro can span a state line — New York's executive field is
+   *    Teterboro, in New Jersey — so "NY" only matches the metro label.
+   *
+   * Word boundaries throughout: a bare `includes` would find "ca" inside
+   * "Costa Rica" and keep San José for someone who typed "San Jose, CA".
+   */
+  const agreesWithQualifiers = (a: RawAirport) =>
+    qualifiers.length === 0 ||
+    qualifiers.some(
+      (part) =>
+        containsWord(ov.metro.toLowerCase(), part) ||
+        containsWord(a.rg.toLowerCase(), part) ||
+        containsWord(a.co.toLowerCase(), part),
+    )
+
   const primary = ov.executive[0]
   const field = airports.find((a) => a.ic === primary || a.ia === primary)
-  if (field) return field
+  if (field) return agreesWithQualifiers(field) ? field : null
 
   // Fall back to explicit anchor coords with a synthetic record if the field
   // isn't in the dataset (keeps the metro resolvable from the radius alone).
