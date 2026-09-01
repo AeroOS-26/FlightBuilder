@@ -88,8 +88,23 @@ export function TopNav() {
             )}
           </div>
 
-          {MEMBER_AREA_ENABLED && (
+          {/*
+            Two different gates, deliberately.
+
+            `MEMBER_AREA_ENABLED` hides controls that lead nowhere — Dashboard
+            and the mobile drawer. The account menu is not one of those: it is
+            the **only** sign-out control in the application, so gating it on
+            that flag left a signed-in member with no way out. That regression
+            arrived at the merge, where this whole cluster went behind one flag.
+
+            It renders on `founder` instead, which is seeded from the server
+            session by `useFounderIdentity`. That is correct on both branches:
+            no session, no menu (main, where there is no auth to sign out of);
+            session present, menu shown (develop).
+          */}
+          {(MEMBER_AREA_ENABLED || founder) && (
           <div className="flex items-center gap-2 sm:gap-4">
+            {MEMBER_AREA_ENABLED && (
             <button
               ref={menuButtonRef}
               type="button"
@@ -106,6 +121,8 @@ export function TopNav() {
                 className="size-9"
               />
             </button>
+            )}
+            {MEMBER_AREA_ENABLED && (
             <span className="hidden rounded-[12px] bg-[linear-gradient(90deg,#1946C5_0%,#E96A6F_100%)] p-px shadow-[0px_8px_24px_0px_rgba(233,106,111,0.15)] lg:inline-flex">
               <button
                 type="button"
@@ -115,6 +132,9 @@ export function TopNav() {
                 Dashboard
               </button>
             </span>
+            )}
+            {founder && (
+            <>
             <span className="hidden h-[21px] w-px bg-[#CFE3F1] sm:block"></span>
             {/* The chevron always implied a menu; until 26 Aug there was none,
                 which is where the missing sign-out was hiding. */}
@@ -138,6 +158,8 @@ export function TopNav() {
               </span>
               <Icon name="chevron-down" size={20} className="hidden text-[#E96A6F] sm:block" />
             </AccountMenu>
+            </>
+            )}
           </div>
           )}
         </div>
