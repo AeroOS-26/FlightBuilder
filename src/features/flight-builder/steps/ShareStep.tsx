@@ -13,6 +13,7 @@ import { Fragment, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button, DashedCard, TextInput } from '@/components/ui'
 import { Icon } from '@/components/common'
+import { MEMBER_AREA_ENABLED } from '@/config/features'
 import { SidePanel } from '@/features/flight-builder/components'
 import { useFlightBuilderStore } from '@/features/flight-builder/store/flightBuilderStore'
 import { FIRST_STEP } from '@/features/flight-builder/config/steps'
@@ -213,9 +214,12 @@ export function ShareStep() {
             </ol>
           </SidePanel>
           <SidePanel title="Get help" collapsible={false}>
+            {/* The Help Center this used to name has no link anywhere in the
+                product, so it pointed at nothing. Replying to the confirmation
+                email is the route that actually reaches someone. */}
             <p>
-              Questions about your group, pricing, or sharing? Visit the Help Center or reply
-              to your confirmation email.
+              Questions about your group, pricing, or sharing? Just reply to your
+              confirmation email — it comes straight to us.
             </p>
           </SidePanel>
         </aside>
@@ -314,7 +318,17 @@ export function ShareStep() {
                   shareLinkDividerClass,
                 )}
               >
-                <span className={cn(shareLinkUrlClass, 'min-w-0 break-all md:flex-1')}>{link}</span>
+                {/* An anchor, not a span. It is styled underlined and blue, so
+                    it reads as a link — it just did nothing when clicked, while
+                    the button and copy icon beside it both worked. */}
+                <a
+                  href={flight.shareUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={cn(shareLinkUrlClass, 'min-w-0 break-all md:flex-1')}
+                >
+                  {link}
+                </a>
                 <div className="flex shrink-0 items-center justify-start sm:justify-end gap-2">
                   <button
                     type="button"
@@ -431,8 +445,12 @@ export function ShareStep() {
           </DashedCard>
 
           {/* Flight Group Detail and My Dashboard are Flight Club screens in the
-              next phase. They are intentionally inactive here — disabled so they
-              read as inactive rather than active-but-dead. Do not wire handlers. */}
+              next phase. They were disabled here so they read as inactive
+              rather than active-but-dead; Charles asked for them hidden
+              instead, since two greyed-out buttons are the last thing on a
+              success screen. Do not wire handlers — flip the flag when the
+              screens exist. */}
+          {MEMBER_AREA_ENABLED && (
           <div className={shareFooterClass}>
             <Button variant="secondary" disabled>
               Go to Flight Group Detail
@@ -451,6 +469,7 @@ export function ShareStep() {
               Go to My Dashboard
             </Button>
           </div>
+          )}
         </div>
       </div>
     </div>

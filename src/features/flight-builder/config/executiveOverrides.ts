@@ -17,6 +17,8 @@
  * dataset's primary identifier; see exec/commercial notes per row.
  */
 
+import { fold } from '@/utils/text'
+
 export interface ExecutiveOverride {
   /** Metro label for matching/diagnostics, e.g. "Miami, FL". */
   metro: string
@@ -46,7 +48,10 @@ export const EXECUTIVE_OVERRIDES: readonly ExecutiveOverride[] = [
   // --- United States ---
   { metro: 'Miami, FL', match: ['miami'], executive: ['KOPF', 'KTMB'], commercial: 'KMIA', country: 'United States' },
   { metro: 'New York, NY', match: ['new york', 'nyc', 'manhattan'], executive: ['KTEB', 'KFRG'], commercial: 'KJFK', country: 'United States' },
-  { metro: 'Los Angeles, CA', match: ['los angeles', 'la'], executive: ['KVNY', 'KHHR'], commercial: 'KLAX', country: 'United States' },
+  // 'la' removed: a two-letter alias is a liability in a worldwide place
+  // search even with word-boundary matching, and "los angeles" / "lax" cover
+  // the real intent. It is also ambiguous — Louisiana and La Paz both begin it.
+  { metro: 'Los Angeles, CA', match: ['los angeles', 'lax'], executive: ['KVNY', 'KHHR'], commercial: 'KLAX', country: 'United States' },
   { metro: 'San Francisco Bay, CA', match: ['san francisco', 'bay area', 'sf'], executive: ['KSQL', 'KHWD'], commercial: 'KSFO', country: 'United States' },
   { metro: 'Dallas, TX', match: ['dallas'], executive: ['KDAL', 'KADS'], commercial: 'KDFW', country: 'United States' },
   { metro: 'Houston, TX', match: ['houston'], executive: ['KSGR', 'KHOU'], commercial: 'KIAH', country: 'United States' },
@@ -67,9 +72,38 @@ export const EXECUTIVE_OVERRIDES: readonly ExecutiveOverride[] = [
   { metro: 'Tegucigalpa, Honduras', match: ['tegucigalpa'], executive: ['MHTG'], commercial: 'MHTG', country: 'Honduras' },
 ] as const
 
-/** Find the override whose aliases match the typed query, if any. */
+/**
+ * Does `alias` appear in `query` as a whole word rather than as a run of
+ * letters inside one?
+ *
+ * This is the guard that was missing. A plain `query.includes(alias)` made
+ * every short alias a wildcard: with `la` on the Los Angeles entry, the letters
+ * in "fort **la**uderdale", "at**la**nta", "dal**la**s", "or**la**ndo" and
+ * "phi**la**delphia" all matched it — and because the matched override is
+ * pinned to the top of the results, five different cities resolved to Van Nuys
+ * with the Recommended badge and the Enter binding.
+ *
+ * Boundaries are "not a letter or digit" rather than whitespace, so a typed
+ * region still matches: "los angeles, ca" finds "los angeles".
+ */
+export function containsWord(query: string, alias: string): boolean {
+  const escaped = fold(alias).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  return new RegExp(`(^|[^a-z0-9])${escaped}($|[^a-z0-9])`, 'i').test(fold(query))
+}
+
+/**
+ * Find the override whose aliases match the typed query, if any.
+ *
+ * Two directions, deliberately different:
+ *  - `containsWord(q, m)` — the query names the metro ("fly from miami").
+ *  - `m.startsWith(q)`    — the query is a partial alias still being typed
+ *    ("mia" → "miami"). Previously `m.includes(q)`, which let a query match on
+ *    any fragment of an alias, so "ang" reached Los Angeles.
+ */
 export function findOverride(query: string): ExecutiveOverride | undefined {
-  const q = query.trim().toLowerCase()
+  const q = fold(query.trim())
   if (!q) return undefined
-  return EXECUTIVE_OVERRIDES.find((o) => o.match.some((m) => q.includes(m) || m.includes(q)))
+  return EXECUTIVE_OVERRIDES.find((o) =>
+    o.match.some((m) => containsWord(q, m) || fold(m).startsWith(q)),
+  )
 }

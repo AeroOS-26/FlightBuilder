@@ -6,7 +6,7 @@
  * helps", "Get help", etc. On mobile, collapses to a header row with a chevron.
  */
 
-import { useState, type ReactNode } from 'react'
+import { useId, useState, type ReactNode } from 'react'
 import { Card, DashedOutline, dashedPanelSurfaceClass } from '@/components/ui'
 import { Icon } from '@/components/common'
 import { cn } from '@/utils/cn'
@@ -30,6 +30,7 @@ export function SidePanel({
   defaultOpen = false,
 }: SidePanelProps) {
   const [open, setOpen] = useState(defaultOpen)
+  const panelId = useId()
   const isCollapsed = collapsible && !open
 
   return (
@@ -54,30 +55,42 @@ export function SidePanel({
         )}
       </div>
       {collapsible ? (
-        <div className="flex w-full flex-1 items-center justify-between gap-3 lg:hidden">
-          <h3 className="font-heading text-[16px] font-medium leading-[19px] text-[#000000]">
-            {title}
-          </h3>
+        /**
+         * The whole header row is the control, not just the chevron.
+         *
+         * The button used to wrap the 20px icon alone, with the title as a
+         * sibling — so tapping the words did nothing, and the only target was
+         * well under the 24px minimum, let alone the 44px both platforms ask
+         * for. The heading wrapping a full-width button is the WAI-ARIA
+         * accordion pattern: the heading semantics survive, and the name of the
+         * control is the title itself rather than a separate aria-label that
+         * has to be kept in step with it.
+         */
+        <h3 className="w-full lg:hidden">
           <button
             type="button"
             aria-expanded={open}
-            aria-label={open ? `Collapse ${title}` : `Expand ${title}`}
+            aria-controls={panelId}
             onClick={() => setOpen((value) => !value)}
-            className="shrink-0 text-accent"
+            className="flex min-h-[44px] w-full flex-1 items-center justify-between gap-3 text-left"
           >
+            <span className="font-heading text-[16px] font-medium leading-[19px] text-[#000000]">
+              {title}
+            </span>
             <Icon
               name="chevron-down"
               size={20}
-              className={cn('transition-transform', open && 'rotate-180')}
+              className={cn('shrink-0 text-accent transition-transform', open && 'rotate-180')}
             />
           </button>
-        </div>
+        </h3>
       ) : (
         <h3 className="font-heading text-[16px] font-medium leading-[19px] text-[#000000] lg:hidden">
           {title}
         </h3>
       )}
       <div
+        id={panelId}
         className={cn(
           'space-y-4 font-sans text-[12px] font-medium leading-[18px] text-[#000000]/70 lg:text-[14px] lg:font-normal lg:leading-5 lg:text-[#000000]',
           collapsible

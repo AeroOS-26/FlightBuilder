@@ -13,28 +13,53 @@
 import { useState, type ReactNode } from 'react'
 import { Logo, Icon } from '@/components/common'
 import { Button } from '@/components/ui'
+import { BrokerDisclosureFooter } from '@/components/common'
+import { env } from '@/config/env'
 
-/** Public marketing nav — matches the hi-fi (no member/dashboard chrome). */
-const NAV_LINKS = ['Home', 'Empty Legs', 'Private Charter', 'How it works', 'About', 'Contact']
+/**
+ * Public marketing nav — matches the hi-fi (no member/dashboard chrome).
+ *
+ * These are pages on the marketing site, not screens in this app. Every one of
+ * them pointed at `/`, which redirects into the Flight Builder — so a prospect
+ * who clicked "About" on a shared flight landed in a booking flow.
+ *
+ * `path` is appended to the marketing site origin. They all point at its home
+ * page until Charles sends the real slugs; filling them in is then one edit
+ * each, and no link dead-ends into the builder in the meantime.
+ */
+const NAV_LINKS: { label: string; path: string }[] = [
+  { label: 'Home', path: '' },
+  { label: 'Empty Legs', path: '' },
+  { label: 'Private Charter', path: '' },
+  { label: 'How it works', path: '' },
+  { label: 'About', path: '' },
+  { label: 'Contact', path: '' },
+]
+
+const marketingHref = (path: string) => `${env.marketingSiteUrl}${path}`
 
 function PublicHeader() {
   const [menuOpen, setMenuOpen] = useState(false)
   return (
     <header className="border-b border-[#F2F2F2] bg-white">
       <div className="mx-auto flex h-[68px] w-full max-w-[1440px] items-center justify-between gap-4 px-4 sm:px-6 lg:px-[50px]">
-        <a href="/" aria-label="Perro Air home" className="focus-ring rounded-md">
+        <a
+          href={env.marketingSiteUrl}
+          aria-label="Perro Air home"
+          className="focus-ring rounded-md"
+        >
           <Logo />
         </a>
 
         {/* Desktop nav */}
         <nav aria-label="Primary" className="hidden items-center gap-6 lg:flex">
-          {NAV_LINKS.map((label) => (
+          {NAV_LINKS.map((link) => (
             <a
-              key={label}
-              href="/"
+              key={link.label}
+              href={marketingHref(link.path)}
               className="font-sans text-[14px] font-medium text-[#000000]/80 transition-colors hover:text-[#000000] focus-ring rounded-md"
             >
-              {label}
+              {link.label}
             </a>
           ))}
         </nav>
@@ -72,13 +97,13 @@ function PublicHeader() {
           className="border-t border-[#EAEAEA] bg-white px-4 py-3 lg:hidden"
         >
           <ul className="flex flex-col">
-            {NAV_LINKS.map((label) => (
-              <li key={label}>
+            {NAV_LINKS.map((link) => (
+              <li key={link.label}>
                 <a
-                  href="/"
+                  href={marketingHref(link.path)}
                   className="block py-2.5 font-sans text-[15px] font-medium text-[#000000]/85 focus-ring rounded-md"
                 >
-                  {label}
+                  {link.label}
                 </a>
               </li>
             ))}
@@ -108,15 +133,7 @@ export function PublicPageShell({ children }: { children: ReactNode }) {
         </div>
       </main>
 
-      <footer className="border-t border-[#F2F2F2] bg-white">
-        <div className="mx-auto flex w-full max-w-[1440px] flex-col items-center gap-2 px-4 py-4 text-center text-[12px] text-[#000000]/60 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:text-left lg:px-[50px]">
-          <span className="max-w-[820px]">
-            Flights arranged by Perro Air, LLC and operated by direct air carriers certified under
-            FAA Part 135, 121 or 129. The operating carrier maintains full operational control.
-          </span>
-          <span className="shrink-0">© Perro Air · perroair.com</span>
-        </div>
-      </footer>
+      <BrokerDisclosureFooter />
     </div>
   )
 }

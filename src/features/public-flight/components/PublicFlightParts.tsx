@@ -13,6 +13,7 @@
 import type { ReactNode } from 'react'
 import { InfoNote } from '@/components/ui'
 import { Icon } from '@/components/common'
+import { env } from '@/config/env'
 import { SidePanel } from '@/features/flight-builder/components'
 import { cn } from '@/utils/cn'
 import { metroLabel, formatDateRange, fellowPetSummary, aircraftExample } from '../format'
@@ -299,8 +300,11 @@ export function PublicAside({ stateNote }: { stateNote: { title: string; body: s
           Free membership that lets you join shared flights, get alerts on new routes, and manage
           your trips in one place. No paid tier, no points, no commitment.
         </p>
+        {/* Went to `/`, i.e. into the Flight Builder — a "what is Flight Club"
+            explainer that dropped you into a booking flow. Points at the
+            marketing site until Charles sends a Flight Club page URL. */}
         <a
-          href="/"
+          href={env.marketingSiteUrl}
           className="mt-3 inline-flex h-10 items-center gap-1.5 rounded-[12px] border border-[#98C3E1] bg-[#F5F9FC] px-[14px] font-sans text-[14px] font-medium text-[#000000] transition-colors hover:bg-[#E9EFFA] focus-ring"
         >
           Learn more

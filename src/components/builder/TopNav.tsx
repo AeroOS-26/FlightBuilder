@@ -7,10 +7,18 @@
  * real member identity on the right. Per the member-identity product rule, the
  * Founder is shown by their real name here; other members on public surfaces
  * are shown by label only (enforced on those surfaces).
+ *
+ * Everything except the brand mark is behind `MEMBER_AREA_ENABLED` — nav links,
+ * Dashboard, the account button and the mobile drawer all lead to screens that
+ * do not exist yet. The brand mark stays and points at the marketing site: with
+ * the rest hidden it is the only way out of the builder, and it used to link to
+ * `/`, which redirects straight back into the builder.
  */
 
 import { useEffect, useId, useRef, useState } from 'react'
 import { Logo, Icon } from '@/components/common'
+import { env } from '@/config/env'
+import { MEMBER_AREA_ENABLED } from '@/config/features'
 import { useFlightBuilderStore } from '@/features/flight-builder/store/flightBuilderStore'
 import { AccountMenu } from '@/features/auth/components/AccountMenu'
 
@@ -56,9 +64,15 @@ export function TopNav() {
       <div className="mx-auto w-full max-w-[1440px] px-4 sm:px-6">
         <div className="flex h-16 items-center justify-between gap-3">
           <div className="flex items-center gap-7">
-            <a href="/" aria-label="Perro Air home" className="focus-ring rounded-md">
+            <a
+              href={env.marketingSiteUrl}
+              aria-label="Perro Air home"
+              className="focus-ring rounded-md"
+            >
               <Logo />
             </a>
+            {/* Not `hidden`, which `lg:flex` would override at desktop widths. */}
+            {MEMBER_AREA_ENABLED && (
             <nav className="hidden items-center gap-[8px] lg:flex">
               {NAV_LINKS.map((link) => (
                 <button
@@ -71,8 +85,10 @@ export function TopNav() {
                 </button>
               ))}
             </nav>
+            )}
           </div>
 
+          {MEMBER_AREA_ENABLED && (
           <div className="flex items-center gap-2 sm:gap-4">
             <button
               ref={menuButtonRef}
@@ -123,9 +139,10 @@ export function TopNav() {
               <Icon name="chevron-down" size={20} className="hidden text-[#E96A6F] sm:block" />
             </AccountMenu>
           </div>
+          )}
         </div>
 
-        {menuOpen && (
+        {MEMBER_AREA_ENABLED && menuOpen && (
           <nav
             id={menuId}
             ref={menuRef}
