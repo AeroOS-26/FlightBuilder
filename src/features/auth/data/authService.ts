@@ -33,6 +33,11 @@ export type AuthFailure =
   | { kind: 'wrong-password' }
   /** Frame 32 V3 — locked after repeated failures. */
   | { kind: 'account-locked' }
+  /**
+   * The account exists but has no password — it was created by, or has only
+   * ever used, a sign-in link. Not a failure of theirs to correct.
+   */
+  | { kind: 'no-password' }
   /** Frame 33 — that email already has an account. */
   | { kind: 'email-exists' }
   /** A reset/verification link that has expired or was already used. */
@@ -58,6 +63,7 @@ const FAILURE_BY_CODE: Record<string, AuthFailure> = {
   'not-found': { kind: 'account-not-found' },
   'wrong-password': { kind: 'wrong-password' },
   locked: { kind: 'account-locked' },
+  'no-password': { kind: 'no-password' },
 }
 
 /** Sign in — frame 30, failing into frame 32's three variants. */
@@ -203,6 +209,9 @@ export function generalMessage(failure: AuthFailure): string | null {
     case 'wrong-password':
     case 'account-locked':
     case 'email-exists':
+    // Drawn as its own alert on the sign-in screen, with an action, rather than
+    // as a sentence — the member needs a route out, not a description.
+    case 'no-password':
       return null
     case 'invalid-token':
       return 'That link has expired or has already been used. Request a new one.'

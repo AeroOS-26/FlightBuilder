@@ -24,7 +24,7 @@ import { PasswordInput } from './PasswordInput'
 import { SsoRow } from './SsoRow'
 import { AuthNotice } from './AuthNotice'
 import { signUp, generalMessage } from '../data/authService'
-import { validateSignUp, validateEmail, isClean, type SignInErrors } from '../validation'
+import { validateSignUp, isClean, type SignInErrors } from '../validation'
 
 /** Which inline error the form is showing, if any. */
 export type SignUpError = 'none' | 'email-exists'
@@ -53,50 +53,6 @@ export function SignUpForm({ error = 'none' }: SignUpFormProps) {
   const [notice, setNotice] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
 
-  /**
-   * "Email Link" — the magic-link flow.
-   *
-   * It reads the email already typed above rather than opening a second screen
-   * to ask for it again: the field is right there, and on this screen the
-   * member has usually filled it before noticing the button. The password is
-   * deliberately ignored — possession of the inbox is the whole proof.
-   *
-   * The response is identical for a known and an unknown address, so this
-   * always lands on frame 34. See the route for why.
-   */
-  const [linkPending, setLinkPending] = useState(false)
-
-  async function handleEmailLink() {
-    if (linkPending) return
-    const invalid = validateEmail(email)
-    if (invalid) {
-      setFieldErrors((prev) => ({ ...prev, email: invalid }))
-      return
-    }
-    setLinkPending(true)
-    try {
-      const res = await fetch('/api/magic-link', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
-      })
-      if (!res.ok) {
-        const body = (await res.json().catch(() => null)) as { message?: string } | null
-        setFieldErrors((prev) => ({
-          ...prev,
-          email: body?.message ?? 'We couldn’t send that link. Please try again.',
-        }))
-        return
-      }
-      window.location.href = `/magic-link/sent?email=${encodeURIComponent(email)}`
-    } catch {
-      setFieldErrors((prev) => ({ ...prev, email: 'Network error. Please try again.' }))
-    } finally {
-      setLinkPending(false)
-    }
-  }
-
-
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
     if (pending) return
@@ -104,7 +60,6 @@ export function SignUpForm({ error = 'none' }: SignUpFormProps) {
     setNotice(null)
     setTaken(false)
 
-    if (linkPending) return
     const errors = validateSignUp({ email, password })
     setFieldErrors(errors)
     if (!isClean(errors)) return
@@ -146,7 +101,8 @@ export function SignUpForm({ error = 'none' }: SignUpFormProps) {
         </p>
       </header>
 
-      <SsoRow onEmailLink={handleEmailLink} emailLinkPending={linkPending} busy={pending} />
+      {/* No sign-in link here — see `showEmailLink` in SsoRow. */}
+      <SsoRow showEmailLink={false} />
 
       <div className="flex flex-col items-center gap-[22px]">
         {notice && <AuthNotice>{notice}</AuthNotice>}
@@ -159,7 +115,6 @@ export function SignUpForm({ error = 'none' }: SignUpFormProps) {
               <TextInput
                 id="signup-email"
                 type="email"
-              disabled={linkPending}
                 name="email"
                 autoComplete="email"
                 placeholder="you@example.com"
@@ -220,7 +175,7 @@ export function SignUpForm({ error = 'none' }: SignUpFormProps) {
       <div className="flex flex-col items-center gap-[18px]">
         <button
           type="submit"
-          disabled={pending || linkPending}
+          disabled={pending}
           className="flex h-10 w-full items-center justify-center rounded-[12px] bg-black px-[14px] py-[10px] font-sans text-[14px] font-medium leading-[1.14] text-white transition-colors hover:bg-[#101114] disabled:opacity-60"
         >
           {pending ? 'Creating…' : 'Create Account'}

@@ -24,6 +24,22 @@ import { Icon } from '@/components/common'
 import { VISIBLE_SSO_PROVIDERS, type SsoProvider } from '../config/authConfig'
 
 interface SsoRowProps {
+  /**
+   * Offer the sign-in link.
+   *
+   * False on sign-up, and deliberately. The flow signs you into an account
+   * that already exists — frame 34's own copy is "The link signs you straight
+   * in" — so on the account-creation screen it has nothing to sign you into.
+   * Someone with no account clicked it, was told to check their inbox, and
+   * waited for a mail that is never sent, because answering differently for an
+   * unknown address would reveal which addresses are registered.
+   *
+   * Sign-up already has a complete email-and-password path, so nothing is lost.
+   * A registered member who lands on the wrong screen has "Sign In" beneath the
+   * form. Reverse this only alongside passwordless sign-up, which needs a
+   * `created_via` value the payload contract does not yet define.
+   */
+  showEmailLink?: boolean
   onEmailLink?: () => void
   /** The link request is in flight: spinner on that button, the row inert. */
   emailLinkPending?: boolean
@@ -34,8 +50,16 @@ interface SsoRowProps {
   busy?: boolean
 }
 
-export function SsoRow({ onEmailLink, emailLinkPending = false, busy = false }: SsoRowProps) {
-  const providers = VISIBLE_SSO_PROVIDERS
+export function SsoRow({
+  showEmailLink = true,
+  onEmailLink,
+  emailLinkPending = false,
+  busy = false,
+}: SsoRowProps) {
+  const providers = VISIBLE_SSO_PROVIDERS.filter(
+    (p) => p.id !== 'email-link' || showEmailLink,
+  )
+  // With nothing left to show, the divider would introduce an empty space.
   if (providers.length === 0) return null
 
   return (

@@ -34,7 +34,12 @@ import { safeInternalPath } from '../server/routing'
 import { validateSignIn, validateEmail, isClean, type SignInErrors } from '../validation'
 
 /** Which inline error the form is showing, if any. */
-export type LoginError = 'none' | 'account-not-found' | 'wrong-password' | 'account-locked'
+export type LoginError =
+  | 'none'
+  | 'account-not-found'
+  | 'wrong-password'
+  | 'account-locked'
+  | 'no-password'
 
 interface SignInFormProps {
   /** Forces a variant for design review via `?error=`. */
@@ -182,6 +187,22 @@ export function SignInForm({ error = 'none', callbackUrl }: SignInFormProps) {
         {locked && (
           <AuthAlert action={{ label: 'Reset your password', href: '/reset-password' }}>
             Too many failed attempts. We&apos;ve temporarily locked this account for security.
+          </AuthAlert>
+        )}
+
+        {/*
+          The account exists but has no password — it has only ever used a
+          sign-in link. Telling them the password is wrong would be untrue and
+          would send them to change something that does not exist.
+
+          "Set a password" rather than "Reset": they never had one. It is the
+          same screen and the same token either way, because `setPassword`
+          writes a hash whether or not one was there.
+        */}
+        {active === 'no-password' && (
+          <AuthAlert action={{ label: 'Set a password', href: '/reset-password' }}>
+            This account signs in with an email link. Use Email Link above, or set a
+            password to sign in with one.
           </AuthAlert>
         )}
 

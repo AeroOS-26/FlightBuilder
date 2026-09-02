@@ -75,6 +75,27 @@ export class ServiceUnavailableError extends CredentialsSignin {
   code = 'service-unavailable'
 }
 
+/**
+ * The account exists but has no password to check.
+ *
+ * `password_hash` is nullable by design — `verifyPassword` has always said so —
+ * because a member who arrives by magic link never sets one. Before this, that
+ * member typed a password, `verifyPassword` returned false, and they were told
+ * "wrong password": untrue, and it sent them to change something that does not
+ * exist.
+ *
+ * Worse, it ran `registerFailedAttempt` each time. Five tries and they were
+ * locked out of an account they could never have signed into that way — locked
+ * for failing a check with nothing to fail against. This is thrown *before*
+ * that counter, because it is not a failed attempt.
+ *
+ * The way out is Forgot password, which works for them: `setPassword` writes a
+ * hash whether or not one was there, so reset doubles as "set a password".
+ */
+export class NoPasswordSetError extends CredentialsSignin {
+  code = 'no-password'
+}
+
 export const authConfig: NextAuthConfig = {
   adapter: PostgresAdapter(pool),
   session: { strategy: 'jwt', maxAge: 30 * 24 * 60 * 60 },
@@ -111,6 +132,9 @@ export const authConfig: NextAuthConfig = {
 
         // Checked before the password so a locked account cannot be probed.
         if (isLocked(member)) throw new AccountLockedError()
+
+        // Before the attempt counter — see NoPasswordSetError.
+        if (!member.password_hash) throw new NoPasswordSetError()
 
         const ok = await verifyPassword(member, password)
         if (!ok) {
