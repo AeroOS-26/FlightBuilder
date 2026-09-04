@@ -16,11 +16,35 @@ import { AuthShell, MembershipCard, SignInForm } from '@/features/auth/component
 import type { LoginError } from '@/features/auth/components'
 import { currentViewer } from '@/features/auth/server/guard'
 import { entryFor, safeInternalPath } from '@/features/auth/server/routing'
+import { MAGIC_LINK_TTL_MINUTES } from '@/features/auth/config/authConfig'
 
+/** Reasons that belong on a field, as frame 32's variants. */
 const ERROR_BY_PARAM: Record<string, LoginError> = {
   'not-found': 'account-not-found',
   'wrong-password': 'wrong-password',
   locked: 'account-locked',
+  'no-password': 'no-password',
+}
+
+/**
+ * Reasons that belong to the page rather than to a field.
+ *
+ * A link that has been used or has expired is not a mistake in what someone
+ * typed, so it has no field to attach to. Without these the redirect landed on
+ * an ordinary sign-in form carrying `?error=invalid-link` in the URL and saying
+ * nothing at all — the person is simply told to sign in again, with no idea
+ * their link was the problem.
+ *
+ * The expiry figure comes from the same constant the emails and frame 34 use,
+ * so the three cannot drift.
+ */
+const NOTICE_BY_PARAM: Record<string, string> = {
+  'invalid-link':
+    'That sign-in link has already been used. Links work once — request a new one below.',
+  'link-expired': `That sign-in link has expired. Links last ${MAGIC_LINK_TTL_MINUTES} minutes — request a new one below.`,
+  'link-email-invalid': 'Enter a valid email address and we’ll send you a sign-in link.',
+  'service-unavailable':
+    'We couldn’t reach our systems just then. Please try again in a moment.',
 }
 
 export default async function SignInPage({
@@ -56,6 +80,7 @@ export default async function SignInPage({
     >
       <SignInForm
         error={(reason && ERROR_BY_PARAM[reason]) || 'none'}
+        notice={(reason && NOTICE_BY_PARAM[reason]) || undefined}
         callbackUrl={callbackUrl}
       />
     </AuthShell>

@@ -3,10 +3,10 @@
  *
  * Same card object as frame 36 with reset copy and a 60-minute lifetime.
  *
- * CONFIRM: the frame's primary reads "Resend verification link" on what is a
- * password-reset screen. Raised with the client as a copy defect; the frame text
- * is reproduced here verbatim until they confirm, so the fidelity pass matches
- * the file. Expected correction: "Resend reset link".
+ * The frame's primary read "Resend verification link" on what is a
+ * password-reset screen. Raised with the client as a copy defect and confirmed
+ * by them on 2026-09-02, so it now reads "Resend reset link". The Figma frame
+ * still carries the old string; the client is correcting it.
  */
 
 import { AuthShell, MembershipCard, AuthResultCard, ResendAction } from '@/features/auth/components'
@@ -44,7 +44,7 @@ export default async function ResetLinkSentPage({
           <ResendAction
             kind="reset"
             email={address}
-            label="Resend verification link"
+            label="Resend reset link"
             successMessage={`Reset link sent again to ${address}.`}
           />
         }

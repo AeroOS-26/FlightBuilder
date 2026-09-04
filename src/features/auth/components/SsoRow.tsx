@@ -40,7 +40,24 @@ interface SsoRowProps {
    * `created_via` value the payload contract does not yet define.
    */
   showEmailLink?: boolean
-  onEmailLink?: () => void
+  /**
+   * Where "Email Link" goes. Renders as a real anchor rather than a button.
+   *
+   * This is the fix for a defect the client measured at 4 working clicks in 11.
+   * The control was a `type="button"` with only an `onClick`, which is inert
+   * until React hydrates — a click in that window did nothing at all, silently.
+   *
+   * Making it a submit button with `formAction` was not enough: with scripts
+   * disabled the native post works, but once React's runtime has loaded its root
+   * listener catches the submit, calls preventDefault, and never replays it if
+   * the component is not yet interactive. Measured 4 in 25 with real clicks.
+   *
+   * An anchor sidesteps the race rather than trying to win it. Navigation is the
+   * browser's job and React does not intercept it, so the control works before
+   * scripts load, during hydration, and after. It always did for the "Trouble
+   * signing in?" link in the footer, which points at the same screen.
+   */
+  emailLinkHref?: string
   /** The link request is in flight: spinner on that button, the row inert. */
   emailLinkPending?: boolean
   /**
@@ -52,7 +69,7 @@ interface SsoRowProps {
 
 export function SsoRow({
   showEmailLink = true,
-  onEmailLink,
+  emailLinkHref,
   emailLinkPending = false,
   busy = false,
 }: SsoRowProps) {
@@ -72,7 +89,7 @@ export function SsoRow({
           <SsoButton
             key={p.id}
             provider={p}
-            onClick={p.id === 'email-link' ? onEmailLink : undefined}
+            href={p.id === 'email-link' ? emailLinkHref : undefined}
             loading={p.id === 'email-link' && emailLinkPending}
             busy={busy || emailLinkPending}
           />
@@ -81,7 +98,13 @@ export function SsoRow({
       <div className="flex items-center gap-[15.75px]">
         <span className="h-px flex-1 bg-[#EAEAEA]" />
         <span className="whitespace-nowrap font-sans text-[12px] font-medium leading-[1.33] text-black/50">
-          or continue with
+          {/*
+            Was "or continue with", which made sense when Google and Apple sat
+            above it. With those gone the only thing above is the sign-in link
+            and the only thing below is the password form, so the old wording
+            introduced the wrong half of the screen.
+          */}
+          or sign in with your password
         </span>
         <span className="h-px flex-1 bg-[#EAEAEA]" />
       </div>
@@ -91,44 +114,31 @@ export function SsoRow({
 
 function SsoButton({
   provider,
-  onClick,
+  href,
   loading = false,
   busy = false,
 }: {
   provider: SsoProvider
-  onClick?: () => void
+  href?: string
   loading?: boolean
   busy?: boolean
 }) {
-  // Out of scope, mid-request, or something else on the page is working.
   const disabled = !provider.enabled || busy
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      aria-busy={loading || undefined}
-      // "Coming soon" belongs only to a provider that is genuinely out of
-      // scope. A button disabled because a request is in flight is not coming
-      // soon, it is happening now.
-      title={!provider.enabled ? 'Coming soon' : undefined}
-      className={cn(
-        // 40 tall, #98C3E1 hairline on a 20%-opacity wash, radius 12 — per the frame.
-        'flex h-10 items-center justify-center gap-2 rounded-[12px] border border-[#98C3E1] bg-[#CFE3F1]/20',
-        'py-[10px] font-sans text-[14px] font-medium leading-[1.14] text-black transition-colors',
-        // The frame's 14/18 padding overflows the 376-wide mobile card and wraps
-        // "Email Link" onto two lines; the artboard keeps all three on one line.
-        'px-2 lg:pl-[14px] lg:pr-[18px]',
-        'whitespace-nowrap',
-        // Relative so the spinner can sit over the label rather than beside it,
-        // which would change the button's width mid-request.
-        'relative',
-        disabled ? 'cursor-not-allowed' : 'hover:bg-[#CFE3F1]/40',
-        // A loading button is disabled but must not look unavailable — it is
-        // the one thing on the screen that IS doing something.
-        disabled && !loading && 'opacity-45',
-      )}
-    >
+
+  // 40 tall, #98C3E1 hairline on a 20%-opacity wash, radius 12 — per the frame.
+  // The frame's 14/18 padding overflows the 376-wide mobile card and wraps
+  // "Email Link" onto two lines; the artboard keeps all three on one line.
+  const shell = cn(
+    'flex h-10 items-center justify-center gap-2 rounded-[12px] border border-[#98C3E1] bg-[#CFE3F1]/20',
+    'py-[10px] font-sans text-[14px] font-medium leading-[1.14] text-black transition-colors',
+    'px-2 lg:pl-[14px] lg:pr-[18px]',
+    'whitespace-nowrap relative no-underline',
+    disabled ? 'cursor-not-allowed' : 'hover:bg-[#CFE3F1]/40',
+    disabled && !loading && 'opacity-45',
+  )
+
+  const inner = (
+    <>
       {loading && (
         <span
           className="absolute h-4 w-4 animate-spin rounded-full border-2 border-current/30 border-t-current"
@@ -139,9 +149,40 @@ function SsoButton({
         <ProviderMark id={provider.id} />
         <span>{provider.label}</span>
       </span>
-      {/* Announced rather than drawn: the spinner is aria-hidden, so without
-          this a screen-reader user gets silence while the request runs. */}
-      {loading && <span className="sr-only">Sending sign-in link…</span>}
+    </>
+  )
+
+  /*
+    An anchor when it has somewhere to go. Navigation is the browser's job, so
+    this works before scripts load, during hydration and after — which a button
+    with an onClick does not. See `emailLinkHref` for the measurements.
+
+    `aria-disabled` rather than `disabled`, which anchors do not support; the
+    click is also stopped so a busy row cannot be navigated out of.
+  */
+  if (href) {
+    return (
+      <a
+        href={href}
+        aria-disabled={disabled || undefined}
+        onClick={disabled ? (e) => e.preventDefault() : undefined}
+        className={cn(shell, 'focus-ring')}
+      >
+        {inner}
+      </a>
+    )
+  }
+
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      // "Coming soon" belongs only to a provider that is genuinely out of
+      // scope, never to one that is merely busy.
+      title={!provider.enabled ? 'Coming soon' : undefined}
+      className={shell}
+    >
+      {inner}
     </button>
   )
 }

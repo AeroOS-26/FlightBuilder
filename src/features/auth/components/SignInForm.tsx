@@ -44,6 +44,12 @@ export type LoginError =
 interface SignInFormProps {
   /** Forces a variant for design review via `?error=`. */
   error?: LoginError
+  /**
+   * A page-level message from the server, for reasons that have no field —
+   * a used or expired sign-in link, for instance. Seeds the notice; a live
+   * submit replaces it.
+   */
+  notice?: string
   /** Where to land after a successful sign-in, from `?callbackUrl=`. */
   callbackUrl?: string
 }
@@ -59,57 +65,25 @@ function FieldLabel({ htmlFor, children }: { htmlFor: string; children: string }
   )
 }
 
-export function SignInForm({ error = 'none', callbackUrl }: SignInFormProps) {
+export function SignInForm({ error = 'none', notice: initialNotice, callbackUrl }: SignInFormProps) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [fieldErrors, setFieldErrors] = useState<SignInErrors>({})
   const [serverError, setServerError] = useState<LoginError>('none')
-  const [notice, setNotice] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(initialNotice ?? null)
   const [pending, setPending] = useState(false)
 
   /**
-   * "Email Link" — the magic-link flow.
+   * Where "Email Link" points. The request screen at /magic-link does the
+   * sending; this only carries the address across so it arrives prefilled.
    *
-   * It reads the email already typed above rather than opening a second screen
-   * to ask for it again: the field is right there, and on this screen the
-   * member has usually filled it before noticing the button. The password is
-   * deliberately ignored — possession of the inbox is the whole proof.
-   *
-   * The response is identical for a known and an unknown address, so this
-   * always lands on frame 34. See the route for why.
+   * The previous design sent from here with a fetch, which is why the control
+   * was a button — and why it was dead until React hydrated. See `emailLinkHref`
+   * in SsoRow for what that cost.
    */
-  const [linkPending, setLinkPending] = useState(false)
-
-  async function handleEmailLink() {
-    if (linkPending) return
-    const invalid = validateEmail(email)
-    if (invalid) {
-      setFieldErrors((prev) => ({ ...prev, email: invalid }))
-      return
-    }
-    setLinkPending(true)
-    try {
-      const res = await fetch('/api/magic-link', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
-      })
-      if (!res.ok) {
-        const body = (await res.json().catch(() => null)) as { message?: string } | null
-        setFieldErrors((prev) => ({
-          ...prev,
-          email: body?.message ?? 'We couldn’t send that link. Please try again.',
-        }))
-        return
-      }
-      window.location.href = `/magic-link/sent?email=${encodeURIComponent(email)}`
-    } catch {
-      setFieldErrors((prev) => ({ ...prev, email: 'Network error. Please try again.' }))
-    } finally {
-      setLinkPending(false)
-    }
-  }
-
+  const magicLinkHref = email.trim()
+    ? `/magic-link?email=${encodeURIComponent(email.trim())}`
+    : '/magic-link'
 
   // A live submit takes precedence over the review parameter.
   const active: LoginError = serverError !== 'none' ? serverError : error
@@ -121,7 +95,6 @@ export function SignInForm({ error = 'none', callbackUrl }: SignInFormProps) {
     setNotice(null)
     setServerError('none')
 
-    if (linkPending) return
     const errors = validateSignIn({ email, password })
     setFieldErrors(errors)
     if (!isClean(errors)) return
@@ -181,7 +154,12 @@ export function SignInForm({ error = 'none', callbackUrl }: SignInFormProps) {
         </p>
       </header>
 
-      <SsoRow onEmailLink={handleEmailLink} emailLinkPending={linkPending} busy={pending} />
+      {/*
+        A link, not a button. Carries whatever has been typed so the request
+        screen arrives prefilled; before hydration the href is the bare path,
+        which still works — one field to fill rather than a dead control.
+      */}
+      <SsoRow emailLinkHref={magicLinkHref} busy={pending} />
 
       <div className="flex flex-col items-center gap-[22px]">
         {locked && (
@@ -214,7 +192,6 @@ export function SignInForm({ error = 'none', callbackUrl }: SignInFormProps) {
             <TextInput
               id="signin-email"
               type="email"
-              disabled={linkPending}
               name="email"
               autoComplete="email"
               placeholder="you@example.com"
@@ -283,7 +260,7 @@ export function SignInForm({ error = 'none', callbackUrl }: SignInFormProps) {
       <div className="flex flex-col items-center gap-[18px]">
         <button
           type="submit"
-          disabled={pending || linkPending || locked}
+          disabled={pending || locked}
           className="flex h-10 w-full items-center justify-center rounded-[12px] bg-black px-[14px] py-[10px] font-sans text-[14px] font-medium leading-[1.14] text-white transition-colors hover:bg-[#101114] disabled:opacity-60"
         >
           {pending ? 'Signing in…' : 'Sign In'}

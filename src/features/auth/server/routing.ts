@@ -93,6 +93,11 @@ export function isPublicPath(pathname: string): boolean {
     pathname.startsWith('/verify-email') ||
     pathname.startsWith('/magic-link') ||
     pathname.startsWith('/reset-password') ||
-    pathname.startsWith('/welcome')
+    pathname.startsWith('/welcome') ||
+    // Public content. Sign-up asks people to agree to two of these, so they
+    // cannot sit behind the thing they are a precondition for.
+    pathname.startsWith('/terms') ||
+    pathname.startsWith('/privacy') ||
+    pathname.startsWith('/support')
   )
 }

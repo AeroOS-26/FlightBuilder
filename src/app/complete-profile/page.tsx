@@ -17,7 +17,7 @@ import {
   CompleteProfileForm,
 } from '@/features/onboarding/components'
 import { requireVerifiedViewer } from '@/features/auth/server/guard'
-import { memberPhone } from '@/features/auth/server/profile'
+import { memberContact } from '@/features/auth/server/profile'
 
 export default async function CompleteProfilePage({
   searchParams,
@@ -27,14 +27,24 @@ export default async function CompleteProfilePage({
   const { name } = await searchParams
   // Protected: an anonymous visitor is sent to sign-in and returned here after.
   const viewer = await requireVerifiedViewer('/complete-profile')
-  const memberName = name || viewer.email
-  // Show the number already on file, so returning to this screen does not look
-  // like it was never saved.
-  const phone = await memberPhone(viewer.id)
+  /**
+   * Two different questions, which used to share one answer.
+   *
+   * The nav needs *something* to address the member by, so falling back to the
+   * address is right there. The form's "Full name" field is asking them to
+   * supply a name — prefilling it with their email address answers the question
+   * with the wrong thing, and looks like a value they chose. It must start
+   * empty when we do not have a name.
+   */
+  // Name and phone as stored, so returning to this screen does not look like
+  // nothing was saved.
+  const stored = await memberContact(viewer.id)
+  const displayName = name || stored.name || viewer.email
+  const knownName = name || stored.name
 
   return (
     <div className="flex min-h-screen flex-col bg-[#EFF1F5]">
-      <MemberNav name={memberName} email={viewer.email} />
+      <MemberNav name={displayName} email={viewer.email} />
 
       <main className="flex-1 px-4 py-8 lg:py-[50px]">
         <div className="mx-auto flex w-full max-w-[804px] flex-col gap-[30px]">
@@ -57,7 +67,7 @@ export default async function CompleteProfilePage({
             <OnboardingStepper current={1} />
           </header>
 
-          <CompleteProfileForm memberName={memberName} memberPhone={phone} />
+          <CompleteProfileForm memberName={knownName} memberPhone={stored.phone} />
         </div>
       </main>
 

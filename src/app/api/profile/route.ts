@@ -19,7 +19,7 @@ import {
   saveProfile,
   updateMemberName,
   updateMemberPhone,
-  memberPhone,
+  memberContact,
 } from '@/features/auth/server/profile'
 import type { Pet, Traveler } from '@/types'
 
@@ -30,7 +30,7 @@ export async function GET() {
   const profile = await getProfile(viewer.id)
   // The phone lives on `users`, not `member_profile`, so it is returned
   // alongside rather than inside the profile object.
-  const phone = await memberPhone(viewer.id)
+  const { phone } = await memberContact(viewer.id)
   return NextResponse.json({ profile, phone }, { status: 200 })
 }
 

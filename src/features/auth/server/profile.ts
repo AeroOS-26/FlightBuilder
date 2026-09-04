@@ -120,10 +120,23 @@ export async function updateMemberName(userId: string, name: string): Promise<vo
  * Unlike `updateMemberName` this does not return early on a blank value:
  * clearing the field is a legitimate edit and must reach the database.
  */
-/** The stored phone, so frame 31 can show what the member already gave us. */
-export async function memberPhone(userId: string): Promise<string> {
-  const { rows } = await pool.query(`SELECT phone FROM users WHERE id = $1`, [Number(userId)])
-  return (rows[0]?.phone as string | null | undefined) ?? ''
+/**
+ * Name and phone as stored, so frame 31 shows what the member already gave us.
+ *
+ * Both in one read: they are wanted together, on the same screen, and a second
+ * round trip buys nothing. Empty strings rather than null so the form's
+ * controlled inputs stay controlled.
+ */
+export async function memberContact(
+  userId: string,
+): Promise<{ name: string; phone: string }> {
+  const { rows } = await pool.query(`SELECT name, phone FROM users WHERE id = $1`, [
+    Number(userId),
+  ])
+  return {
+    name: (rows[0]?.name as string | null | undefined) ?? '',
+    phone: (rows[0]?.phone as string | null | undefined) ?? '',
+  }
 }
 
 export async function updateMemberPhone(userId: string, phone: string): Promise<void> {

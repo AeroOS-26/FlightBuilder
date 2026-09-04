@@ -16,7 +16,9 @@ export default function ResetPasswordPage() {
       heroCard={<MembershipCard />}
       footerNote={
         <span className="text-black">
-          By creating an account, you agree to our{' '}
+          {/* Was "By creating an account…", reused from sign-up. Nobody is
+              creating an account on a password-reset screen. */}
+          By continuing, you agree to our{' '}
           <a href="/terms" className="underline underline-offset-2">
             Terms of Service
           </a>{' '}

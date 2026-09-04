@@ -34,24 +34,79 @@ import { buildAccountCreated, emitAccountCreated } from '@/features/auth/server/
 import { validateEmail } from '@/features/auth/validation'
 import { appUrl } from '@/config/appUrl'
 
+/**
+ * Request a link.
+ *
+ * Accepts **two** encodings, and that is the fix for a real defect rather than
+ * a convenience.
+ *
+ *  - `application/json`, from the sign-in form's fetch. Answers with JSON.
+ *  - `application/x-www-form-urlencoded`, from a **native browser form
+ *    submission**. Answers with a 303 redirect.
+ *
+ * The second exists because "Email Link" used to be a `type="button"` carrying
+ * only an `onClick`. Before React hydrates, such a button is inert and a click
+ * does nothing whatsoever — no error, no navigation, no request. The client
+ * measured 4 working clicks in 11; clicking the instant the button appears
+ * loses 11 in 11. Sign In never showed this because it is a submit button
+ * inside a form, and native form submission does not need JavaScript.
+ *
+ * So the button is now a submit button too, pointed here with `formAction`. It
+ * works before hydration because the browser posts the form itself, and after
+ * hydration the fetch path takes over for the nicer inline experience. There is
+ * no window in which the control is dead.
+ */
 export async function POST(request: Request) {
+  const contentType = request.headers.get('content-type') ?? ''
+  const isFormPost =
+    contentType.includes('application/x-www-form-urlencoded') ||
+    contentType.includes('multipart/form-data')
+
+  /**
+   * A browser that posted a form needs a page, not JSON.
+   *
+   * Resolved against `request.url`, not `appUrl()`. `appUrl()` reads
+   * `NEXT_PUBLIC_APP_URL`, which Next inlines at **build** time — so a redirect
+   * built from it points wherever the bundle was compiled, not where the
+   * request actually arrived. A preview deployment would send people to the
+   * production host, or to localhost. A redirect belongs on the origin that
+   * received the request; `appUrl()` stays for the emailed link, which must be
+   * absolute and canonical.
+   */
+  const back = (params: string) =>
+    NextResponse.redirect(new URL(`/signin?${params}`, request.url), 303)
+
   if (!isDatabaseConfigured()) {
-    return NextResponse.json({ message: 'Accounts are not configured.' }, { status: 503 })
+    return isFormPost
+      ? back('error=CredentialsSignin&code=service-unavailable')
+      : NextResponse.json({ message: 'Accounts are not configured.' }, { status: 503 })
   }
 
-  const body = (await request.json().catch(() => null)) as { email?: unknown } | null
-  const email = typeof body?.email === 'string' ? body.email.trim() : ''
+  let email = ''
+  if (isFormPost) {
+    const form = await request.formData().catch(() => null)
+    email = typeof form?.get('email') === 'string' ? String(form.get('email')).trim() : ''
+  } else {
+    const body = (await request.json().catch(() => null)) as { email?: unknown } | null
+    email = typeof body?.email === 'string' ? body.email.trim() : ''
+  }
 
   // A malformed address is the caller's mistake and worth saying so — it leaks
   // nothing, because it is decidable without looking anyone up.
   const invalid = validateEmail(email)
-  if (invalid) return NextResponse.json({ message: invalid }, { status: 422 })
+  if (invalid) {
+    return isFormPost
+      ? back(`error=link-email-invalid&email=${encodeURIComponent(email)}`)
+      : NextResponse.json({ message: invalid }, { status: 422 })
+  }
 
   if (!isEmailConfigured()) {
-    return NextResponse.json(
-      { success: false, code: 'email-not-configured', message: 'Email delivery is not configured yet.' },
-      { status: 503 },
-    )
+    return isFormPost
+      ? back('error=CredentialsSignin&code=service-unavailable')
+      : NextResponse.json(
+          { success: false, code: 'email-not-configured', message: 'Email delivery is not configured yet.' },
+          { status: 503 },
+        )
   }
 
   const member = await findByEmail(email)
@@ -63,11 +118,19 @@ export async function POST(request: Request) {
     )}&email=${encodeURIComponent(email)}`
     const sent = await sendMagicLinkEmail(email, url, member.name ?? undefined)
     if (!sent.ok) {
-      return NextResponse.json({ success: false, message: sent.message }, { status: 502 })
+      return isFormPost
+        ? back('error=CredentialsSignin&code=service-unavailable')
+        : NextResponse.json({ success: false, message: sent.message }, { status: 502 })
     }
   }
 
-  return NextResponse.json({ success: true }, { status: 200 })
+  // 303 so the browser follows with GET; a 302 after POST is ambiguous.
+  return isFormPost
+    ? NextResponse.redirect(
+        new URL(`/magic-link/sent?email=${encodeURIComponent(email)}`, request.url),
+        303,
+      )
+    : NextResponse.json({ success: true }, { status: 200 })
 }
 
 /**
@@ -86,8 +149,9 @@ export async function GET(request: Request) {
   const url = new URL(request.url)
   const token = url.searchParams.get('token') ?? ''
   const email = url.searchParams.get('email') ?? ''
+  // Request-relative for the same reason as `back` above.
   const fail = (code: string) =>
-    NextResponse.redirect(new URL(`/signin?error=${code}`, appUrl()))
+    NextResponse.redirect(new URL(`/signin?error=${code}`, request.url))
 
   if (!isDatabaseConfigured()) return fail('service-unavailable')
   if (!token || !email) return fail('invalid-link')
@@ -136,5 +200,5 @@ export async function GET(request: Request) {
   }
 
   // `/` is the entry router — it decides where this member belongs.
-  return NextResponse.redirect(new URL('/', appUrl()))
+  return NextResponse.redirect(new URL('/', request.url))
 }
