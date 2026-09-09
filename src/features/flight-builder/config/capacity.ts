@@ -19,3 +19,10 @@ export const SPACES_ESTIMATE = 6
 
 /** Hard cap on travelers a founder can add. */
 export const MAX_TRAVELERS = 12
+
+/**
+ * Pets a single traveller may bring. The party cap is this times the traveller
+ * count, so it moves with the seats rather than being a flat number.
+ * Client, 2026-09-09.
+ */
+export const MAX_PETS_PER_TRAVELER = 3

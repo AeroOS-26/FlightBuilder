@@ -9,6 +9,7 @@
  */
 
 import { isPastDate } from '@/utils/date'
+import { MAX_PETS_PER_TRAVELER } from '../config/capacity'
 import type { DateSelection, FlightDraft, Pet, RouteSelection, StepId, Traveler } from '@/types'
 
 /* ------------------------------------------------------------------ Route */
@@ -113,6 +114,8 @@ export interface PetsErrors {
   travelers: Record<string, string>
   pets: Record<string, PetFieldErrors>
   readiness?: string
+  /** Breach of the three-pets-per-traveller cap. */
+  petCount?: string
 }
 
 /**
@@ -143,7 +146,10 @@ export function validateTravelersAndPets(input: TravelerPetInput): PetsErrors {
   if (input.petsEnabled) {
     for (const p of input.pets) {
       const fieldErrors: PetFieldErrors = {}
-      if (p.name.trim().length === 0) fieldErrors.name = 'Pet name is required.'
+      // Name is deliberately NOT required: nothing operational depends on it.
+      // Type and weight are, because the operator prepares the cabin from them
+      // — a cat needs a carrier, a dog a blanket — and weight can change the
+      // aircraft or the price. Client, 2026-09-09.
       if (p.type.trim().length === 0) fieldErrors.type = 'Pet type is required.'
       if (p.breed.trim().length === 0) fieldErrors.breed = 'Breed is required.'
       if (p.weight.trim().length === 0) fieldErrors.weight = 'Weight is required.'
@@ -152,6 +158,14 @@ export function validateTravelersAndPets(input: TravelerPetInput): PetsErrors {
     }
   }
 
+  // Three pets per traveller, so the cap rises with the party rather than
+  // being a flat number. Client, 2026-09-09.
+  const petCap = Math.max(1, input.travelers.length) * MAX_PETS_PER_TRAVELER
+  const petCount =
+    input.petsEnabled && input.pets.length > petCap
+      ? `Up to ${MAX_PETS_PER_TRAVELER} pets per traveller — that is ${petCap} for this party.`
+      : undefined
+
   const petsPresent = input.petsEnabled && input.pets.length > 0
   const readiness =
     petsPresent && !input.readinessAccepted
@@ -159,13 +173,17 @@ export function validateTravelersAndPets(input: TravelerPetInput): PetsErrors {
       : undefined
 
   const hasAny =
-    Object.keys(travelers).length > 0 || Object.keys(pets).length > 0 || Boolean(readiness)
+    Object.keys(travelers).length > 0 ||
+    Object.keys(pets).length > 0 ||
+    Boolean(readiness) ||
+    Boolean(petCount)
 
   return {
     banner: hasAny ? 'Please complete the highlighted fields before continuing.' : undefined,
     travelers,
     pets,
     readiness,
+    petCount,
   }
 }
 

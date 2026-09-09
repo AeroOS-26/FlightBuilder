@@ -12,7 +12,7 @@
 
 import type { ReactNode } from 'react'
 import { InfoNote } from '@/components/ui'
-import { Icon } from '@/components/common'
+import { Icon, PawPrints } from '@/components/common'
 import { env } from '@/config/env'
 import { SidePanel } from '@/features/flight-builder/components'
 import { cn } from '@/utils/cn'
@@ -21,20 +21,41 @@ import type { PublicView } from '@/types'
 
 /* ------------------------------------------------------------- state tone */
 
-type BannerTone = 'forming' | 'filling' | 'full'
+/**
+ * Display tone. Wider than `PublicFlightState` because the contract has one
+ * `closed` while the frames draw two — a group that flew (Completed) and one
+ * that never filled (Unfilled). Which applies is derived from whether capacity
+ * was reached, so no contract change is needed.
+ */
+type BannerTone =
+  | 'forming'
+  | 'filling'
+  | 'full'
+  | 'quoting'
+  | 'confirmed'
+  | 'completed'
+  | 'unfilled'
 
 const bannerToneClass: Record<BannerTone, string> = {
   // Forming = blue, Filling = amber (distinct so the two states don't look alike),
-  // Group Full = green.
+  // Group Full / Confirmed / Completed = green, Unfilled = the danger red.
   forming: 'from-[#EAF1FB] to-[#F5F9FE] border-[#CFE3F1]',
   filling: 'from-[#FDF3E1] to-[#FEF9F0] border-[#F5DCA8]',
   full: 'from-[#E6F5EC] to-[#F4FBF6] border-[#B7E3C7]',
+  quoting: 'from-[#EAF1FB] to-[#F5F9FE] border-[#CFE3F1]',
+  confirmed: 'from-[#E8F5EE] to-[#F6FCF9] border-[#B7E3C7]',
+  completed: 'from-[#E8F5EE] to-[#F6FCF9] border-[#B7E3C7]',
+  unfilled: 'from-[#FCECED] to-[#FEFBFB] border-[#F8CED0]',
 }
 
 const badgeToneClass: Record<BannerTone, string> = {
   forming: 'border-[#98C3E1] bg-[#CFE3F1]/40 text-[#112D7C]',
   filling: 'border-[#E4B45A] bg-[#FBE9C7]/50 text-[#946400]',
   full: 'border-[#1AA35A]/40 bg-[#1AA35A]/10 text-[#1AA35A]',
+  quoting: 'border-[#98C3E1] bg-[#CFE3F1]/40 text-[#112D7C]',
+  confirmed: 'border-[#84EBB4] bg-[#1FC16B]/10 text-[#109A51]',
+  completed: 'border-[#84EBB4] bg-[#1FC16B]/10 text-[#109A51]',
+  unfilled: 'border-[#F8CED0] bg-[#F8CED0]/50 text-[#D00416]',
 }
 
 /** Eyebrow "Shared flight · State" tint per state. */
@@ -42,13 +63,27 @@ const eyebrowToneClass: Record<BannerTone, string> = {
   forming: 'text-[#112D7C]/70',
   filling: 'text-[#946400]/80',
   full: 'text-[#1AA35A]',
+  quoting: 'text-[#112D7C]',
+  confirmed: 'text-[#109A51]',
+  completed: 'text-[#109A51]',
+  unfilled: 'text-[#D00416]',
 }
 
 const stateLabel: Record<BannerTone, string> = {
   forming: 'Forming',
   filling: 'Filling',
   full: 'Group Full',
+  quoting: 'Quoting',
+  confirmed: 'Confirmed',
+  completed: 'Closed · Completed',
+  unfilled: 'Closed · Unfilled',
 }
+
+export type { BannerTone }
+
+/** State pill. Rendered twice — inline on mobile, top-right from lg. */
+const badgeClass =
+  'inline-flex h-[30px] shrink-0 items-center rounded-full border px-[10px] font-sans text-[12px] font-medium uppercase leading-none lg:h-[34px] lg:text-[14px]'
 
 const cardClass = 'rounded-[20px] border border-[#A8A8A8]/20 bg-white p-5'
 const eyebrowClass =
@@ -56,18 +91,27 @@ const eyebrowClass =
 
 /* ------------------------------------------------------------- hero banner */
 
-export function FlightHeroBanner({ flight }: { flight: PublicView }) {
+export function FlightHeroBanner({
+  flight,
+  tone: toneOverride,
+  subline,
+}: {
+  flight: PublicView
+  /** Forces a tone the contract cannot express — the two Closed variants. */
+  tone?: BannerTone
+  /** Replaces the date · aircraft · pets line, which the terminal states do. */
+  subline?: ReactNode
+}) {
   const tone: BannerTone =
-    flight.group_state_public === 'full' ? 'full' : (flight.group_state_public as BannerTone)
+    toneOverride ??
+    (flight.group_state_public === 'full' ? 'full' : (flight.group_state_public as BannerTone))
   const from = metroLabel(flight.route_origin_city)
   const to = metroLabel(flight.route_destination_city)
-  const meta = [
+  const metaParts = [
     formatDateRange(flight.estimated_date_range),
+    // Aircraft is absent until a quote comes back — client, 2026-09-09.
     flight.aircraft_category,
-    flight.pet_friendly ? 'Pets welcome' : null,
-  ]
-    .filter(Boolean)
-    .join(' · ')
+  ].filter(Boolean)
 
   return (
     <div
@@ -77,26 +121,59 @@ export function FlightHeroBanner({ flight }: { flight: PublicView }) {
       )}
     >
       <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <p className={cn(eyebrowClass, eyebrowToneClass[tone])}>
             Shared flight · {stateLabel[tone]}
           </p>
-          <h1 className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 font-heading text-[22px] font-medium leading-tight text-[#000000] lg:text-[28px]">
-            <span>{from}</span>
-            <img src="/svg/soFar.svg" alt="to" className="size-[20px] shrink-0" />
-            <span>{to}</span>
+          {/* The route stays on ONE line at every width, as the hi-fi shows it.
+              It scales with the viewport rather than wrapping, so a long city
+              pair shrinks to fit instead of breaking onto a second line. */}
+          <h1 className="mt-1.5 flex flex-nowrap items-center gap-x-3 font-heading text-[clamp(1rem,4.6vw,1.375rem)] font-medium leading-tight text-[#000000] lg:text-[28px]">
+            <span className="whitespace-nowrap">{from}</span>
+            <img
+              src="/svg/soFar.svg"
+              alt="to"
+              className="size-[clamp(1rem,4vw,1.25rem)] shrink-0"
+            />
+            <span className="whitespace-nowrap">{to}</span>
           </h1>
-          <p className="mt-1.5 font-sans text-[13px] font-medium text-[#000000]/70 lg:text-[14px]">
-            {meta}
-          </p>
+          {/* On mobile the state pill sits at the end of this line, per the
+              mobile frames; from lg it moves to the banner's top-right. */}
+          {/* The pill is pinned to the right of this line and stays there. No
+              `flex-wrap`: the text column shrinks and wraps inside itself
+              (`min-w-0`) while the pill holds its place (`shrink-0`), so a long
+              date range never pushes it onto a line of its own. */}
+          <div className="mt-1.5 flex items-center justify-between gap-x-3">
+            <p className="min-w-0 font-sans text-[13px] font-medium text-[#000000]/70 lg:text-[14px]">
+              {subline ?? (
+                <>
+              {metaParts.join(' · ')}
+              {flight.pet_friendly && (
+                <>
+                  {' · '}
+                  {/* Sized to the copy beside it, not larger — the frames set
+                      the paw at roughly the text size. */}
+                  <span className="inline-flex items-center gap-2 align-middle">
+                    Pets welcome
+                    <PawPrints height={13} />
+                  </span>
+                </>
+              )}
+                </>
+              )}
+            </p>
+            {/* Visibility lives on a wrapper, not merged into the badge's own
+                classes: `cn` is a plain join with no tailwind-merge, so a
+                `hidden` next to the badge's `inline-flex` does not win. */}
+            <span className="shrink-0 lg:hidden">
+              <span className={cn(badgeClass, badgeToneClass[tone])}>
+                {stateLabel[tone]}
+              </span>
+            </span>
+          </div>
         </div>
-        <span
-          className={cn(
-            'inline-flex h-[30px] shrink-0 items-center rounded-full border px-[10px] font-sans text-[12px] font-medium uppercase leading-none lg:h-[34px] lg:text-[14px]',
-            badgeToneClass[tone],
-          )}
-        >
-          {stateLabel[tone]}
+        <span className="hidden lg:block">
+          <span className={cn(badgeClass, badgeToneClass[tone])}>{stateLabel[tone]}</span>
         </span>
       </div>
     </div>
@@ -105,11 +182,19 @@ export function FlightHeroBanner({ flight }: { flight: PublicView }) {
 
 /* --------------------------------------------------------- flight details */
 
+/**
+ * One label/value row.
+ *
+ * The two hi-fi frames align these differently and both are deliberate: mobile
+ * pushes the value to the right edge, desktop starts every value at the same x
+ * in a second column (80px label box + 100px gutter). Matching only one of them
+ * leaves the other looking wrong, so the row switches at `lg`.
+ */
 function DetailRow({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div className="flex items-baseline justify-between gap-4 py-2.5">
-      <span className={cn(eyebrowClass, 'shrink-0')}>{label}</span>
-      <span className="min-w-0 text-right font-sans text-[14px] font-medium text-[#000000] lg:text-[16px]">
+    <div className="flex items-baseline justify-between gap-4 lg:justify-start lg:gap-[100px]">
+      <span className={cn(eyebrowClass, 'shrink-0 lg:w-20')}>{label}</span>
+      <span className="min-w-0 text-right font-sans text-[14px] font-medium text-[#000000] lg:text-left lg:text-[16px]">
         {children}
       </span>
     </div>
@@ -122,9 +207,11 @@ export function FlightDetailsCard({ flight }: { flight: PublicView }) {
   return (
     <section className={cardClass}>
       <h2 className="font-heading text-[18px] font-medium text-[#000000] lg:text-[20px]">
-        Flight details
+        Flight Details
       </h2>
-      <div className="mt-3 divide-y divide-[#A8A8A8]/20">
+      {/* No rules between rows in either frame — the rows are separated by
+          space alone. */}
+      <div className="mt-4 flex flex-col gap-[18px]">
         <DetailRow label="Route">
           <span className="inline-flex items-center gap-2">
             {from}
@@ -132,11 +219,11 @@ export function FlightDetailsCard({ flight }: { flight: PublicView }) {
             {to}
           </span>
         </DetailRow>
-        <DetailRow label="Dates">{formatDateRange(flight.estimated_date_range)}</DetailRow>
+        <DetailRow label="Date">{formatDateRange(flight.estimated_date_range)}</DetailRow>
         <DetailRow label="Aircraft">
-          <span className="flex flex-col items-end gap-1">
+          <span className="flex flex-col items-end gap-1 lg:items-start">
             <span>{aircraftExample(flight.aircraft_category)}</span>
-            <span className="font-sans text-[12px] font-normal leading-[16px] text-[#000000]/55">
+            <span className="text-right font-sans text-[12px] font-normal leading-[16px] text-[#000000]/55 lg:text-left">
               Final aircraft confirmed after the group fills and the operator quote is locked.
             </span>
           </span>
@@ -156,7 +243,7 @@ export function EstimatePendingCard() {
     <section className={cardClass}>
       <p className={eyebrowClass}>Whole-flight cost</p>
       <h2 className="mt-1 font-heading text-[22px] font-medium text-[#000000] lg:text-[24px]">
-        Estimate pending
+        Estimate Pending
       </h2>
       <p className="mt-2 font-sans text-[14px] text-[#000000]/70">
         Our team is reviewing this route. We’ll post an estimate shortly.
@@ -260,9 +347,9 @@ export function WhosFlyingCard({
         ))}
       </ul>
 
-      <p className="mt-3 font-sans text-[13px] text-[#000000]/60">
-        Member details are private. You’ll see the group once you join.
-      </p>
+      {/* <p className="mt-3 font-sans text-[13px] text-[#000000]/60"> */}
+        {/* Member details are private. You’ll see the group once you join. */}
+      {/* </p> */}
 
       {petSummary && (
         <p className="mt-3 font-sans text-[13px] text-[#000000]/70">

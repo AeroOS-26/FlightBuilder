@@ -63,7 +63,7 @@ interface LeadRequestBody {
   name?: unknown
   email?: unknown
   phone?: unknown
-  pet?: unknown
+  pet_count?: unknown
   group_id?: unknown
   /** Honeypot — a real user leaves this empty. */
   company_website?: unknown
@@ -110,12 +110,17 @@ export async function POST(request: Request) {
   const name = typeof body.name === 'string' ? body.name.trim() : ''
   const email = typeof body.email === 'string' ? body.email.trim() : ''
   const phoneRaw = typeof body.phone === 'string' ? body.phone.trim() : ''
-  const petRaw = typeof body.pet === 'string' ? body.pet.trim() : ''
+  // Zero is valid, so this is a presence check on a number rather than a
+  // truthiness check — `!petCount` would silently reject a no-pet lead.
+  const petCount = typeof body.pet_count === 'number' ? body.pet_count : null
   const groupId = typeof body.group_id === 'string' ? body.group_id.trim() : ''
 
   if (!name) return fail('Please enter your name.', 422)
   if (!EMAIL_RE.test(email)) return fail('Please enter a valid email.', 422)
   if (!groupId) return fail('Missing flight reference.', 422)
+  if (petCount === null || !Number.isInteger(petCount) || petCount < 0) {
+    return fail('Please tell us how many pets are travelling.', 422)
+  }
 
   // Resolve the group + its Zoho record ID server-side — the browser never holds
   // it. Live source when configured (same read as the public page), else sample.
@@ -126,7 +131,7 @@ export async function POST(request: Request) {
     source: 'mvp_join_page',
     group_id: resolved.group_id,
     zoho_flight_group_record_id: resolved.zoho_flight_group_record_id,
-    lead: { name, email, phone: phoneRaw || null, pet: petRaw || null },
+    lead: { name, email, phone: phoneRaw || null, pet: null, pet_count: petCount },
   })
 
   const response: InterestLeadResponse = result.success

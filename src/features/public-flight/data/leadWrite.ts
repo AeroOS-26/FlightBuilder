@@ -21,8 +21,18 @@ export interface InterestLeadEvent {
     name: string
     email: string
     phone: string | null
-    /** Optional free-text pet note; null when not provided. */
+    /**
+     * Retained at null. The form no longer collects a free-text note, but the
+     * key stays on the event so a strict upstream cannot reject the payload
+     * while `pet_count` is being mapped on the Zoho side.
+     */
     pet: string | null
+    /**
+     * How many pets are travelling. Zero is an explicit answer, not a blank —
+     * Chuck's pets-flown figure depends on the difference. NEEDS MAPPING on the
+     * Zoho side before it reaches a report.
+     */
+    pet_count: number
   }
 }
 

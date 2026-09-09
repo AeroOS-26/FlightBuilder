@@ -13,6 +13,8 @@
 import { NextResponse } from 'next/server'
 import { serverEnv, isZohoConfigured } from '@/config/serverEnv'
 import { forwardFreshworksContact } from '@/api/services/freshworksContact'
+import { currentViewer } from '@/features/auth/server/guard'
+import { createFlightGroup } from '@/features/group/server/groupStore'
 import type { CreateFlightRelayResponse, FlightGroupCreatedEvent } from '@/types'
 
 /**
@@ -130,6 +132,9 @@ export async function POST(request: Request) {
       success: fn?.success ?? true,
       message: fn?.message ?? envelope?.message,
     }
+
+    await mirrorFlightGroup(payload, result.flight_group_id)
+
     return NextResponse.json(result, { status: 200 })
   } catch (err) {
     const aborted = err instanceof Error && err.name === 'AbortError'
@@ -146,6 +151,40 @@ export async function POST(request: Request) {
     // Ensure the independent Freshworks write finishes before the serverless
     // function returns (it never throws and never changes the response above).
     await freshworksWrite
+  }
+}
+
+/**
+ * Mirror the created group into our own database.
+ *
+ * Runs after Zoho has accepted the flight and never fails the response. Once
+ * Zoho has the record the flight genuinely exists, so a failed mirror must not
+ * tell the member their flight was not created — they would retry and create a
+ * second one. A missing mirror is recoverable; a duplicate in the CRM is not.
+ *
+ * Zoho stays the source of truth. This is what takes it out of the read path.
+ */
+async function mirrorFlightGroup(
+  payload: FlightGroupCreatedEvent,
+  zohoRecordId: string,
+): Promise<void> {
+  try {
+    const viewer = await currentViewer()
+    if (!viewer) return
+
+    await createFlightGroup({
+      flightGroup: payload.flight_group,
+      organizerUserId: viewer.id,
+      // Not a field on the contract: pets ride on members, so the group is
+      // pet-friendly exactly when somebody is bringing one.
+      petFriendly: payload.flight_group.members.some((m) => m.pets.length > 0),
+      zohoRecordId: zohoRecordId || null,
+    })
+  } catch (error) {
+    console.error(
+      `Flight group mirror failed for ${payload.flight_group.group_id}:`,
+      error instanceof Error ? error.message : error,
+    )
   }
 }
 

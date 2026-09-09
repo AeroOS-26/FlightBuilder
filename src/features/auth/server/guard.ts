@@ -99,6 +99,74 @@ export async function requireViewerOrUnauthorized(): Promise<Viewer | Response> 
   return viewer
 }
 
+/* ================================================ MILESTONE 2: GROUP MEMBERSHIP */
+
+/**
+ * Membership record returned from a membership query.
+ *
+ * Minimal type; only what we need for authorization and display.
+ */
+export interface GroupMembership {
+  userId: string
+  groupId: string
+  role: 'group_organizer' | 'joiner'
+  joinedAt: Date
+  status: 'joined' | 'left' | 'cancelled'
+}
+
+/**
+ * Check if a viewer is a member of a group and what role they have.
+ *
+ * Returns the membership record if found, null otherwise.
+ * Used in route guards and API authorization checks.
+ */
+export async function getMembership(
+  groupId: string,
+  userId: string,
+): Promise<GroupMembership | null> {
+  // Import here to avoid circular deps at module load
+  const { pool } = await import('./db')
+
+  try {
+    const result = await pool.query(
+      `SELECT user_id, flight_group_id, role, joined_at, member_status
+       FROM flight_group_member
+       WHERE flight_group_id = $1 AND user_id = $2 AND member_status = 'joined'`,
+      [groupId, userId],
+    )
+
+    if (result.rows.length === 0) return null
+
+    const row = result.rows[0]
+    return {
+      userId: row.user_id.toString(),
+      groupId: row.flight_group_id,
+      role: row.role,
+      joinedAt: row.joined_at,
+      status: row.member_status,
+    }
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Require membership in a group (used in route guards for group detail page).
+ *
+ * Returns a 404 response if the viewer is not a member of this group.
+ * The route handler can then call notFound() or return the response directly.
+ */
+export async function requireGroupMembership(
+  groupId: string,
+  viewer: Viewer,
+): Promise<GroupMembership | Response> {
+  const membership = await getMembership(groupId, viewer.id)
+  if (!membership) {
+    return Response.json({ message: 'Not found.' }, { status: 404 })
+  }
+  return membership
+}
+
 /**
  * Guard a member-scoped record.
  *

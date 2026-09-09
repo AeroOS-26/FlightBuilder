@@ -73,11 +73,12 @@ export interface InterestLeadRequest {
   /** Required. Identifies which flight the person is interested in. */
   group_id: string
   /**
-   * Optional free-text pet note (e.g. "Bella, golden retriever") — the hi-fi's
-   * "Tell us about your pet" field. Context for the manual follow-up, not the
-   * structured pet records. Sent as null (not omitted) when not provided.
+   * How many pets are travelling. Zero is an explicit answer, not a blank —
+   * a no-pet lead recorded as empty is what made the pets-flown figure wrong.
+   * Type and weight are collected at join, not here: this is a lead, nothing is
+   * committed and no aircraft is being sized. Client, 2026-09-09.
    */
-  pet: string | null
+  pet_count: number
 }
 
 /**

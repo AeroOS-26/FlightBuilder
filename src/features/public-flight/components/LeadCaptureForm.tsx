@@ -18,9 +18,10 @@
  */
 
 import { useState } from 'react'
-import { Button, Form, FormField, TextInput, ErrorBanner } from '@/components/ui'
+import { Button, Form, FormField, Select, TextInput, ErrorBanner } from '@/components/ui'
 import { Icon } from '@/components/common'
 import { useSubmitLead } from '../hooks/useSubmitLead'
+import { MAX_PETS_PER_TRAVELER } from '@/features/flight-builder/config/capacity'
 
 const cardClass = 'rounded-[20px] border border-[#A8A8A8]/20 bg-white p-5 lg:p-6'
 
@@ -36,13 +37,31 @@ interface LeadCaptureFormProps {
 interface FieldErrors {
   name?: string
   email?: string
+  petCount?: string
 }
+
+/**
+ * Zero is a real answer here, not a blank.
+ *
+ * Chuck's pets-flown figure is only accurate if a no-pet lead is recorded as an
+ * explicit 0 rather than left empty, so the field is required and starts
+ * unset — the member has to say. Type and weight are NOT collected here: this
+ * is a lead, nothing is committed and no aircraft is being sized, so those come
+ * at join. Client, 2026-09-09.
+ */
+const PET_COUNT_OPTIONS = [
+  { value: '', label: 'Select…' },
+  ...Array.from({ length: MAX_PETS_PER_TRAVELER + 1 }, (_, n) => ({
+    value: String(n),
+    label: n === 0 ? 'No pets' : `${n} ${n === 1 ? 'pet' : 'pets'}`,
+  })),
+]
 
 export function LeadCaptureForm({ groupId, onSuccess }: LeadCaptureFormProps) {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
-  const [pet, setPet] = useState('')
+  const [petCount, setPetCount] = useState('')
   const [honeypot, setHoneypot] = useState('')
   const [errors, setErrors] = useState<FieldErrors>({})
 
@@ -52,6 +71,7 @@ export function LeadCaptureForm({ groupId, onSuccess }: LeadCaptureFormProps) {
     const next: FieldErrors = {}
     if (name.trim().length === 0) next.name = 'Please enter your name.'
     if (!EMAIL_RE.test(email.trim())) next.email = 'Please enter a valid email.'
+    if (petCount === '') next.petCount = 'Please tell us how many pets are travelling.'
     return next
   }
 
@@ -66,7 +86,7 @@ export function LeadCaptureForm({ groupId, onSuccess }: LeadCaptureFormProps) {
         name: name.trim(),
         email: email.trim(),
         phone: phone.trim() ? phone.trim() : null,
-        pet: pet.trim() ? pet.trim() : null,
+        pet_count: Number(petCount),
         group_id: groupId,
         company_website: honeypot,
       })
@@ -153,12 +173,20 @@ export function LeadCaptureForm({ groupId, onSuccess }: LeadCaptureFormProps) {
           />
         </FormField>
 
-        <FormField label="Tell us about your pet (optional)" htmlFor="lead-pet">
-          <TextInput
-            id="lead-pet"
-            placeholder="e.g. Bella, golden retriever"
-            value={pet}
-            onChange={(e) => setPet(e.target.value)}
+        <FormField
+          label="How many pets are travelling with you?"
+          htmlFor="lead-pet-count"
+          error={errors.petCount}
+        >
+          <Select
+            id="lead-pet-count"
+            options={PET_COUNT_OPTIONS}
+            value={petCount}
+            invalid={Boolean(errors.petCount)}
+            onChange={(e) => {
+              setPetCount(e.target.value)
+              if (errors.petCount) setErrors((p) => ({ ...p, petCount: undefined }))
+            }}
           />
         </FormField>
 

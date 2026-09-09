@@ -11,6 +11,7 @@
  */
 
 import { useState, type ReactNode } from 'react'
+import { useRouter } from 'next/navigation'
 import { Logo, Icon } from '@/components/common'
 import { Button } from '@/components/ui'
 import { BrokerDisclosureFooter } from '@/components/common'
@@ -40,6 +41,12 @@ const marketingHref = (path: string) => `${env.marketingSiteUrl}${path}`
 
 function PublicHeader() {
   const [menuOpen, setMenuOpen] = useState(false)
+  const router = useRouter()
+
+  const handleSignIn = () => {
+    router.push('/signin')
+  }
+
   return (
     <header className="border-b border-[#F2F2F2] bg-white">
       <div className="mx-auto flex h-[68px] w-full max-w-[1440px] items-center justify-between gap-4 px-4 sm:px-6 lg:px-[50px]">
@@ -66,7 +73,7 @@ function PublicHeader() {
 
         {/* Desktop actions — logged-out state: Sign In + Join Flight Club. */}
         <div className="hidden items-center gap-3 lg:flex">
-          <Button variant="secondary" className="gap-1.5">
+          <Button variant="secondary" className="gap-1.5" onClick={handleSignIn}>
             <img
               src="/svg/profileIcon.svg"
               alt=""
@@ -78,15 +85,31 @@ function PublicHeader() {
           <Button>Join Flight Club</Button>
         </div>
 
-        {/* Mobile hamburger */}
+        {/* Mobile menu button. The hi-fi draws a two-line glyph inside a squircle
+            with the same blue→red gradient edge the Sign In button carries, so
+            the border is a 1px gradient layer under a white face rather than a
+            solid stroke. */}
         <button
           type="button"
           aria-label={menuOpen ? 'Close menu' : 'Open menu'}
           aria-expanded={menuOpen}
           onClick={() => setMenuOpen((v) => !v)}
-          className="flex size-10 items-center justify-center rounded-[10px] border border-[#98C3E1] text-[#112D7C] focus-ring lg:hidden"
+          className="rounded-[15px] bg-[linear-gradient(122deg,#1946C5_0%,#E96A6F_84%)] p-px focus-ring lg:hidden"
         >
-          <Icon name={menuOpen ? 'close' : 'grid'} size={20} />
+          <span className="flex size-10 items-center justify-center rounded-[14px] bg-white text-[#112D7C]">
+            {menuOpen ? (
+              <Icon name="close" size={20} />
+            ) : (
+              <svg viewBox="0 0 24 24" width={22} height={22} fill="none" aria-hidden="true">
+                <path
+                  d="M6 9.5h12M6 14.5h12"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
+              </svg>
+            )}
+          </span>
         </button>
       </div>
 

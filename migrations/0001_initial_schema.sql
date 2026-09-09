@@ -1,4 +1,4 @@
--- AeroOS Flight Club — identity schema (Milestone 1)
+-- 0001 · Identity schema — the baseline.
 --
 -- Identity is owned by the application: this database holds members,
 -- credentials and sessions. Zoho holds the CRM record, not the login, and the
@@ -9,7 +9,12 @@
 -- extra columns on "users" or in member_profile, so an adapter upgrade cannot
 -- silently drop our data.
 --
--- Apply with:  psql "$DATABASE_URL" -f src/features/auth/server/schema.sql
+-- Every statement is guarded with IF NOT EXISTS, which is what makes this safe
+-- to run against a database that was provisioned by hand before migrations
+-- existed: it converges to the same shape and records itself as applied.
+--
+-- This file was src/features/auth/server/schema.sql until 2026-09-02. See
+-- migrations/README.md for how to add the next one.
 
 -- Account ids are issued from a sequence so they match the payload contract's
 -- form exactly: acct_5001, acct_5002, … The contract's own samples start at
@@ -102,27 +107,3 @@ CREATE TABLE IF NOT EXISTS member_profile (
   completed_at             TIMESTAMPTZ,
   updated_at               TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-
--- Added 2026-08-26. Frame 38B states when the password was last changed; that
--- was a fixed string from the design until now, with nothing recording the real
--- event. ALTER rather than a column in CREATE TABLE above, because the table
--- already exists on deployed databases and CREATE TABLE IF NOT EXISTS will not
--- add a column to one.
-ALTER TABLE users ADD COLUMN IF NOT EXISTS password_updated_at TIMESTAMPTZ;
-
--- Added 2026-09-01. Session revocation.
---
--- Sessions are JWTs, so there is no row to delete when we need to end one. The
--- standard remedy is a version the token carries and the server compares: bump
--- this column and every token minted before the bump stops validating, while
--- the device that caused the bump is re-issued a token carrying the new value
--- and stays signed in.
---
--- Client's instruction, 29 Aug: a password reset signs in the device that
--- completed it and ends every other session; changing a password while signed
--- in behaves the same way for the device doing the changing.
---
--- NOT NULL DEFAULT 0 so existing rows are valid immediately and a token minted
--- before this column existed (which carries no version) can be treated as
--- version 0 rather than as a forgery.
-ALTER TABLE users ADD COLUMN IF NOT EXISTS session_version INTEGER NOT NULL DEFAULT 0;

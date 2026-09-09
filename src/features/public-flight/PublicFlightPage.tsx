@@ -52,9 +52,9 @@ function StateForFlight({ flight }: { flight: PublicView }) {
     case 'forming':
     case 'filling':
       return <LiveFlightState flight={flight} />
-    // quoting / confirmed / closed are held for the Flight Club phase; until
-    // those screens are built, show the live view rather than break.
+    // quoting / confirmed / closed are M2 screens available to authenticated
+    // members only, not shown via public share link. Fall back to full state.
     default:
-      return <LiveFlightState flight={flight} />
+      return <GroupFullState flight={flight} />
   }
 }

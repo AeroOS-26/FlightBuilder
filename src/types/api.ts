@@ -8,6 +8,7 @@
  */
 
 import type { FlightDraft, FlightRecord } from './flight'
+import type { PublicFlightState, EstimatedDateRange, FellowPetInfo, PublicView } from './publicFlight'
 
 /** Normalized API error surfaced to the UI (loading/success/failure states). */
 export interface ApiError {
@@ -149,4 +150,189 @@ export interface CreateFlightRelayResponse {
   success: boolean
   /** Present only on failure. */
   message?: string
+}
+
+/* ================================================ MILESTONE 2: JOINING & GROUP DETAIL */
+
+/**
+ * Request to join a flight group (Milestone 2).
+ *
+ * Sent by a verified member clicking "Confirm join" on Frame 40.
+ * The endpoint is `POST /api/groups/[group_id]/join`.
+ * Idempotent: submitting twice returns the same success response.
+ */
+export interface MemberJoinRequest {
+  // group_id is in the URL; not needed here
+  // user_id comes from session; not needed here
+}
+
+/**
+ * Response after a member successfully joins a group.
+ *
+ * Includes the group's current state so the UI knows:
+ * - Whether this join filled the group (filled: true → show Frame 41B)
+ * - What state the group is in (forming/filling/quoting/etc.)
+ */
+export interface MemberJoinResponse {
+  success: boolean
+  member_id?: string
+  group_state?: PublicFlightState
+  /** True if this join caused spaces_remaining to reach 0. */
+  filled?: boolean
+  /** Present on error. */
+  message?: string
+}
+
+/**
+ * Full group detail returned by `GET /api/groups/[group_id]`.
+ *
+ * Includes member roster, flight details, and role-specific actions.
+ * Authorization is enforced server-side; non-members get 404.
+ */
+export interface GroupDetail {
+  group_id: string
+  group_state: PublicFlightState
+  route_origin_city: string
+  route_destination_city: string
+  estimated_date_range: EstimatedDateRange
+  aircraft_category: string
+  pet_friendly: boolean
+  spaces_total: number
+  spaces_remaining: number
+  spaces_filled: number
+  fellow_members: GroupMember[]
+  fellow_pet_info: FellowPetInfo
+  organizer_id: string
+  organizer_name: string
+  organizer_email: string
+  created_at: string
+}
+
+/**
+ * A member in the group roster (from GroupDetail.fellow_members).
+ *
+ * Used on Frames 60–70 to show who else is in the group.
+ * The `is_self` flag helps UI show "You" badges.
+ */
+export interface GroupMember {
+  member_id: string
+  account_id: string
+  name: string
+  email: string
+  role: 'group_organizer' | 'joiner'
+  joined_at: string
+  is_self: boolean
+  avatar_initials: string
+}
+
+/**
+ * The `member.joined` event sent to Zoho when a member joins a group (Milestone 2).
+ *
+ * This is Pavan's backend responsibility; we emit it server-side in the join endpoint.
+ * Field names and structure match the backend integration spec.
+ */
+export interface MemberJoinedEvent {
+  event: 'member.joined'
+  sent_at: string
+  flight_group_id: string
+  account_id: string
+  name: string
+  email: string
+  phone: string | null
+  role: 'group_organizer' | 'joiner'
+  join_method: 'shared_link' | 'manual' | 'group_organizer'
+  member_status: 'joined'
+}
+
+/* ================================================ GROUP DETAIL VIEW TYPES */
+
+/**
+ * Group status throughout its lifecycle.
+ *
+ * The seven values are the seven steps of the Group Timeline stepper on the
+ * Flight Group Detail frames, in order — the stepper renders this list, so
+ * adding a state here adds a step there.
+ */
+export type GroupStatus =
+  | 'forming'
+  | 'filling'
+  | 'filled'
+  | 'quoting'
+  | 'confirmed'
+  | 'booked'
+  | 'closed'
+
+/** A traveler on the viewer's own booking ("Your travelers and pets"). */
+export interface GroupTraveler {
+  name: string
+  is_primary: boolean
+}
+
+/** A pet on the viewer's own booking. */
+export interface GroupPet {
+  name: string
+  /** Pre-composed detail line, e.g. "Dog · Golden Retriever · 68 lbs · Travel-Experienced". */
+  detail: string
+}
+
+/** One entry in the group's Recent Activity feed. */
+export interface GroupActivityItem {
+  label: string
+  /** Human-relative timestamp as shown, e.g. "3 days ago". */
+  occurred_label: string
+}
+
+/**
+ * Frontend-specific group detail structure.
+ * Extends API GroupDetail with computed fields for component use.
+ */
+export interface GroupDetailView {
+  group_id: string
+  organizer_id: string
+  organizer_name: string
+  /** Public join link surfaced in "Help fill this group". */
+  share_url: string
+  /** 1-based roster position of the viewer — "You're traveling as Member 2." */
+  viewer_member_ordinal: number
+  viewer_travelers: GroupTraveler[]
+  viewer_pets: GroupPet[]
+  activity: GroupActivityItem[]
+  flight: {
+    flight_id: string
+    route_origin_city: string
+    /**
+     * Only set when the member locked a specific airport. Null for a city:
+     * a code reads as a commitment, and a city-derived code is a routing
+     * placeholder that can change when the carrier is booked. Client decision,
+     * 2026-09-07 — show the city alone when this is null.
+     */
+    route_origin_code: string | null
+    route_destination_city: string
+    route_destination_code: string | null
+    aircraft_category: string
+    estimated_date_range: EstimatedDateRange
+    /** Single settled departure date, shown as the Trip Details DATE row. */
+    departure_date: string
+    spaces_total: number
+    spaces_remaining: number
+    pet_friendly: boolean
+    fellow_pet_info: FellowPetInfo
+  }
+  members: GroupDetailMember[]
+}
+
+/**
+ * Member in group detail (frontend view).
+ * Used to display member roster on Frames 60–70.
+ */
+export interface GroupDetailMember {
+  user_id: string
+  display_name: string
+  first_initial: string
+  role: 'organizer' | 'joiner'
+  joined_at: string
+  member_status: 'pending' | 'confirmed'
+  is_self: boolean
+  /** Pet label under the name — "dog", "Biscuit (Golden Retriever)". Null when none. */
+  pet_summary: string | null
 }

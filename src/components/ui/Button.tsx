@@ -35,7 +35,7 @@ const variantClasses: Record<Variant, string> = {
   primary:
     'bg-[#000000] font-sans text-[14px] font-medium leading-4 tracking-normal text-white hover:bg-[#101114] focus-outline-none',
   secondary:
-    'bg-[#F5F5F5] font-sans text-[14px] font-medium leading-4 tracking-normal text-[#000000] border border-[#D0D0D0] hover:bg-[#EFEFEF] focus-outline-none',
+    'bg-white font-sans text-[14px] font-medium leading-4 tracking-normal text-[#000000] hover:bg-gray-50 focus-outline-none relative',
   ghost: 'bg-transparent text-muted hover:text-text hover:bg-surface-muted focus-outline-none',
   danger: 'bg-danger text-white hover:bg-danger-hover focus-outline-none',
 }
@@ -61,6 +61,8 @@ export function Button({
   ...props
 }: ButtonProps) {
   const isDisabled = disabled || loading
+  const isSecondary = variant === 'secondary'
+
   return (
     <button
       type={type}
@@ -72,6 +74,7 @@ export function Button({
         sizeClasses[size],
         variantClasses[variant],
         fullWidth && 'w-full',
+        isSecondary && 'p-[1px] rounded-[13px] bg-gradient-to-r from-[#1946C5] to-[#E96A6F]',
         className,
       )}
       {...props}
@@ -82,10 +85,14 @@ export function Button({
           aria-hidden="true"
         />
       )}
+      {isSecondary && (
+        <span className="absolute inset-[1px] bg-white rounded-[12px] pointer-events-none" />
+      )}
       <span
         className={cn(
-          'inline-flex items-center justify-center gap-2',
+          'inline-flex items-center justify-center gap-2 relative z-10',
           loading && 'opacity-0',
+          isSecondary && 'text-[#000000]',
         )}
       >
         {leadingIcon && <Icon name={leadingIcon} size={16} />}

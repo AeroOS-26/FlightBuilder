@@ -124,8 +124,15 @@ const paths: Record<IconName, ReactElement> = {
       <path d="M5.5 15H5a1.5 1.5 0 0 1-1.5-1.5V5A1.5 1.5 0 0 1 5 3.5h8.5A1.5 1.5 0 0 1 15 5v.5" />
     </>
   ),
+  // iMessage: a round bubble with a tail and three dots, per the share row on
+  // the Flight Group Detail frames — not a rectangular chat box.
   message: (
-    <path d="M4 5.5h16v10H8l-4 3.5V5.5ZM8 10h8M8 13h5" />
+    <>
+      <path d="M20 11a8 8 0 1 0-13.6 5.7c-.2 1.4-.8 2.6-1.8 3.5 2.1 0 4-.7 5.4-1.9A8 8 0 0 0 20 11Z" />
+      <circle cx="8.6" cy="11" r="1" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="11" r="1" fill="currentColor" stroke="none" />
+      <circle cx="15.4" cy="11" r="1" fill="currentColor" stroke="none" />
+    </>
   ),
   mail: (
     <>
@@ -153,8 +160,30 @@ const paths: Record<IconName, ReactElement> = {
       <path d="M4.5 19.5a7.5 7.5 0 0 1 15 0" />
     </>
   ),
+  // WhatsApp: an outlined bubble with a handset inside, matching the stroke
+  // weight of the rest of the set rather than the solid brand mark.
+  //
+  // The handset is a full-size phone glyph scaled down in place. Drawing it
+  // small by hand produced a path whose own curves were finer than the 1.75
+  // stroke, so at 18px it filled in and read as a blob. `non-scaling-stroke`
+  // keeps the line at its true weight while the geometry shrinks.
   whatsapp: (
-    <path d="M4 20l1.4-4.1A7.5 7.5 0 1 1 8.5 18.6L4 20Zm5.2-10.4c-.2-.5-.4-.5-.6-.5h-.5a1 1 0 0 0-.7.3c-.3.3-.9.9-.9 2.1s.9 2.5 1 2.6c.1.2 1.8 2.9 4.5 3.9 2.2.8 2.7.7 3.2.6.5-.1 1.4-.6 1.6-1.2.2-.6.2-1 .1-1.2l-.5-.3c-.3-.1-1.4-.7-1.6-.8-.2-.1-.4-.1-.5.1l-.7.9c-.1.2-.3.2-.5.1-.3-.1-1.1-.4-2-1.2-.7-.6-1.2-1.4-1.3-1.6-.1-.2 0-.4.1-.5l.4-.4c.1-.2.2-.3.3-.5 0-.2 0-.4 0-.5l-.7-1.7Z" />
+    <>
+      {/* Bubble mirrored so the tail sits bottom-left, as the frames draw it. */}
+      <g transform="translate(24 0) scale(-1 1)">
+        <path d="M20.5 12a8.5 8.5 0 1 0-3.9 7.15l3.9 1.35-1.35-3.9A8.44 8.44 0 0 0 20.5 12Z" />
+      </g>
+      {/* Filled silhouette rather than an outline: at 18px the handset's own
+          interior gaps are narrower than a 1.75 stroke, so an outlined version
+          closes up and reads as a blob. */}
+      <g transform="translate(12 12) scale(0.52) translate(-10.6 -11.7)">
+        <path
+          fill="currentColor"
+          stroke="none"
+          d="M16.5 14.9v2a1.3 1.3 0 0 1-1.42 1.3 12.9 12.9 0 0 1-5.62-2 12.7 12.7 0 0 1-3.9-3.9 12.9 12.9 0 0 1-2-5.65A1.3 1.3 0 0 1 4.85 5.2h2a1.3 1.3 0 0 1 1.3 1.12c.08.64.24 1.27.47 1.87a1.3 1.3 0 0 1-.29 1.37l-.85.85a10.4 10.4 0 0 0 3.9 3.9l.85-.85a1.3 1.3 0 0 1 1.37-.29c.6.23 1.23.39 1.87.47a1.3 1.3 0 0 1 1.13 1.32Z"
+        />
+      </g>
+    </>
   ),
   alert: (
     <>
