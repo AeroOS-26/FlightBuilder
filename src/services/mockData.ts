@@ -19,7 +19,9 @@ export const mockFlightForming: PublicView = {
   group_state_public: 'forming',
   route_origin_city: 'San Francisco',
   route_destination_city: 'Los Angeles',
-  aircraft_category: 'Citation CJ3+',
+  // No aircraft until an operator quotes (client, 2026-09-09). Forming,
+  // Filling and Full inherit this null; Quoting is where one appears.
+  aircraft_category: null,
   estimated_date_range: {
     earliest_date: '2026-09-15',
     latest_date: '2026-09-22',
@@ -52,6 +54,9 @@ export const mockFlightFull: PublicView = {
 export const mockFlightQuoting: PublicView = {
   ...mockFlightFull,
   group_state_public: 'quoting',
+  // The quote is what produces an aircraft, so this is the first state that
+  // has one. Confirmed and Closed inherit it.
+  aircraft_category: 'Citation CJ3+',
 }
 
 export const mockFlightConfirmed: PublicView = {
@@ -92,7 +97,8 @@ export const mockGroupForming: GroupDetailView = {
     route_origin_code: 'SFO',
     route_destination_city: 'Los Angeles',
     route_destination_code: 'LAX',
-    aircraft_category: 'Citation CJ3+',
+    // Forming: no quote yet, so the AIRCRAFT row shows the pending placeholder.
+    aircraft_category: null,
     estimated_date_range: {
       earliest_date: '2026-09-15',
       latest_date: '2026-09-22',

@@ -163,10 +163,12 @@ export function ShareStep() {
   const monthLabel = flight.date.start ? formatMonthLabel(fromISODate(flight.date.start)) : ''
   const summaryLine = [
     formatDateSelection(flight.date),
+    // Absent until an operator quotes; the segment drops out of the run.
     flight.aircraftClass,
     hasPets ? 'Pets welcome' : null,
   ]
-    .filter(Boolean)
+    // `Boolean` is not a type guard, so the array would stay (string | null)[].
+    .filter((part): part is string => Boolean(part))
     .join(' · ')
 
   const sharePreviewFrom = placeCity(flight.route.from).toUpperCase()
@@ -301,14 +303,17 @@ export function ShareStep() {
                 ))}
               </p>
               <p className={cn('flex flex-wrap items-center gap-[4px] sm:gap-x-2', shareLinkMetaClass)}>
-                {[flight.aircraftClass, 'Member-organized', 'Whole-flight pricing'].map(
-                  (item, i) => (
+                {/* Filter before mapping, not inside it: a null aircraft would
+                    otherwise render an empty span, shift the separator onto the
+                    first real item as a leading dot, and pass key={null}. */}
+                {[flight.aircraftClass, 'Member-organized', 'Whole-flight pricing']
+                  .filter((item): item is string => Boolean(item))
+                  .map((item, i) => (
                     <Fragment key={item}>
                       {i > 0 && <span aria-hidden="true" className={dotSeparatorClass} />}
                       <span>{item}</span>
                     </Fragment>
-                  ),
-                )}
+                  ))}
               </p>
               <div
                 className={cn(

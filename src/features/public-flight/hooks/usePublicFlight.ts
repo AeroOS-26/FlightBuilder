@@ -26,7 +26,26 @@ export function usePublicFlight(token: string, initialData?: PublicFlightResult)
     queryFn: () => fetchPublicFlight(token),
     enabled: token.length > 0,
     initialData,
-    // Public data is as-of page load per the milestone; no polling.
-    staleTime: 60_000,
+    /**
+     * Refresh when the tab regains focus — client, 2026-09-09. A share link is
+     * left open in a background tab while the group fills, so what it shows on
+     * return has to be current.
+     *
+     * These two settings are a pair; changing either alone breaks it.
+     *
+     * `staleTime: 0` is what makes the refresh reliable. Focus refetch only
+     * fires on a query already considered stale, so the previous 60s window
+     * meant returning to the tab within a minute did nothing — a refresh that
+     * works *sometimes*, which is worse than either extreme because it cannot
+     * be reproduced in a walkthrough.
+     *
+     * `refetchOnMount: false` preserves the server-rendered seed described
+     * above. Without it, staleTime 0 would refetch on every mount and repeat
+     * the upstream Zoho read the `initialData` exists to avoid.
+     *
+     * Still no polling: nothing here sets refetchInterval.
+     */
+    staleTime: 0,
+    refetchOnMount: false,
   })
 }

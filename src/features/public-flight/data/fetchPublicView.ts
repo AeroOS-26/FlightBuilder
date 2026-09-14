@@ -73,7 +73,14 @@ export async function fetchGroupPublicView(groupId: string): Promise<PublicViewF
 
     return {
       status: 'ok',
-      flight: parsed.public_view,
+      // Zoho's payload is cast, never validated, so `PublicView` here is a
+      // promise rather than a guarantee. Normalise the one field whose absence
+      // carries meaning: a missing or empty aircraft_category has to arrive as
+      // null so the UI renders the pending placeholder rather than a blank row.
+      flight: {
+        ...parsed.public_view,
+        aircraft_category: parsed.public_view.aircraft_category?.trim() || null,
+      },
       recordId: parsed.zoho_flight_group_record_id ?? null,
     }
   } catch {

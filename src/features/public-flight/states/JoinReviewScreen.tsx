@@ -27,14 +27,14 @@ import {
   ErrorBanner,
   dashedAddSurfaceClass,
 } from '@/components/ui'
-import { Icon, PawPrints } from '@/components/common'
+import { Icon, PawPrints, RouteHeading } from '@/components/common'
 import { PetCard } from '@/features/flight-builder/steps/pets/PetCard'
 import { TravelerCard } from '@/features/flight-builder/steps/pets/TravelerCard'
 import { validateTravelersAndPets } from '@/features/flight-builder/validation'
 import type { PetsErrors } from '@/features/flight-builder/validation'
 import { MAX_TRAVELERS } from '@/features/flight-builder/config/capacity'
 import { joinGroup } from '@/services/groupDataService'
-import { metroLabel, formatDateRange } from '../format'
+import { metroLabel, formatDateRange, aircraftRowValue } from '../format'
 import { cn } from '@/utils/cn'
 import type { Pet, PublicView, Traveler } from '@/types'
 
@@ -96,7 +96,12 @@ interface JoinReviewScreenProps {
   /** Seeded from the member's profile; edited here for this flight only. */
   initialTravelers?: Traveler[]
   initialPets?: Pet[]
-  onJoined: (filled: boolean) => void
+  /**
+   * `memberId` is the real seat id, so the outcome screen can show a genuine
+   * reference. Optional because the contract types it so; absent simply means
+   * no reference is rendered, which beats inventing one.
+   */
+  onJoined: (filled: boolean, memberId?: string) => void
   onBack?: () => void
 }
 
@@ -144,9 +149,12 @@ export function JoinReviewScreen({
     setSubmitting(true)
     setFailure(null)
     try {
-      const result = await joinGroup(flight.group_id, '')
+      // The whole party, not one account. Everyone on this list occupies a
+      // space, and only the signed-in member has a user row, so the count has
+      // to travel with the request or the companions are invisible to capacity.
+      const result = await joinGroup(flight.group_id, '', travelers.length)
       if (!result.success) throw new Error('The group could not be joined.')
-      onJoined(result.filled === true)
+      onJoined(result.filled === true, result.member_id)
     } catch (err) {
       // Stay put so the member can retry — the endpoint is idempotent, so
       // pressing Confirm again cannot seat them twice.
@@ -166,11 +174,13 @@ export function JoinReviewScreen({
         <p className={cn(LABEL, 'uppercase')}>
           Flight · Group ID {flight.group_id}
         </p>
-        <h2 className="mt-1.5 flex flex-nowrap items-center gap-x-3 font-heading text-[clamp(1.1rem,3vw,1.375rem)] font-semibold leading-[1.21] text-[#000000]">
-          <span className="whitespace-nowrap">{from}</span>
-          <img src="/svg/soFar.svg" alt="to" className="size-[24px] shrink-0" />
-          <span className="whitespace-nowrap">{to}</span>
-        </h2>
+        <RouteHeading
+          as="h2"
+          from={from}
+          to={to}
+          iconClassName="size-[24px]"
+          className="mt-1.5 font-heading text-[clamp(1.1rem,3vw,1.375rem)] font-semibold leading-[1.21] text-[#000000]"
+        />
         <p className="mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-1 font-sans text-[15px] font-medium text-[#000000]">
           <span>{formatDateRange(flight.estimated_date_range)}</span>
           {flight.pet_friendly && (
@@ -427,11 +437,13 @@ export function JoinReviewScreen({
             </span>
           </SummaryRow>
           <SummaryRow label="DATE">{formatDateRange(flight.estimated_date_range)}</SummaryRow>
-          {/* Aircraft is not captured until a quote comes back, so the row only
-              appears once there is one. Client, 2026-09-09. */}
-          {flight.aircraft_category && (
-            <SummaryRow label="AIRCRAFT">{flight.aircraft_category}</SummaryRow>
-          )}
+          {/* Labelled row, so it keeps its place and shows the pending
+              placeholder rather than vanishing. Hiding it here while the Trip
+              Details rail shows it would make the two disagree about the same
+              unknown. Client, 2026-09-09. */}
+          <SummaryRow label="AIRCRAFT">
+            {aircraftRowValue(flight.aircraft_category)}
+          </SummaryRow>
           <SummaryRow label="PETS">
             {flight.pet_friendly ? 'Allowed (cabin)' : 'Not on this flight'}
           </SummaryRow>

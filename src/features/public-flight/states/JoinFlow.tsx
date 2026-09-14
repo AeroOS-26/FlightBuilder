@@ -26,14 +26,22 @@ export function JoinFlow({
   flight,
   initialTravelers,
   initialPets,
+  reference,
 }: {
   token: string
   flight: PublicView
   /** Seeded from the member's profile, as frame 40's "Pulled from your profile". */
   initialTravelers?: Traveler[]
   initialPets?: Pet[]
+  /**
+   * Fixed reference for the previews, which never reach the endpoint. On the
+   * real path this is left unset and the seat id from the join stands in, so a
+   * member is never shown a reference that belongs to nobody.
+   */
+  reference?: string
 }) {
   const [stage, setStage] = useState<Stage>('review')
+  const [memberId, setMemberId] = useState<string | null>(null)
 
   if (stage !== 'review') {
     return (
@@ -43,7 +51,7 @@ export function JoinFlow({
         filled={stage === 'filled'}
         travelers={initialTravelers}
         pets={initialPets}
-        reference="JN-3041-MGRT"
+        reference={reference ?? memberId ?? undefined}
         memberNumber={flight.spaces_total - flight.spaces_remaining + 1}
       />
     )
@@ -54,7 +62,10 @@ export function JoinFlow({
       flight={flight}
       initialTravelers={initialTravelers}
       initialPets={initialPets}
-      onJoined={(filled) => setStage(filled ? 'filled' : 'joined')}
+      onJoined={(filled, joinedMemberId) => {
+        setMemberId(joinedMemberId ?? null)
+        setStage(filled ? 'filled' : 'joined')
+      }}
     />
   )
 }

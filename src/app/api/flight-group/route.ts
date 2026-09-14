@@ -13,7 +13,7 @@
 import { NextResponse } from 'next/server'
 import { serverEnv, isZohoConfigured } from '@/config/serverEnv'
 import { forwardFreshworksContact } from '@/api/services/freshworksContact'
-import { currentViewer } from '@/features/auth/server/guard'
+import { currentViewer, type Viewer } from '@/features/auth/server/guard'
 import { createFlightGroup } from '@/features/group/server/groupStore'
 import type { CreateFlightRelayResponse, FlightGroupCreatedEvent } from '@/types'
 
@@ -65,6 +65,19 @@ export async function POST(request: Request) {
   } catch {
     return NextResponse.json({ message: 'Invalid request body.' }, { status: 400 })
   }
+
+  // This route's auth posture, stated once and in the open.
+  //
+  // Deliberately NOT a 401. Whether the Flight Builder requires an account is
+  // still open with the client (B5 in docs/CLIENT-DECISIONS.md), and refusing
+  // anonymous callers here would decide it unilaterally. Read the session, act
+  // on it below, and leave the policy to one line when the answer lands.
+  //
+  // What it does govern is the Neon mirror: the group's organiser pointer and
+  // its seat in flight_group_member are both keyed to a user id, so with no
+  // viewer there is nothing to mirror to. See mirrorFlightGroup.
+  const viewer = await currentViewer()
+
   // Independent, decoupled Freshworks contact write off the SAME submission.
   // Fired now so it runs alongside the Zoho call, awaited in `finally` so it
   // completes before the function returns. It never throws and self-skips when
@@ -133,7 +146,7 @@ export async function POST(request: Request) {
       message: fn?.message ?? envelope?.message,
     }
 
-    await mirrorFlightGroup(payload, result.flight_group_id)
+    await mirrorFlightGroup(payload, result.flight_group_id, viewer)
 
     return NextResponse.json(result, { status: 200 })
   } catch (err) {
@@ -167,11 +180,28 @@ export async function POST(request: Request) {
 async function mirrorFlightGroup(
   payload: FlightGroupCreatedEvent,
   zohoRecordId: string,
+  viewer: Viewer | null,
 ): Promise<void> {
-  try {
-    const viewer = await currentViewer()
-    if (!viewer) return
+  // No session, no mirror. This is a fail-safe, not a choice:
+  // flight_group_member.user_id is NOT NULL (migration 0004), so the
+  // transaction below could only throw. Returning early makes that explicit.
+  //
+  // Logged loudly because the divergence is otherwise invisible. Zoho has
+  // already accepted the flight, so the member is told it was created — but
+  // nothing landed in Neon, and group detail reads from Neon. Today this is
+  // unreachable (the builder is gated wherever the mirror exists); it becomes
+  // reachable the moment M2 ships on an ungated builder, which is exactly when
+  // a silent skip would be most expensive.
+  if (!viewer) {
+    console.warn(
+      `Flight group mirror skipped for ${payload.flight_group.group_id}: ` +
+        'no session. Zoho accepted the flight, but Neon has no row for it, ' +
+        'so /group/[groupId] will 404.',
+    )
+    return
+  }
 
+  try {
     await createFlightGroup({
       flightGroup: payload.flight_group,
       organizerUserId: viewer.id,

@@ -27,7 +27,14 @@ export function createQueryClient(): QueryClient {
     defaultOptions: {
       queries: {
         staleTime: 30_000,
-        refetchOnWindowFocus: false,
+        // Refresh when the tab regains focus. Client decision, 2026-09-09:
+        // a member leaves a group open in a background tab, and what they come
+        // back to has to reflect who has joined since.
+        //
+        // Set as the global default rather than opted into per query, because
+        // the client stated it as a product-wide rule — a new query should
+        // inherit it rather than have to remember it.
+        refetchOnWindowFocus: true,
         retry: (failureCount, error) => {
           if (!isApiError(error)) return false
           return error.retryable && failureCount < MAX_RETRIES

@@ -33,7 +33,8 @@ export function toPublicView(group: SampleGroup): PublicView {
       earliest_date: group.estimated_date_range.earliest_date,
       latest_date: group.estimated_date_range.latest_date,
     },
-    aircraft_category: group.aircraft_category,
+    // Normalised to a single absent value; '' would render a blank row.
+    aircraft_category: group.aircraft_category?.trim() || null,
     pet_friendly: true,
     // Counts only — no member identities.
     spaces_total: group.spaces_total,

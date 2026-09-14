@@ -43,7 +43,12 @@ export interface SampleGroup {
     destination_airport_code: string
   }
   estimated_date_range: { earliest_date: string | null; latest_date: string | null }
-  aircraft_category: string
+  /**
+   * Null until an operator quotes (client, 2026-09-09). The `forming` fixtures
+   * carry null so the previews exercise both branches: the pending placeholder
+   * on a labelled row, and the dropped segment in an inline meta run.
+   */
+  aircraft_category: string | null
   spaces_total: number
   spaces_remaining: number
   members: SampleMember[]
@@ -94,7 +99,8 @@ const SAMPLE_GROUPS: SampleGroup[] = [
       destination_airport_code: 'KOPF',
     },
     estimated_date_range: { earliest_date: '2026-07-12', latest_date: '2026-07-17' },
-    aircraft_category: 'Light Jet',
+    // Forming: no operator quote yet, so no aircraft.
+    aircraft_category: null,
     spaces_total: 6,
     spaces_remaining: 5,
     members: [
@@ -149,7 +155,9 @@ const SAMPLE_GROUPS: SampleGroup[] = [
       destination_airport_code: 'LAX',
     },
     estimated_date_range: { earliest_date: '2026-09-15', latest_date: '2026-09-22' },
-    aircraft_category: 'Citation CJ3+',
+    // Forming: no operator quote yet, so no aircraft. This is the fixture the
+    // group-detail forming previews read, so /preview/60 shows the placeholder.
+    aircraft_category: null,
     spaces_total: 6,
     spaces_remaining: 5,
     members: [{ flight_group_member_id: 'mock-001', name: 'Sarah Chen', email: 'sarah@example.com', role: 'group_organizer', pets: [] }],

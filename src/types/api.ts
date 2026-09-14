@@ -52,7 +52,21 @@ export interface FlightGroupCreatedEvent {
     created_at: string
     spaces_total: number
     spaces_remaining: number
-    aircraft_category: string
+    /**
+     * Null until an operator quotes the flight.
+     *
+     * There is no aircraft at creation — nothing has been chartered yet — so
+     * the app stopped sending a hardcoded "Light Jet". Client decision,
+     * 2026-09-09. Migration 0006 dropped the matching NOT NULL.
+     *
+     * Sent as an explicit `null`, never omitted: the contract's convention is
+     * "always sent, null when unknown" (2026-08-19), and the sibling fields
+     * `origin_airport_code`, the unused date pair and `phone` already flow to
+     * Zoho as null on live traffic. Typing this `string | undefined` would be
+     * a silent trap — JSON.stringify drops undefined keys, turning an explicit
+     * null into an omission nobody chose.
+     */
+    aircraft_category: string | null
     route: {
       origin_input: string
       origin_type: 'city' | 'airport'
@@ -195,7 +209,8 @@ export interface GroupDetail {
   route_origin_city: string
   route_destination_city: string
   estimated_date_range: EstimatedDateRange
-  aircraft_category: string
+  /** Null until an operator quotes. Client, 2026-09-09. */
+  aircraft_category: string | null
   pet_friendly: boolean
   spaces_total: number
   spaces_remaining: number
@@ -309,7 +324,8 @@ export interface GroupDetailView {
     route_origin_code: string | null
     route_destination_city: string
     route_destination_code: string | null
-    aircraft_category: string
+    /** Null until an operator quotes. Client, 2026-09-09. */
+    aircraft_category: string | null
     estimated_date_range: EstimatedDateRange
     /** Single settled departure date, shown as the Trip Details DATE row. */
     departure_date: string

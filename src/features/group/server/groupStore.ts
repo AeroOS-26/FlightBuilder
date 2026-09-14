@@ -89,14 +89,25 @@ export async function createFlightGroup({
       ],
     )
 
+    // The organiser's seat carries their whole party, not just themselves.
+    //
+    // Everyone on the party after the organiser is a name typed into the Flight
+    // Builder with no account, and user_id is NOT NULL, so they cannot have
+    // rows of their own. Counting rows would therefore report a party of three
+    // as one occupied space and leave five open on a six-space flight. See
+    // migration 0007.
+    const partySeats = Math.max(1, flightGroup.members.length)
+
     const seated = await client.query<{ id: number }>(
       `INSERT INTO flight_group_member
-         (flight_group_id, user_id, role, join_method, member_status)
-       VALUES ($1, $2, 'group_organizer', 'group_organizer', 'joined')
+         (flight_group_id, user_id, role, join_method, member_status, seats_committed)
+       VALUES ($1, $2, 'group_organizer', 'group_organizer', 'joined', $3)
        ON CONFLICT (flight_group_id, user_id) DO UPDATE
-         SET member_status = 'joined', updated_at = NOW()
+         SET member_status = 'joined',
+             seats_committed = EXCLUDED.seats_committed,
+             updated_at = NOW()
        RETURNING id`,
-      [flightGroup.group_id, Number(organizerUserId)],
+      [flightGroup.group_id, Number(organizerUserId), partySeats],
     )
 
     await client.query('COMMIT')
@@ -115,9 +126,27 @@ export interface AddMemberResult {
   memberId: string
   /** True when the member was already seated — the call is idempotent. */
   alreadyMember: boolean
-  /** Roster size after the join, so the caller can tell whether it filled. */
+  /**
+   * Spaces occupied after the join, counted in **people, not accounts** —
+   * the sum of every joined member's party. Directly comparable with
+   * `spacesTotal`; a row count is not. See migration 0007.
+   */
   memberCount: number
   spacesTotal: number
+}
+
+/** The group exists but cannot fit this party. Nothing was written. */
+export interface AddMemberRefused {
+  refused: 'over_capacity'
+  /** Spaces still free, so the caller can say how many rather than just "no". */
+  spacesRemaining: number
+  spacesTotal: number
+}
+
+export function isRefused(
+  result: AddMemberResult | AddMemberRefused,
+): result is AddMemberRefused {
+  return 'refused' in result
 }
 
 /**
@@ -125,13 +154,22 @@ export interface AddMemberResult {
  * double-submit or a retried request returns the existing seat rather than
  * failing or double-booking.
  *
- * Returns null when the group does not exist. Capacity is the caller's call to
- * make: this reports the counts rather than deciding policy.
+ * Returns null when the group does not exist.
+ *
+ * **Capacity is enforced here, not by the caller**, because only this function
+ * holds the row lock. Checking after the insert would seat the member and then
+ * report a failure, leaving a row behind for a join the member was told did not
+ * happen. The check runs before the write and rolls back instead.
  */
 export async function addMember(
   groupId: string,
   userId: string,
-): Promise<AddMemberResult | null> {
+  /**
+   * How many spaces this member takes: themselves plus any companions added on
+   * the review screen. Defaults to 1, which is the truth for a lone traveller.
+   */
+  seatsCommitted = 1,
+): Promise<AddMemberResult | AddMemberRefused | null> {
   const client = await pool.connect()
 
   try {
@@ -155,18 +193,65 @@ export async function addMember(
     )
     const alreadyMember = existing.rows[0]?.member_status === 'joined'
 
+    const seats = Math.max(1, Math.trunc(seatsCommitted))
+    const spacesTotal = group.rows[0]!.spaces_total
+
+    // Capacity check, before the write and inside the lock.
+    //
+    // Skipped for a member already seated: their spaces are already counted, so
+    // re-checking would refuse a harmless retry of a join that succeeded.
+    if (!alreadyMember) {
+      const occupied = await client.query<{ count: string }>(
+        `SELECT COALESCE(SUM(seats_committed), 0)::text AS count
+           FROM flight_group_member
+          WHERE flight_group_id = $1 AND member_status = 'joined'`,
+        [groupId],
+      )
+      const taken = Number(occupied.rows[0]!.count)
+
+      if (taken + seats > spacesTotal) {
+        await client.query('ROLLBACK')
+        return {
+          refused: 'over_capacity',
+          spacesRemaining: Math.max(0, spacesTotal - taken),
+          spacesTotal,
+        }
+      }
+    }
+
     const seated = await client.query<{ id: number }>(
       `INSERT INTO flight_group_member
-         (flight_group_id, user_id, role, join_method, member_status)
-       VALUES ($1, $2, 'joiner', 'shared_link', 'joined')
+         (flight_group_id, user_id, role, join_method, member_status, seats_committed)
+       VALUES ($1, $2, 'joiner', 'shared_link', 'joined', $3)
        ON CONFLICT (flight_group_id, user_id) DO UPDATE
-         SET member_status = 'joined', updated_at = NOW()
+         SET member_status = 'joined',
+             seats_committed = EXCLUDED.seats_committed,
+             updated_at = NOW()
        RETURNING id`,
-      [groupId, Number(userId)],
+      [groupId, Number(userId), seats],
     )
 
+    // Occupancy is the sum of parties, not a row count — a row is an account
+    // and a space is a person. See migration 0007.
+    //
+    // **This total is only complete while every member arrives through this
+    // endpoint.** That holds today by policy, not by construction: Chuck
+    // confirmed on 2026-09-10 that nobody is added by hand, because Perro Air
+    // needs everyone in the CRM via the CTA form to estimate the charter.
+    //
+    // Recorded because the failure is silent. If anyone is ever seated directly
+    // in Zoho, this query cannot see them, the flight reads as emptier than it
+    // is, and the endpoint admits people into spaces that are already taken.
+    // Nothing errors. The first symptom would be an overbooked charter.
+    //
+    // Note the payload contract disagrees with the policy: its own sample
+    // carries a member marked as added by Perro Air, and `join_method` still
+    // accepts 'manual'. The client is squaring that separately. If it lands the
+    // other way, the fix is a capacity read against Zoho at commit time, which
+    // was specified and then stood down on 2026-09-10.
     const count = await client.query<{ count: string }>(
-      `SELECT COUNT(*)::text AS count FROM flight_group_member
+      `SELECT COALESCE(SUM(seats_committed), 0)::text AS count
+         FROM flight_group_member
         WHERE flight_group_id = $1 AND member_status = 'joined'`,
       [groupId],
     )
@@ -177,7 +262,7 @@ export async function addMember(
       memberId: String(seated.rows[0]!.id),
       alreadyMember,
       memberCount: Number(count.rows[0]!.count),
-      spacesTotal: group.rows[0]!.spaces_total,
+      spacesTotal,
     }
   } catch (error) {
     await client.query('ROLLBACK')
@@ -193,7 +278,8 @@ interface GroupRow {
   flight_group_id: string
   share_link: string
   spaces_total: number
-  aircraft_category: string
+  /** Nullable since migration 0006 — no aircraft until an operator quotes. */
+  aircraft_category: string | null
   origin_city: string
   origin_airport_code: string | null
   destination_city: string
@@ -213,6 +299,8 @@ interface MemberRow {
   email: string
   role: 'group_organizer' | 'joiner'
   joined_at: Date
+  /** Spaces this membership occupies: the member plus their companions. */
+  seats_committed: number
   pets: Pet[] | null
 }
 
@@ -310,7 +398,8 @@ export async function getGroupDetail(
   if (!group) return null
 
   const { rows: memberRows } = await pool.query<MemberRow>(
-    `SELECT fgm.user_id, u.name, u.email, fgm.role, fgm.joined_at, mp.pets
+    `SELECT fgm.user_id, u.name, u.email, fgm.role, fgm.joined_at,
+            fgm.seats_committed, mp.pets
        FROM flight_group_member fgm
        JOIN users u ON u.id = fgm.user_id
        LEFT JOIN member_profile mp ON mp.user_id = fgm.user_id
@@ -348,6 +437,12 @@ export async function getGroupDetail(
   const viewerProfile = await getProfile(viewerUserId)
   const viewerIndex = members.findIndex((m) => m.is_self)
 
+  // Spaces are people, members are accounts. A party of three occupies three
+  // spaces through one membership row, so counting rows here would report the
+  // flight as emptier than it is. Same unit mismatch as the join check; see
+  // migration 0007.
+  const spacesOccupied = memberRows.reduce((sum, row) => sum + (row.seats_committed ?? 1), 0)
+
   return {
     group_id: group.flight_group_id,
     organizer_id: String(group.organizer_user_id ?? ''),
@@ -369,14 +464,17 @@ export async function getGroupDetail(
       route_origin_code: group.origin_airport_code,
       route_destination_city: group.destination_city,
       route_destination_code: group.destination_airport_code,
-      aircraft_category: group.aircraft_category,
+      // One "absent" value downstream, not two: rows written before 0006 can
+      // hold '' where newer rows hold NULL, and a bare '' would render as a
+      // blank AIRCRAFT row instead of the pending placeholder.
+      aircraft_category: group.aircraft_category?.trim() || null,
       estimated_date_range: {
         earliest_date: toISODate(group.earliest_date ?? group.travel_date),
         latest_date: toISODate(group.latest_date ?? group.travel_date),
       },
       departure_date: toISODate(group.travel_date ?? group.earliest_date),
       spaces_total: group.spaces_total,
-      spaces_remaining: Math.max(0, group.spaces_total - members.length),
+      spaces_remaining: Math.max(0, group.spaces_total - spacesOccupied),
       pet_friendly: group.pet_friendly,
       fellow_pet_info: { pets_total: petsTotal, by_species: bySpecies },
     },

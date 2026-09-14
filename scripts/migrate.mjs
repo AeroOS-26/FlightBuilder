@@ -70,6 +70,7 @@ const EXPECTED_TABLES = [
   'verification_token',
   'member_profile',
   'flight_group_member',
+  'flight_group',
 ]
 const EXPECTED_USER_COLUMNS = [
   'password_hash',

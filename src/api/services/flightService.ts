@@ -155,7 +155,9 @@ function assembleRecord(
     availableSpaces: Math.max(0, spacesTotal - memberCount),
     memberCount,
     estimatedMembers: spacesTotal,
-    aircraftClass: 'Light Jet',
+    // Unknown until an operator quotes; the Share screen renders it as pending
+    // rather than naming a class nobody has chartered. Client, 2026-09-09.
+    aircraftClass: null,
     founder: {
       id: founder?.id ?? 'member_self',
       // Omitted rather than substituted. "Founder" is a role, not a person's

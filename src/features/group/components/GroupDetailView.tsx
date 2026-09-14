@@ -14,8 +14,9 @@
  */
 
 import { useState } from 'react'
-import { Icon, PawPrints } from '@/components/common'
+import { Icon, PawPrints, RouteHeading } from '@/components/common'
 import { SidePanel } from '@/features/flight-builder/components'
+import { aircraftRowValue } from '@/features/public-flight/format'
 import { cn } from '@/utils/cn'
 import type {
   GroupDetailView as GroupDetail,
@@ -150,35 +151,6 @@ function travelerSummary(adults: number, pets: number): string {
 
 /* -------------------------------------------------------------- sub-pieces */
 
-function RouteLine({
-  from,
-  to,
-  iconSize,
-  className,
-}: {
-  from: string
-  to: string
-  /** Number for a fixed size, or a CSS length so the icon can scale with the text. */
-  iconSize: number | string
-  className?: string
-}) {
-  // Never wraps: the frames keep the route on one line, so it scales down
-  // instead of breaking onto a second.
-  return (
-    <span
-      className={cn('flex flex-nowrap items-center gap-x-2 lg:gap-x-[18px]', className)}
-    >
-      <span className="whitespace-nowrap">{from}</span>
-      <img
-        src="/svg/soFar.svg"
-        alt="to"
-        className="shrink-0"
-        style={{ width: iconSize, height: iconSize }}
-      />
-      <span className="whitespace-nowrap">{to}</span>
-    </span>
-  )
-}
 
 /**
  * The avatar the frames use — the same filled mark in the roster and in the
@@ -223,7 +195,13 @@ function MemberRow({ member }: { member: GroupDetailMember }) {
       <span className="relative flex min-w-0 items-center gap-4">
         <MemberAvatar />
         <span className="flex min-w-0 flex-col gap-0.5">
-          <span className="font-heading text-[16px] font-medium leading-[1.21] text-[#000000]">
+          {/* break-words because the display name is frequently an email: a
+              member who has not completed their profile has no name, so the
+              roster shows the address, and an address is one unbreakable token
+              that ordinary word-wrap cannot split. Without this it ran under
+              the role pill on mobile. The `min-w-0` chain above lets the column
+              shrink; this is what lets the text inside it give way. */}
+          <span className="min-w-0 break-words font-heading text-[16px] font-medium leading-[1.21] text-[#000000]">
             {member.display_name}
             {member.is_self && ' (You)'}
           </span>
@@ -463,7 +441,7 @@ export function GroupDetailView({
 
           <div className="mt-[18px] flex flex-col gap-4">
             <div>
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2 sm:gap-4">
                 <input
                   readOnly
                   value={group.share_url}
@@ -471,6 +449,20 @@ export function GroupDetailView({
                   onFocus={(e) => e.currentTarget.select()}
                   className="min-w-0 flex-1 rounded-[12px] border border-[#1A45BD] bg-white px-[14px] py-3 font-sans text-[14px] font-medium leading-4 text-[#000000] focus-ring"
                 />
+                {/* The true public view, `?preview=1` and all — see the share
+                    route's doc comment. Never the in-app card: that can drift
+                    from what a stranger actually sees, which is the one thing
+                    Chuck asked this link to guarantee against. */}
+                <a
+                  href={`${group.share_url}?preview=1`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Preview the public page"
+                  className="flex h-10 shrink-0 items-center justify-center gap-2 rounded-[12px] border border-[#98C3E1] bg-[#CFE3F1]/20 px-2.5 font-sans text-[14px] font-medium leading-4 text-[#000000] transition-colors hover:bg-[#CFE3F1]/40 focus-ring sm:px-[14px]"
+                >
+                  <Icon name="eye" size={18} />
+                  <span className="hidden sm:inline">Preview</span>
+                </a>
                 <button
                   type="button"
                   onClick={copyShareLink}
@@ -552,7 +544,8 @@ export function GroupDetailView({
                           timeZone: 'UTC',
                         })}
                       </p>
-                      <RouteLine
+                      <RouteHeading
+                        gapClassName="gap-x-2 lg:gap-x-[18px]"
                         from={origin}
                         to={destination}
                         iconSize="clamp(12px,4cqw,24px)"
@@ -645,7 +638,8 @@ export function GroupDetailView({
       <SidePanel title="Trip Details">
         <div className="flex flex-col gap-3">
           <TripDetailRow label="ROUTE">
-            <RouteLine
+            <RouteHeading
+              gapClassName="gap-x-2 lg:gap-x-[18px]"
               from={flight.route_origin_city}
               to={flight.route_destination_city}
               iconSize={24}
@@ -653,7 +647,9 @@ export function GroupDetailView({
             />
           </TripDetailRow>
           <TripDetailRow label="DATE">{formatLongDate(flight.departure_date)}</TripDetailRow>
-          <TripDetailRow label="AIRCRAFT">{flight.aircraft_category}</TripDetailRow>
+          <TripDetailRow label="AIRCRAFT">
+            {aircraftRowValue(flight.aircraft_category)}
+          </TripDetailRow>
           <TripDetailRow label="PETS">
             {flight.pet_friendly ? 'Allowed (cabin)' : 'Not on this flight'}
           </TripDetailRow>
@@ -794,7 +790,8 @@ export function GroupDetailView({
               Group ID · {group.group_id} · You are{' '}
               {isOrganizer ? 'Group Organizer.' : 'Joiner'}
             </p>
-            <RouteLine
+            <RouteHeading
+              gapClassName="gap-x-2 lg:gap-x-[18px]"
               from={origin}
               to={destination}
               iconSize="clamp(14px,3.4vw,31px)"
@@ -806,8 +803,18 @@ export function GroupDetailView({
             <div className="flex items-center justify-between gap-x-3">
               <p className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 font-sans text-[16px] font-medium leading-normal text-[#000000]">
                 <span>{formatLongDate(flight.departure_date)}</span>
-                <span aria-hidden="true" className="size-1 shrink-0 rounded-full bg-[#000000]" />
-                <span>{flight.aircraft_category}</span>
+                {/* Inline meta run: the separator belongs to the segment, so
+                    both go when there is no aircraft yet. Left outside the
+                    guard it would render a trailing dot after the date. */}
+                {flight.aircraft_category && (
+                  <>
+                    <span
+                      aria-hidden="true"
+                      className="size-1 shrink-0 rounded-full bg-[#000000]"
+                    />
+                    <span>{flight.aircraft_category}</span>
+                  </>
+                )}
                 {flight.pet_friendly && (
                   <>
                     <span aria-hidden="true" className="size-1 shrink-0 rounded-full bg-[#000000]" />

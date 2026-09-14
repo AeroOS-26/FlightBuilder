@@ -117,6 +117,9 @@ export function PreviewScreen({ slug }: { slug: string }) {
           flight={getMockFlight('filling')}
           initialTravelers={SEED_TRAVELERS}
           initialPets={SEED_PETS}
+          // Fixed, because a preview never reaches the endpoint and so has no
+          // real seat id to show. The live path leaves this unset.
+          reference="JN-3041-MGRT"
         />
       )
     case '41':

@@ -66,8 +66,11 @@ export function buildFlightGroupCreated({
       created_at: sentAt,
       spaces_total: spacesTotal,
       spaces_remaining: Math.max(0, spacesTotal - committed),
-      // CONFIRM: aircraft category source (not captured in the flow yet).
-      aircraft_category: 'Light Jet',
+      // No aircraft exists yet: nothing is chartered until an operator quotes.
+      // Sending a hardcoded "Light Jet" put a guess in the CRM that read as a
+      // commitment. Client settled this 2026-09-09; migration 0006 dropped the
+      // matching NOT NULL. Explicit null, never an omitted key — see the type.
+      aircraft_category: null,
       route: mapRoute(draft),
       dates: mapDates(draft),
       operator_notes: draft.notes ?? '',

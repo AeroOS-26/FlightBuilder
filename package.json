@@ -5,9 +5,10 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "typecheck": "tsc --noEmit",
     "migrate": "node --env-file=.env.local scripts/migrate.mjs",
-    "start": "next start",
-    "lint": "next lint"
+    "inspect-db": "node scripts/.inspect-db.mjs",
+    "start": "next start"
   },
   "dependencies": {
     "@auth/pg-adapter": "^1.11.3",

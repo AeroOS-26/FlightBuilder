@@ -7,7 +7,7 @@
  * Running it against the wrong database is therefore harmless — the point.
  *
  * Usage:
- *   DATABASE_URL="postgresql://…" node scratchpad/inspect-db.mjs
+ *   DATABASE_URL="postgresql://…" npm run inspect-db
  *
  * The URL comes from the environment, never a file, so it stays out of the repo.
  */

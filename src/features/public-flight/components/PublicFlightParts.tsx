@@ -12,11 +12,11 @@
 
 import type { ReactNode } from 'react'
 import { InfoNote } from '@/components/ui'
-import { Icon, PawPrints } from '@/components/common'
+import { Icon, PawPrints, RouteHeading } from '@/components/common'
 import { env } from '@/config/env'
 import { SidePanel } from '@/features/flight-builder/components'
 import { cn } from '@/utils/cn'
-import { metroLabel, formatDateRange, fellowPetSummary, aircraftExample } from '../format'
+import { metroLabel, formatDateRange, fellowPetSummary, aircraftRowValue } from '../format'
 import type { PublicView } from '@/types'
 
 /* ------------------------------------------------------------- state tone */
@@ -110,8 +110,12 @@ export function FlightHeroBanner({
   const metaParts = [
     formatDateRange(flight.estimated_date_range),
     // Aircraft is absent until a quote comes back — client, 2026-09-09.
+    // Inline meta run: drop the segment and its separator rather than showing
+    // a placeholder, which would be noise in a terse dot-separated line.
     flight.aircraft_category,
-  ].filter(Boolean)
+    // `Boolean` alone is not a type guard, so metaParts would widen to
+    // (string | null)[] and the already-correct intent would go untyped.
+  ].filter((part): part is string => Boolean(part))
 
   return (
     <div
@@ -128,15 +132,13 @@ export function FlightHeroBanner({
           {/* The route stays on ONE line at every width, as the hi-fi shows it.
               It scales with the viewport rather than wrapping, so a long city
               pair shrinks to fit instead of breaking onto a second line. */}
-          <h1 className="mt-1.5 flex flex-nowrap items-center gap-x-3 font-heading text-[clamp(1rem,4.6vw,1.375rem)] font-medium leading-tight text-[#000000] lg:text-[28px]">
-            <span className="whitespace-nowrap">{from}</span>
-            <img
-              src="/svg/soFar.svg"
-              alt="to"
-              className="size-[clamp(1rem,4vw,1.25rem)] shrink-0"
-            />
-            <span className="whitespace-nowrap">{to}</span>
-          </h1>
+          <RouteHeading
+            as="h1"
+            from={from}
+            to={to}
+            iconClassName="size-[clamp(1rem,4vw,1.25rem)]"
+            className="mt-1.5 font-heading text-[clamp(1rem,4.6vw,1.375rem)] font-medium leading-tight text-[#000000] lg:text-[28px]"
+          />
           {/* On mobile the state pill sits at the end of this line, per the
               mobile frames; from lg it moves to the banner's top-right. */}
           {/* The pill is pinned to the right of this line and stays there. No
@@ -222,7 +224,7 @@ export function FlightDetailsCard({ flight }: { flight: PublicView }) {
         <DetailRow label="Date">{formatDateRange(flight.estimated_date_range)}</DetailRow>
         <DetailRow label="Aircraft">
           <span className="flex flex-col items-end gap-1 lg:items-start">
-            <span>{aircraftExample(flight.aircraft_category)}</span>
+            <span>{aircraftRowValue(flight.aircraft_category)}</span>
             <span className="text-right font-sans text-[12px] font-normal leading-[16px] text-[#000000]/55 lg:text-left">
               Final aircraft confirmed after the group fills and the operator quote is locked.
             </span>

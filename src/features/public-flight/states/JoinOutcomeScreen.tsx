@@ -16,7 +16,7 @@
  * this screen collapses Filled into Quoting.
  */
 
-import { Icon, PawPrints } from '@/components/common'
+import { Icon, PawPrints, RouteHeading } from '@/components/common'
 import { metroLabel, formatDateRange } from '../format'
 import { cn } from '@/utils/cn'
 import type { Pet, PublicView, Traveler } from '@/types'
@@ -188,11 +188,13 @@ export function JoinOutcomeScreen({
           Group ID · {groupId}
           {memberNumber ? ` · You are member ${memberNumber}` : ''}
         </p>
-        <h2 className="mt-1.5 flex flex-nowrap items-center gap-x-3 font-heading text-[clamp(1.1rem,3vw,1.375rem)] font-semibold leading-[1.21] text-[#000000]">
-          <span className="whitespace-nowrap">{from}</span>
-          <img src="/svg/soFar.svg" alt="to" className="size-[24px] shrink-0" />
-          <span className="whitespace-nowrap">{to}</span>
-        </h2>
+        <RouteHeading
+          as="h2"
+          from={from}
+          to={to}
+          iconClassName="size-[24px]"
+          className="mt-1.5 font-heading text-[clamp(1.1rem,3vw,1.375rem)] font-semibold leading-[1.21] text-[#000000]"
+        />
         <p className="mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-1 font-sans text-[15px] font-medium text-[#000000]">
           <span>{formatDateRange(flight.estimated_date_range)}</span>
           {/* Aircraft only once a quote exists — client, 2026-09-09. */}

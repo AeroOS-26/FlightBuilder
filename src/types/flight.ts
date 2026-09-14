@@ -159,8 +159,11 @@ export interface FlightRecord {
   memberCount: number
   /** Estimated full group size used in the "x of y members" copy. */
   estimatedMembers: number
-  /** Aircraft class label, e.g. "Light Jet". */
-  aircraftClass: string
+  /**
+   * Aircraft class label, e.g. "Light Jet". Null until an operator quotes —
+   * nothing is chartered at creation. Client, 2026-09-09.
+   */
+  aircraftClass: string | null
   founder: MemberIdentity
   /** Generated, tracked share link. */
   shareUrl: string

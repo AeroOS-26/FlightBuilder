@@ -40,7 +40,8 @@ export interface PublicView {
   route_origin_city: string
   route_destination_city: string
   estimated_date_range: EstimatedDateRange
-  aircraft_category: string
+  /** Null until an operator quotes. Client, 2026-09-09. */
+  aircraft_category: string | null
   pet_friendly: boolean
   spaces_total: number
   spaces_remaining: number

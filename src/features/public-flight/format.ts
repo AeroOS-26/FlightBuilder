@@ -54,6 +54,35 @@ export function aircraftExample(category: string): string {
 }
 
 /**
+ * What a labelled AIRCRAFT row shows before an operator has quoted.
+ *
+ * Matches the register of the neighbouring COST row ("Estimate Pending"), and
+ * says the same thing the public card's subline already says underneath.
+ */
+export const AIRCRAFT_PENDING_LABEL = 'Confirmed at quote'
+
+/**
+ * The value for a **labelled** AIRCRAFT row or cell.
+ *
+ * Two treatments exist for an unknown aircraft, and which one applies is a
+ * property of the surface, not of the value:
+ *
+ * - **Labelled row/card** — keep the row, show the pending placeholder. An
+ *   empty row reads as a bug, and removing the row outright re-opens the
+ *   aircraft row the client explicitly asked for.
+ * - **Inline meta run** (`date · aircraft · pets`) — drop the segment and its
+ *   separator. A placeholder in a terse dot-separated run is noise. Those
+ *   sites filter the value out instead of calling this.
+ *
+ * Note `aircraftExample` deliberately still takes a non-null `string`: widening
+ * it to return '' for null would let every call site keep compiling and lose
+ * the type coverage that makes the nullable rollout safe.
+ */
+export function aircraftRowValue(category: string | null): string {
+  return category ? aircraftExample(category) : AIRCRAFT_PENDING_LABEL
+}
+
+/**
  * Derive the group_id from a share slug. Same parts, reordered: the share URL
  * carries `FROM-TO-YYYYMM-TOKEN` (e.g. SQL-TEB-202608-K3F9M2) while the record's
  * group_id is `YYYYMM-FROM-TO-TOKEN` (e.g. 202608-SQL-TEB-K3F9M2). The read

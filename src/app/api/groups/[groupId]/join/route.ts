@@ -12,7 +12,7 @@
 
 import { NextResponse } from 'next/server'
 import { requireViewerOrUnauthorized } from '@/features/auth/server/guard'
-import { addMember } from '@/features/group/server/groupStore'
+import { addMember, isRefused } from '@/features/group/server/groupStore'
 import { findByEmail } from '@/features/auth/server/members'
 import { serverEnv, isZohoConfigured } from '@/config/serverEnv'
 import type { MemberJoinResponse, MemberJoinedEvent } from '@/types'
@@ -26,10 +26,47 @@ export async function POST(
 
   const { groupId } = await params
 
+  // How many spaces this join takes: the member plus any companions added on
+  // the review screen. Absent or unparseable means one, which is the truth for
+  // a lone traveller and the safe reading of a malformed body — it can only
+  // ever under-claim, never silently take spaces the member did not ask for.
+  //
+  // Trusted from the client only for the count. The travellers themselves are
+  // not stored here: they have no accounts, and the roster is keyed to users.
+  let seatsRequested = 1
   try {
-    const seat = await addMember(groupId, viewer.id)
+    const body = (await request.json()) as { seats?: unknown }
+    const parsed = Number(body?.seats)
+    if (Number.isFinite(parsed) && parsed >= 1) {
+      seatsRequested = Math.trunc(parsed)
+    }
+  } catch {
+    // No body, or not JSON. Treat as a single traveller.
+  }
+
+  try {
+    const seat = await addMember(groupId, viewer.id, seatsRequested)
     if (!seat) {
       return NextResponse.json({ message: 'Group not found' }, { status: 404 })
+    }
+
+    // Refused for capacity. Nothing was written, so the member can retry with a
+    // smaller party. The client ruled on 2026-09-10 that failing a join beats
+    // overbooking a charter; this is that rule, enforced against our own roster
+    // rather than a commit-time read against Zoho, which was stood down the
+    // same day once Chuck confirmed nobody is added by hand.
+    if (isRefused(seat)) {
+      const { spacesRemaining } = seat
+      return NextResponse.json(
+        {
+          message:
+            spacesRemaining === 0
+              ? 'This group is now full.'
+              : `Only ${spacesRemaining} ${spacesRemaining === 1 ? 'space' : 'spaces'} left on this flight.`,
+          spaces_remaining: spacesRemaining,
+        },
+        { status: 409 },
+      )
     }
 
     const filled = seat.memberCount >= seat.spacesTotal

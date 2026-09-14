@@ -12,6 +12,7 @@
 
 import { useRouter } from 'next/navigation'
 import type { PublicView } from '@/types'
+import { aircraftRowValue } from '../format'
 import { JoinButton } from '../components/JoinButton'
 
 interface LoggedInFlightDetailPageProps {
@@ -59,7 +60,7 @@ export function LoggedInFlightDetailPage({
                   Aircraft
                 </p>
                 <p className="text-lg md:text-2xl font-bold text-gray-900 mt-2">
-                  {flight.aircraft_category}
+                  {aircraftRowValue(flight.aircraft_category)}
                 </p>
                 <p className="text-xs md:text-sm text-gray-500 mt-2">
                   Final aircraft confirmed after group fills
