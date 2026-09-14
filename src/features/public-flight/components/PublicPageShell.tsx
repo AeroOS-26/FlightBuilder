@@ -15,7 +15,9 @@ import { useRouter } from 'next/navigation'
 import { Logo, Icon } from '@/components/common'
 import { Button } from '@/components/ui'
 import { BrokerDisclosureFooter } from '@/components/common'
+import { AccountMenu } from '@/features/auth/components/AccountMenu'
 import { env } from '@/config/env'
+import type { ShareViewer } from '../PublicFlightPage'
 
 /**
  * Public marketing nav — matches the hi-fi (no member/dashboard chrome).
@@ -39,9 +41,14 @@ const NAV_LINKS: { label: string; path: string }[] = [
 
 const marketingHref = (path: string) => `${env.marketingSiteUrl}${path}`
 
-function PublicHeader() {
+interface PublicHeaderProps {
+  viewer?: ShareViewer
+}
+
+function PublicHeader({ viewer }: PublicHeaderProps) {
   const [menuOpen, setMenuOpen] = useState(false)
   const router = useRouter()
+  const isLoggedIn = !!viewer
 
   const handleSignIn = () => {
     router.push('/signin')
@@ -71,19 +78,28 @@ function PublicHeader() {
           ))}
         </nav>
 
-        {/* Desktop actions — logged-out state: Sign In + Join Flight Club. */}
-        <div className="hidden items-center gap-3 lg:flex">
-          <Button variant="secondary" className="gap-1.5" onClick={handleSignIn}>
-            <img
-              src="/svg/profileIcon.svg"
-              alt=""
-              aria-hidden="true"
-              className="size-[18px] shrink-0"
-            />
-            Sign In
-          </Button>
-          <Button>Join Flight Club</Button>
-        </div>
+        {/* Desktop actions — conditional based on auth state */}
+        {isLoggedIn ? (
+          <AccountMenu triggerClassName="hidden lg:flex h-10 items-center gap-2 rounded-[12px] border border-[#98C3E1] bg-[#CFE3F1]/20 px-[14px] font-sans text-[14px] font-medium leading-4 text-[#000000] transition-colors hover:bg-[#CFE3F1]/40 focus-ring">
+            <span className="flex size-6 items-center justify-center rounded-full bg-[#1946C5] font-sans text-xs font-medium text-white">
+              {/* Placeholder avatar */}U
+            </span>
+            <Icon name="chevron-down" size={16} className="text-[#000000]" />
+          </AccountMenu>
+        ) : (
+          <div className="hidden items-center gap-3 lg:flex">
+            <Button variant="secondary" className="gap-1.5" onClick={handleSignIn}>
+              <img
+                src="/svg/profileIcon.svg"
+                alt=""
+                aria-hidden="true"
+                className="size-[18px] shrink-0"
+              />
+              Sign In
+            </Button>
+            <Button>Join Flight Club</Button>
+          </div>
+        )}
 
         {/* Mobile menu button. The hi-fi draws a two-line glyph inside a squircle
             with the same blue→red gradient edge the Sign In button carries, so
@@ -132,10 +148,23 @@ function PublicHeader() {
             ))}
           </ul>
           <div className="mt-3 flex flex-col gap-2">
-            <Button variant="secondary" className="w-full">
-              Sign In
-            </Button>
-            <Button className="w-full">Join Flight Club</Button>
+            {isLoggedIn ? (
+              <AccountMenu>
+                <span className="flex w-full items-center justify-center gap-2 rounded-[12px] border border-[#98C3E1] bg-[#CFE3F1]/20 px-[14px] py-2.5 font-sans text-[14px] font-medium text-[#000000]">
+                  <span className="flex size-6 items-center justify-center rounded-full bg-[#1946C5] font-sans text-xs font-medium text-white">
+                    U
+                  </span>
+                  Account
+                </span>
+              </AccountMenu>
+            ) : (
+              <>
+                <Button variant="secondary" className="w-full" onClick={handleSignIn}>
+                  Sign In
+                </Button>
+                <Button className="w-full">Join Flight Club</Button>
+              </>
+            )}
           </div>
         </nav>
       )}
@@ -143,10 +172,15 @@ function PublicHeader() {
   )
 }
 
-export function PublicPageShell({ children }: { children: ReactNode }) {
+interface PublicPageShellProps {
+  children: ReactNode
+  viewer?: ShareViewer
+}
+
+export function PublicPageShell({ children, viewer }: PublicPageShellProps) {
   return (
     <div className="flex min-h-svh flex-col bg-[#F8F8F8]">
-      <PublicHeader />
+      <PublicHeader viewer={viewer} />
 
       <main className="flex-1">
         {/* Content lines up with the header: same 1440 frame, ~50px side inset

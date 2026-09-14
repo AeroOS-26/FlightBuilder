@@ -50,7 +50,7 @@ export function PublicFlightPage({ token, initialData, viewer }: PublicFlightPag
   const { data, isLoading, isError, refetch } = usePublicFlight(token, initialData)
 
   return (
-    <PublicPageShell>
+    <PublicPageShell viewer={viewer}>
       {isLoading && <PublicFlightSkeleton />}
       {isError && <PublicFlightError onRetry={() => refetch()} />}
       {!isLoading && !isError && data?.status === 'not_found' && <NotFoundState />}

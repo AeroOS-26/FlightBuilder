@@ -304,35 +304,38 @@ export function JoinReviewScreen({
           </div>
         )}
 
-        {/* Per-flight override of the profile's pets — the profile is untouched. */}
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-[12px] bg-[#CFE3F1]/25 px-4 py-3">
-          <p className="font-sans text-[14px] leading-[1.4] text-[#000000]">
-            <span className="font-semibold italic">Flying without pets this time?</span>{' '}
-            <span className="italic text-[#000000]/70">Clear your pets for this flight only.</span>
-          </p>
-          <div className="flex shrink-0 items-center gap-2">
-            <Button
-              size="sm"
-              onClick={() => {
-                setPetsEnabled(false)
-                setPets([])
-                revalidate({ petsEnabled: false, pets: [] })
-              }}
-            >
-              Clear
-            </Button>
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={() => {
-                setPetsEnabled(true)
-                if (pets.length === 0) setPets([emptyPet()])
-              }}
-            >
-              Keep
-            </Button>
+        {/* Per-flight override of the profile's pets — only show if profile had pets. */}
+        {(initialPets?.length ?? 0) > 0 && (
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-[12px] bg-[#CFE3F1]/25 px-4 py-3">
+            <p className="font-sans text-[14px] leading-[1.4] text-[#000000]">
+              <span className="font-semibold italic">Flying without pets this time?</span>{' '}
+              <span className="italic text-[#000000]/70">Clear your pets for this flight only.</span>
+            </p>
+            <div className="flex shrink-0 items-center gap-2">
+              <Button
+                size="sm"
+                onClick={() => {
+                  setPetsEnabled(false)
+                  setPets([])
+                  revalidate({ petsEnabled: false, pets: [] })
+                }}
+              >
+                Clear
+              </Button>
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => {
+                  setPetsEnabled(true)
+                  if (pets.length === 0) setPets([...initialPets!])
+                  revalidate({ petsEnabled: true, pets: pets.length > 0 ? pets : initialPets })
+                }}
+              >
+                {petsEnabled ? '✓ Keeping pets' : 'Keep'}
+              </Button>
+            </div>
           </div>
-        </div>
+        )}
       </section>
 
       {/* What you'd pay — no figure, per the standing no-pricing rule. */}

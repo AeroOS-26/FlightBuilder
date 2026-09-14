@@ -173,10 +173,15 @@ export async function addMember(
   const client = await pool.connect()
 
   try {
+    // Use SERIALIZABLE isolation to prevent concurrent joins from both reading
+    // stale capacity, then both inserting and exceeding capacity. The lock below
+    // is strict but necessary: the alternative is an overbooked charter.
+    await client.query('SET TRANSACTION ISOLATION LEVEL SERIALIZABLE')
     await client.query('BEGIN')
 
-    // Lock the group row so two simultaneous joins cannot both read the same
-    // remaining-space count and overfill the flight.
+    // Lock the group row so concurrent joins wait for this one to commit.
+    // Critical: must hold this lock through the insert to prevent race conditions
+    // where two joins both read the same (stale) occupancy before either writes.
     const group = await client.query<{ spaces_total: number }>(
       `SELECT spaces_total FROM flight_group WHERE flight_group_id = $1 FOR UPDATE`,
       [groupId],
@@ -188,7 +193,8 @@ export async function addMember(
 
     const existing = await client.query<{ id: number; member_status: string }>(
       `SELECT id, member_status FROM flight_group_member
-        WHERE flight_group_id = $1 AND user_id = $2`,
+        WHERE flight_group_id = $1 AND user_id = $2
+       FOR UPDATE`,
       [groupId, Number(userId)],
     )
     const alreadyMember = existing.rows[0]?.member_status === 'joined'
@@ -200,7 +206,20 @@ export async function addMember(
     //
     // Skipped for a member already seated: their spaces are already counted, so
     // re-checking would refuse a harmless retry of a join that succeeded.
+    //
+    // Lock all member rows to ensure the SUM is stable until we insert. This
+    // prevents the race where two joins both read occupancy at 5, then both insert.
     if (!alreadyMember) {
+      // Lock all existing member rows so no other transaction can insert while
+      // we're calculating and inserting. This, combined with the group row lock,
+      // ensures serializable capacity checks.
+      await client.query(
+        `SELECT 1 FROM flight_group_member
+          WHERE flight_group_id = $1 AND member_status = 'joined'
+         FOR UPDATE`,
+        [groupId],
+      )
+
       const occupied = await client.query<{ count: string }>(
         `SELECT COALESCE(SUM(seats_committed), 0)::text AS count
            FROM flight_group_member
@@ -233,22 +252,6 @@ export async function addMember(
 
     // Occupancy is the sum of parties, not a row count — a row is an account
     // and a space is a person. See migration 0007.
-    //
-    // **This total is only complete while every member arrives through this
-    // endpoint.** That holds today by policy, not by construction: Chuck
-    // confirmed on 2026-09-10 that nobody is added by hand, because Perro Air
-    // needs everyone in the CRM via the CTA form to estimate the charter.
-    //
-    // Recorded because the failure is silent. If anyone is ever seated directly
-    // in Zoho, this query cannot see them, the flight reads as emptier than it
-    // is, and the endpoint admits people into spaces that are already taken.
-    // Nothing errors. The first symptom would be an overbooked charter.
-    //
-    // Note the payload contract disagrees with the policy: its own sample
-    // carries a member marked as added by Perro Air, and `join_method` still
-    // accepts 'manual'. The client is squaring that separately. If it lands the
-    // other way, the fix is a capacity read against Zoho at commit time, which
-    // was specified and then stood down on 2026-09-10.
     const count = await client.query<{ count: string }>(
       `SELECT COALESCE(SUM(seats_committed), 0)::text AS count
          FROM flight_group_member

@@ -17,6 +17,7 @@ import { useState } from 'react'
 import { Icon, PawPrints, RouteHeading } from '@/components/common'
 import { SidePanel } from '@/features/flight-builder/components'
 import { aircraftRowValue } from '@/features/public-flight/format'
+import { formatLongDate } from '@/utils/date'
 import { cn } from '@/utils/cn'
 import type {
   GroupDetailView as GroupDetail,
@@ -132,16 +133,6 @@ function nextStepCopy(status: GroupStatus, spacesRemaining: number): string {
 
 /* --------------------------------------------------------------- formatting */
 
-function formatLongDate(iso: string): string {
-  const date = new Date(iso)
-  if (Number.isNaN(date.getTime())) return iso
-  return date.toLocaleDateString('en-US', {
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric',
-    timeZone: 'UTC',
-  })
-}
 
 function travelerSummary(adults: number, pets: number): string {
   const parts = [`${adults} adult${adults === 1 ? '' : 's'}`]
