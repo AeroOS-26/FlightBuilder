@@ -8,6 +8,7 @@ by `scripts/migrate.mjs`, which records what it has run in a
 npm run migrate          # local — loads .env.local
 ```
 
+
 On Vercel this runs automatically, ahead of `next build`, via `vercel.json`'s
 `buildCommand`. That ordering is the point: code that reads a column cannot
 deploy before the column exists. Getting that wrong produces
