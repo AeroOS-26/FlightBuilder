@@ -117,7 +117,7 @@ export function JoinReviewScreen({
     initialTravelers ?? [{ id: nextId(), name: '', isFounder: true }],
   )
   const [pets, setPets] = useState<Pet[]>(initialPets ?? [])
-  const [petsEnabled, setPetsEnabled] = useState((initialPets?.length ?? 0) > 0)
+  const [petsEnabled, setPetsEnabled] = useState(true)
   const [readiness, setReadiness] = useState(false)
   const [errors, setErrors] = useState<PetsErrors | null>(null)
   const [submitting, setSubmitting] = useState(false)

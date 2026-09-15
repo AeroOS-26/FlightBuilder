@@ -95,6 +95,8 @@ export default async function SharePage({
     // its own blank first traveller rather than rendering a party of nobody.
     const profile = await getProfile(viewer.id)
     shareViewer = {
+      id: viewer.id,
+      email: viewer.email,
       travelers: profile?.travelers?.length ? profile.travelers : undefined,
       pets: profile?.pets?.length ? profile.pets : undefined,
     }

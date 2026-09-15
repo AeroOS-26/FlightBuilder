@@ -29,6 +29,9 @@ import type { Pet, PublicFlightResult, PublicView, Traveler } from '@/types'
  * all — they are redirected to their group on the server.
  */
 export interface ShareViewer {
+  /** User identity — email for header display. */
+  id?: string
+  email?: string
   /** Seeded from the member's profile, as frame 40's "Pulled from your profile". */
   travelers?: Traveler[]
   pets?: Pet[]

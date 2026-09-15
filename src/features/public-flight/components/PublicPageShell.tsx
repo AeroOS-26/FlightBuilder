@@ -45,10 +45,16 @@ interface PublicHeaderProps {
   viewer?: ShareViewer
 }
 
+function getInitials(viewer?: ShareViewer): string {
+  if (!viewer?.email) return 'U'
+  return viewer.email[0].toUpperCase()
+}
+
 function PublicHeader({ viewer }: PublicHeaderProps) {
   const [menuOpen, setMenuOpen] = useState(false)
   const router = useRouter()
   const isLoggedIn = !!viewer
+  const initials = getInitials(viewer)
 
   const handleSignIn = () => {
     router.push('/signin')
@@ -82,7 +88,7 @@ function PublicHeader({ viewer }: PublicHeaderProps) {
         {isLoggedIn ? (
           <AccountMenu triggerClassName="hidden lg:flex h-10 items-center gap-2 rounded-[12px] border border-[#98C3E1] bg-[#CFE3F1]/20 px-[14px] font-sans text-[14px] font-medium leading-4 text-[#000000] transition-colors hover:bg-[#CFE3F1]/40 focus-ring">
             <span className="flex size-6 items-center justify-center rounded-full bg-[#1946C5] font-sans text-xs font-medium text-white">
-              {/* Placeholder avatar */}U
+              {initials}
             </span>
             <Icon name="chevron-down" size={16} className="text-[#000000]" />
           </AccountMenu>
@@ -152,7 +158,7 @@ function PublicHeader({ viewer }: PublicHeaderProps) {
               <AccountMenu>
                 <span className="flex w-full items-center justify-center gap-2 rounded-[12px] border border-[#98C3E1] bg-[#CFE3F1]/20 px-[14px] py-2.5 font-sans text-[14px] font-medium text-[#000000]">
                   <span className="flex size-6 items-center justify-center rounded-full bg-[#1946C5] font-sans text-xs font-medium text-white">
-                    U
+                    {initials}
                   </span>
                   Account
                 </span>
