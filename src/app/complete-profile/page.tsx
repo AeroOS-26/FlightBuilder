@@ -2,7 +2,7 @@
  * Complete your profile — /complete-profile (frame 31).
  *
  * The one Milestone 1 screen that does not use AuthShell: it runs inside the
- * signed-in site chrome, with the marketing nav above and the FAA footer below.
+ * signed-in site chrome, with the marketing nav above and the regulatory footer below.
  * Content is an 804-wide column on the same #EFF1F5 ground as the auth screens.
  *
  * The member's name seeds Traveler 1, exactly as the Flight Builder seeds the
@@ -10,9 +10,9 @@
  * screen is reviewable.
  */
 
+import { BrokerDisclosureFooter } from '@/components/common'
 import {
   MemberNav,
-  MemberFooter,
   OnboardingStepper,
   CompleteProfileForm,
 } from '@/features/onboarding/components'
@@ -71,7 +71,7 @@ export default async function CompleteProfilePage({
         </div>
       </main>
 
-      <MemberFooter />
+      <BrokerDisclosureFooter />
     </div>
   )
 }

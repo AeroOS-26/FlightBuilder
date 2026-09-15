@@ -110,23 +110,3 @@ export function MemberNav({ name, avatarSrc, email }: MemberNavProps) {
     </header>
   )
 }
-
-/**
- * Site footer from the same frame: the FAA operating-control line that the
- * public join page also carries, plus the copyright.
- */
-export function MemberFooter() {
-  return (
-    <footer className="w-full bg-white">
-      <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-4 px-6 py-5 lg:flex-row lg:items-center lg:justify-between lg:px-[50px]">
-        <p className="max-w-[820px] font-sans text-[14px] font-medium leading-[1.4] text-black lg:text-[16px]">
-          Flights arranged by Perro Air, LLC and operated by direct air carriers certified under
-          FAA Part 135, 121 or 129. The operating carrier maintains full operational control.
-        </p>
-        <p className="whitespace-nowrap font-sans text-[14px] font-medium leading-[1.4] text-black lg:text-[16px]">
-          © PERRO AIR · PERROAIR.COM
-        </p>
-      </div>
-    </footer>
-  )
-}

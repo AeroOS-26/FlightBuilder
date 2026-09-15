@@ -11,6 +11,7 @@
  */
 
 import { useRouter } from 'next/navigation'
+import { BrokerDisclosureFooter } from '@/components/common'
 import type { PublicView } from '@/types'
 import { aircraftRowValue } from '../format'
 import { JoinButton } from '../components/JoinButton'
@@ -186,15 +187,7 @@ export function FillingFlightDetailPage({
         </div>
       </div>
 
-      {/* Footer */}
-      <footer className="bg-gray-900 text-white py-8 mt-12">
-        <div className="max-w-6xl mx-auto px-4 md:px-6 text-center text-sm text-gray-400">
-          <p>
-            Flights arranged by Perro Air, LLC and operated by direct air carriers certified under FAA Part 135, 121 or
-            129. The operating carrier maintains full operational control.
-          </p>
-        </div>
-      </footer>
+      <BrokerDisclosureFooter />
     </div>
   )
 }
