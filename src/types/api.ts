@@ -241,22 +241,20 @@ export interface GroupMember {
 }
 
 /**
- * The `member.joined` event sent to Zoho when a member joins a group (Milestone 2).
- *
- * This is Pavan's backend responsibility; we emit it server-side in the join endpoint.
- * Field names and structure match the backend integration spec.
+ * The `member.joined` event, contract section 3. Emitted server-side from the
+ * join endpoint; Zoho's handler is Pavan's.
  */
 export interface MemberJoinedEvent {
   event: 'member.joined'
   sent_at: string
-  flight_group_id: string
-  account_id: string
-  name: string
-  email: string
-  phone: string | null
-  role: 'group_organizer' | 'joiner'
-  join_method: 'shared_link' | 'manual' | 'group_organizer'
-  member_status: 'joined'
+  /** The AeroOS group id. */
+  group_id: string
+  /**
+   * Zoho's record id for the group, stored when the group was created. Null when
+   * Zoho returned none — the contract has Zoho fall back to `group_id` then.
+   */
+  zoho_flight_group_record_id: string | null
+  member: FlightGroupMember
 }
 
 /* ================================================ GROUP DETAIL VIEW TYPES */

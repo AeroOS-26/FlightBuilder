@@ -135,6 +135,27 @@ export interface TravelerPetInput {
   readinessAccepted: boolean
 }
 
+/**
+ * The pet rules on their own, for a caller that knows the party size but not
+ * the travellers' names — the join endpoint re-checks a submitted party with
+ * these, so the server and the screen cannot disagree.
+ */
+export interface PetListInput {
+  pets: Pet[]
+  petsEnabled: boolean
+  readinessAccepted: boolean
+  /** The pet cap is per traveller, so it needs the party size. */
+  travelerCount: number
+}
+
+export type PetListErrors = Pick<PetsErrors, 'pets' | 'readiness' | 'petCount'>
+
+export function hasPetListErrors(errors: PetListErrors): boolean {
+  return (
+    Object.keys(errors.pets).length > 0 || Boolean(errors.readiness) || Boolean(errors.petCount)
+  )
+}
+
 /** The shared rules. `validatePets` is this, applied to a flight draft. */
 export function validateTravelersAndPets(input: TravelerPetInput): PetsErrors {
   const travelers: Record<string, string> = {}
@@ -142,6 +163,29 @@ export function validateTravelersAndPets(input: TravelerPetInput): PetsErrors {
     if (t.name.trim().length === 0) travelers[t.id] = 'Full name required.'
   }
 
+  const { pets, readiness, petCount } = validatePetList({
+    pets: input.pets,
+    petsEnabled: input.petsEnabled,
+    readinessAccepted: input.readinessAccepted,
+    travelerCount: input.travelers.length,
+  })
+
+  const hasAny =
+    Object.keys(travelers).length > 0 ||
+    Object.keys(pets).length > 0 ||
+    Boolean(readiness) ||
+    Boolean(petCount)
+
+  return {
+    banner: hasAny ? 'Please complete the highlighted fields before continuing.' : undefined,
+    travelers,
+    pets,
+    readiness,
+    petCount,
+  }
+}
+
+export function validatePetList(input: PetListInput): PetListErrors {
   const pets: Record<string, PetFieldErrors> = {}
   if (input.petsEnabled) {
     for (const p of input.pets) {
@@ -160,7 +204,7 @@ export function validateTravelersAndPets(input: TravelerPetInput): PetsErrors {
 
   // Three pets per traveller, so the cap rises with the party rather than
   // being a flat number. Client, 2026-09-09.
-  const petCap = Math.max(1, input.travelers.length) * MAX_PETS_PER_TRAVELER
+  const petCap = Math.max(1, input.travelerCount) * MAX_PETS_PER_TRAVELER
   const petCount =
     input.petsEnabled && input.pets.length > petCap
       ? `Up to ${MAX_PETS_PER_TRAVELER} pets per traveller — that is ${petCap} for this party.`
@@ -172,19 +216,7 @@ export function validateTravelersAndPets(input: TravelerPetInput): PetsErrors {
       ? 'Please confirm Travel Readiness before continuing.'
       : undefined
 
-  const hasAny =
-    Object.keys(travelers).length > 0 ||
-    Object.keys(pets).length > 0 ||
-    Boolean(readiness) ||
-    Boolean(petCount)
-
-  return {
-    banner: hasAny ? 'Please complete the highlighted fields before continuing.' : undefined,
-    travelers,
-    pets,
-    readiness,
-    petCount,
-  }
+  return { pets, readiness, petCount }
 }
 
 export function validatePets(draft: FlightDraft): PetsErrors {

@@ -22,9 +22,8 @@ export interface InterestLeadEvent {
     email: string
     phone: string | null
     /**
-     * Retained at null. The form no longer collects a free-text note, but the
-     * key stays on the event so a strict upstream cannot reject the payload
-     * while `pet_count` is being mapped on the Zoho side.
+     * Optional free-text note; null when empty. Sent alongside `pet_count`,
+     * not instead of it — the contract maps both.
      */
     pet: string | null
     /**
@@ -61,6 +60,7 @@ export async function forwardInterestLead(
 ): Promise<LeadWriteResult> {
   const payload = {
     event: 'interest_lead.created' as const,
+    sent_at: new Date().toISOString(),
     source: event.source,
     group_id: event.group_id,
     zoho_flight_group_record_id: event.zoho_flight_group_record_id,

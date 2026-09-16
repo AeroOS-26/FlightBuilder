@@ -64,12 +64,16 @@ interface LeadRequestBody {
   email?: unknown
   phone?: unknown
   pet_count?: unknown
+  pet?: unknown
   group_id?: unknown
   /** Honeypot — a real user leaves this empty. */
   company_website?: unknown
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+/** A note, not an essay; anything past this is cut rather than refused. */
+const MAX_PET_NOTE_LENGTH = 1000
 
 function fail(message: string, status: number) {
   const body: InterestLeadResponse = { success: false, message }
@@ -113,6 +117,8 @@ export async function POST(request: Request) {
   // Zero is valid, so this is a presence check on a number rather than a
   // truthiness check — `!petCount` would silently reject a no-pet lead.
   const petCount = typeof body.pet_count === 'number' ? body.pet_count : null
+  const petNote =
+    typeof body.pet === 'string' ? body.pet.trim().slice(0, MAX_PET_NOTE_LENGTH) : ''
   const groupId = typeof body.group_id === 'string' ? body.group_id.trim() : ''
 
   if (!name) return fail('Please enter your name.', 422)
@@ -131,7 +137,7 @@ export async function POST(request: Request) {
     source: 'mvp_join_page',
     group_id: resolved.group_id,
     zoho_flight_group_record_id: resolved.zoho_flight_group_record_id,
-    lead: { name, email, phone: phoneRaw || null, pet: null, pet_count: petCount },
+    lead: { name, email, phone: phoneRaw || null, pet: petNote || null, pet_count: petCount },
   })
 
   const response: InterestLeadResponse = result.success

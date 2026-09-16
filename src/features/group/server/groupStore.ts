@@ -133,6 +133,11 @@ export interface AddMemberResult {
    */
   memberCount: number
   spacesTotal: number
+  /**
+   * Zoho's record id for the group, stored at creation; null when Zoho returned
+   * none. Read under the same row lock, so `member.joined` needs no second query.
+   */
+  zohoRecordId: string | null
 }
 
 /** The group exists but cannot fit this party. Nothing was written. */
@@ -182,8 +187,8 @@ export async function addMember(
     // Lock the group row so concurrent joins wait for this one to commit.
     // Critical: must hold this lock through the insert to prevent race conditions
     // where two joins both read the same (stale) occupancy before either writes.
-    const group = await client.query<{ spaces_total: number }>(
-      `SELECT spaces_total FROM flight_group WHERE flight_group_id = $1 FOR UPDATE`,
+    const group = await client.query<{ spaces_total: number; zoho_record_id: string | null }>(
+      `SELECT spaces_total, zoho_record_id FROM flight_group WHERE flight_group_id = $1 FOR UPDATE`,
       [groupId],
     )
     if (group.rows.length === 0) {
@@ -266,6 +271,7 @@ export async function addMember(
       alreadyMember,
       memberCount: Number(count.rows[0]!.count),
       spacesTotal,
+      zohoRecordId: group.rows[0]!.zoho_record_id,
     }
   } catch (error) {
     await client.query('ROLLBACK')

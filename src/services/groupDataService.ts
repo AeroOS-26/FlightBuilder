@@ -6,7 +6,20 @@
  * which does.
  */
 
-import type { MemberJoinResponse } from '@/types'
+import type { MemberJoinResponse, Pet } from '@/types'
+
+export interface JoinRequest {
+  /**
+   * Spaces this join takes: the member plus companions on the review screen.
+   * A space is a person, not an account, so a party of three takes three even
+   * though it is one membership. See migration 0007.
+   */
+  seats: number
+  /** The party's pets as confirmed on the review screen. They travel on `member.joined`. */
+  pets: Pet[]
+  /** Travel Readiness — required whenever pets are coming. */
+  readinessAccepted: boolean
+}
 
 /**
  * Join a flight group.
@@ -22,27 +35,27 @@ import type { MemberJoinResponse } from '@/types'
  */
 export async function joinGroup(
   groupId: string,
-  _userId: string,
-  /**
-   * Spaces this join takes: the member plus companions on the review screen.
-   * A space is a person, not an account, so a party of three takes three even
-   * though it is one membership. See migration 0007.
-   */
-  seats = 1,
+  { seats, pets, readinessAccepted }: JoinRequest,
 ): Promise<MemberJoinResponse> {
   const res = await fetch(`/api/groups/${encodeURIComponent(groupId)}/join`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ seats }),
+    body: JSON.stringify({ seats, pets, readiness_accepted: readinessAccepted }),
   })
 
   if (!res.ok) {
     // 409 is capacity, and the server says how many spaces are actually left.
-    // Its message is more useful than anything that can be written here, so it
+    // 400 and 422 are pet details the server would not accept. In each case
+    // its message is more useful than anything that can be written here, so it
     // is passed through rather than replaced with a generic failure.
-    if (res.status === 409) {
+    if (res.status === 409 || res.status === 400 || res.status === 422) {
       const body = (await res.json().catch(() => null)) as { message?: string } | null
-      throw new Error(body?.message ?? 'This group no longer has room for your party.')
+      throw new Error(
+        body?.message ??
+          (res.status === 409
+            ? 'This group no longer has room for your party.'
+            : 'Please check your pet details and try again.'),
+      )
     }
 
     // A signed-out member needs to sign in, not retry. Telling them to try

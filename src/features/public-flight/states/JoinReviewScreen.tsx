@@ -152,7 +152,12 @@ export function JoinReviewScreen({
       // The whole party, not one account. Everyone on this list occupies a
       // space, and only the signed-in member has a user row, so the count has
       // to travel with the request or the companions are invisible to capacity.
-      const result = await joinGroup(flight.group_id, '', travelers.length)
+      const result = await joinGroup(flight.group_id, {
+        seats: travelers.length,
+        // Only pets that are actually coming: a cleared section sends none.
+        pets: petsEnabled ? pets : [],
+        readinessAccepted: readiness,
+      })
       if (!result.success) throw new Error('The group could not be joined.')
       onJoined(result.filled === true, result.member_id)
     } catch (err) {
