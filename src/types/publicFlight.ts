@@ -58,8 +58,8 @@ export type PublicFlightResult =
 /**
  * The MVP join-page interest lead the visitor submits — the client-side shape.
  * Mirrors `interest_lead.created`: a lighter interest capture than a full member
- * join — no account, and pets as a single optional free-text note (not the full
- * structured pet records the member join carries), matching the hi-fi.
+ * join — no account, and pets as a count plus an optional free-text note, not
+ * the structured pet records the member join carries.
  *
  * `zoho_flight_group_record_id` is intentionally absent here: it is resolved
  * server-side from the share token, never sent by the browser.
@@ -80,6 +80,12 @@ export interface InterestLeadRequest {
    * committed and no aircraft is being sized. Client, 2026-09-09.
    */
   pet_count: number
+  /**
+   * Optional free text — breed, age, anything the count cannot hold. Null when
+   * empty. It sits alongside `pet_count`, not in place of it: the contract maps
+   * both (section 5, amended 2026-09-11).
+   */
+  pet: string | null
 }
 
 /**
