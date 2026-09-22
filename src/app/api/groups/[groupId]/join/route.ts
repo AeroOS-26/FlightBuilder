@@ -127,6 +127,9 @@ export async function POST(
       member_id: seat.memberId,
       group_state: filled ? 'full' : 'forming',
       filled,
+      spaces_total: seat.spacesTotal,
+      spaces_remaining: Math.max(0, seat.spacesTotal - seat.memberCount),
+      member_ordinal: seat.memberOrdinal,
     }
     return NextResponse.json(response, { status: 200 })
   } catch (error) {

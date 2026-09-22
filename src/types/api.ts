@@ -193,6 +193,18 @@ export interface MemberJoinResponse {
   group_state?: PublicFlightState
   /** True if this join caused spaces_remaining to reach 0. */
   filled?: boolean
+  /**
+   * Capacity after the join, from our own roster and counted in people.
+   *
+   * The confirmation screen needs these because the public view cannot supply
+   * them: Zoho's record keeps the counts it was created with, and nothing AeroOS
+   * sends after creation carries a new count. Same names as `PublicView`, so
+   * they drop straight over it.
+   */
+  spaces_total?: number
+  spaces_remaining?: number
+  /** This member's place in the roster by join order, for "You are member n". */
+  member_ordinal?: number
   /** Present on error. */
   message?: string
 }

@@ -17,9 +17,26 @@
 import { useState } from 'react'
 import { JoinReviewScreen } from './JoinReviewScreen'
 import { JoinOutcomeScreen } from './JoinOutcomeScreen'
-import type { Pet, PublicView, Traveler } from '@/types'
+import type { MemberJoinResponse, Pet, PublicView, Traveler } from '@/types'
 
-type Stage = 'review' | 'joined' | 'filled'
+/**
+ * The public view with the roster's counts laid over it, when the join sent
+ * them.
+ *
+ * The public view is Zoho's record, and Zoho keeps the counts it was created
+ * with: `member.joined` carries no count, and the contract forbids Zoho from
+ * deriving one. So after a join it still describes the group as it was, and a
+ * group of two that has just filled reads as one of six. Only the counts are
+ * replaced; everything else on the page is still the public view.
+ */
+function withRosterCounts(flight: PublicView, result: MemberJoinResponse): PublicView {
+  if (result.spaces_total === undefined || result.spaces_remaining === undefined) return flight
+  return {
+    ...flight,
+    spaces_total: result.spaces_total,
+    spaces_remaining: result.spaces_remaining,
+  }
+}
 
 export function JoinFlow({
   token,
@@ -40,19 +57,20 @@ export function JoinFlow({
    */
   reference?: string
 }) {
-  const [stage, setStage] = useState<Stage>('review')
-  const [memberId, setMemberId] = useState<string | null>(null)
+  const [joined, setJoined] = useState<MemberJoinResponse | null>(null)
 
-  if (stage !== 'review') {
+  if (joined) {
     return (
       <JoinOutcomeScreen
-        flight={flight}
+        flight={withRosterCounts(flight, joined)}
         groupId={flight.group_id}
-        filled={stage === 'filled'}
+        filled={joined.filled === true}
         travelers={initialTravelers}
         pets={initialPets}
-        reference={reference ?? memberId ?? undefined}
-        memberNumber={flight.spaces_total - flight.spaces_remaining + 1}
+        reference={reference ?? joined.member_id}
+        // The public view's count plus one is only right while Zoho happens to
+        // be exactly one join behind, so it is the fallback, not the source.
+        memberNumber={joined.member_ordinal ?? flight.spaces_total - flight.spaces_remaining + 1}
       />
     )
   }
@@ -62,10 +80,7 @@ export function JoinFlow({
       flight={flight}
       initialTravelers={initialTravelers}
       initialPets={initialPets}
-      onJoined={(filled, joinedMemberId) => {
-        setMemberId(joinedMemberId ?? null)
-        setStage(filled ? 'filled' : 'joined')
-      }}
+      onJoined={setJoined}
     />
   )
 }

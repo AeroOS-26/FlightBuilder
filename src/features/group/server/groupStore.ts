@@ -134,6 +134,11 @@ export interface AddMemberResult {
   memberCount: number
   spacesTotal: number
   /**
+   * This member's place in the roster by join order, counted in accounts — the
+   * same numbering the group page uses for "Member n".
+   */
+  memberOrdinal: number
+  /**
    * Zoho's record id for the group, stored at creation; null when Zoho returned
    * none. Read under the same row lock, so `member.joined` needs no second query.
    */
@@ -264,6 +269,17 @@ export async function addMember(
       [groupId],
     )
 
+    // Position by join order, ties broken by id. Counted rather than taken from
+    // the row id: ids are shared by every group, so they say nothing about this
+    // one.
+    const ordinal = await client.query<{ ordinal: number }>(
+      `SELECT COUNT(*)::int AS ordinal
+         FROM flight_group_member
+        WHERE flight_group_id = $1 AND member_status = 'joined'
+          AND (joined_at, id) <= (SELECT joined_at, id FROM flight_group_member WHERE id = $2)`,
+      [groupId, seated.rows[0]!.id],
+    )
+
     await client.query('COMMIT')
 
     return {
@@ -271,6 +287,7 @@ export async function addMember(
       alreadyMember,
       memberCount: Number(count.rows[0]!.count),
       spacesTotal,
+      memberOrdinal: ordinal.rows[0]!.ordinal,
       zohoRecordId: group.rows[0]!.zoho_record_id,
     }
   } catch (error) {

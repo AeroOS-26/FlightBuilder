@@ -36,7 +36,7 @@ import { MAX_TRAVELERS } from '@/features/flight-builder/config/capacity'
 import { joinGroup } from '@/services/groupDataService'
 import { metroLabel, formatDateRange, aircraftRowValue } from '../format'
 import { cn } from '@/utils/cn'
-import type { Pet, PublicView, Traveler } from '@/types'
+import type { MemberJoinResponse, Pet, PublicView, Traveler } from '@/types'
 
 const CARD = 'rounded-[20px] border border-[#A8A8A8]/20 bg-white/60 p-5'
 const HEADING = 'font-heading text-[20px] font-semibold leading-[1.21] text-[#000000]'
@@ -97,11 +97,11 @@ interface JoinReviewScreenProps {
   initialTravelers?: Traveler[]
   initialPets?: Pet[]
   /**
-   * `memberId` is the real seat id, so the outcome screen can show a genuine
-   * reference. Optional because the contract types it so; absent simply means
-   * no reference is rendered, which beats inventing one.
+   * The endpoint's whole answer. It carries the real seat id, so the outcome
+   * screen can show a genuine reference, and the roster's counts after the
+   * join, which the public view does not have.
    */
-  onJoined: (filled: boolean, memberId?: string) => void
+  onJoined: (result: MemberJoinResponse) => void
   onBack?: () => void
 }
 
@@ -159,7 +159,7 @@ export function JoinReviewScreen({
         readinessAccepted: readiness,
       })
       if (!result.success) throw new Error('The group could not be joined.')
-      onJoined(result.filled === true, result.member_id)
+      onJoined(result)
     } catch (err) {
       // Stay put so the member can retry — the endpoint is idempotent, so
       // pressing Confirm again cannot seat them twice.

@@ -11,7 +11,7 @@
  */
 
 import { useState, type ReactNode } from 'react'
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { Logo, Icon } from '@/components/common'
 import { Button } from '@/components/ui'
 import { BrokerDisclosureFooter } from '@/components/common'
@@ -53,11 +53,18 @@ function getInitials(viewer?: ShareViewer): string {
 function PublicHeader({ viewer }: PublicHeaderProps) {
   const [menuOpen, setMenuOpen] = useState(false)
   const router = useRouter()
+  const pathname = usePathname()
   const isLoggedIn = !!viewer
   const initials = getInitials(viewer)
 
+  // Back to this flight after signing in. Without it the sign-in page falls
+  // back to "/", which sends every member to the Flight Builder — so someone
+  // who signed in to join a flight lost it.
+  //
+  // The path only, not the query: `?preview=1` forces the anonymous view, and a
+  // person who has just signed in is asking for the member one.
   const handleSignIn = () => {
-    router.push('/signin')
+    router.push(`/signin?callbackUrl=${encodeURIComponent(pathname)}`)
   }
 
   return (

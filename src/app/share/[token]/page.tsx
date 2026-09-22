@@ -47,13 +47,57 @@
  * so it is harmless in anyone else's hands too.
  */
 
+import { cache } from 'react'
+import type { Metadata } from 'next'
 import { notFound, redirect } from 'next/navigation'
 import { PublicFlightPage } from '@/features/public-flight/PublicFlightPage'
 import type { ShareViewer } from '@/features/public-flight/PublicFlightPage'
 import { resolvePublicFlight } from '@/features/public-flight/data/resolvePublicFlight'
+import { formatDateRange, metroLabel } from '@/features/public-flight/format'
 import { currentViewer, getMembership } from '@/features/auth/server/guard'
 import { getProfile } from '@/features/auth/server/profile'
 import type { PublicFlightResult } from '@/types'
+
+/**
+ * One upstream read per request, shared by the metadata and the page. The read
+ * is a POST, which Next does not dedupe on its own, so without this every visit
+ * would call Zoho twice just to put a title on the tab.
+ */
+const getPublicFlight = cache(resolvePublicFlight)
+
+/**
+ * The tab title and the link preview.
+ *
+ * This route used to inherit the root layout's "Create a Shared Flight", so the
+ * share, join and confirmation screens all carried the Flight Builder's name —
+ * and so did every preview of a link a member sent. It names the flight
+ * instead, from public-view fields only: the preview is shown to anyone the
+ * link reaches, so it can say nothing the public page does not.
+ */
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ token: string }>
+}): Promise<Metadata> {
+  const { token } = await params
+  const resolved = await getPublicFlight(token)
+
+  if (resolved.status === 'not_found') return { title: 'Page not found · Perro Air' }
+  // Upstream failed. The page still renders and retries on the client, so it
+  // gets a title that is true without the flight rather than no title at all.
+  if (resolved.status === 'error') return { title: 'Shared Flight · Perro Air' }
+
+  const { flight } = resolved
+  const route = `${metroLabel(flight.route_origin_city)} to ${metroLabel(flight.route_destination_city)}`
+  const title = `${route} · Shared Flight · Perro Air`
+  const description = `Shared flight from ${route} · ${formatDateRange(flight.estimated_date_range)}`
+
+  return {
+    title,
+    description,
+    openGraph: { title, description, siteName: 'Perro Air', type: 'website' },
+  }
+}
 
 export default async function SharePage({
   params,
@@ -65,7 +109,7 @@ export default async function SharePage({
   const { token } = await params
   const { preview } = await searchParams
   const isPreview = preview === '1'
-  const resolved = await resolvePublicFlight(token)
+  const resolved = await getPublicFlight(token)
 
   if (resolved.status === 'not_found') {
     notFound()

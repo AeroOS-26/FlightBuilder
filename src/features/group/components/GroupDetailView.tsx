@@ -225,11 +225,17 @@ function MemberRow({ member }: { member: GroupDetailMember }) {
   )
 }
 
+/**
+ * Seven steps in a row need ~400px, more than a phone gives the card, so below
+ * `sm` the stepper runs top to bottom instead: circle and label side by side,
+ * connectors vertical. Every stage stays visible with no sideways scroll. From
+ * `sm` up it is the horizontal stepper the frames draw.
+ */
 function TimelineStepper({ current }: { current: GroupStatus }) {
   const currentIndex = TIMELINE_STEPS.findIndex((s) => s.status === current)
 
   return (
-    <ol className="flex items-start gap-[3px] px-2 pb-1.5">
+    <ol className="flex flex-col items-start gap-[3px] px-2 pb-1.5 sm:flex-row">
       {TIMELINE_STEPS.map((step, i) => {
         const isDone = i < currentIndex
         const isCurrent = i === currentIndex
@@ -241,8 +247,9 @@ function TimelineStepper({ current }: { current: GroupStatus }) {
                 aria-hidden="true"
                 className={cn(
                   // Connector i sits between step i-1 and step i: green once
-                  // crossed, navy for the leg out of the current step.
-                  'mt-[14px] h-px min-w-2 flex-1',
+                  // crossed, navy for the leg out of the current step. Vertical
+                  // under the circle's centre on mobile, horizontal from sm.
+                  'ml-[14.5px] h-3 w-px sm:ml-0 sm:mt-[14px] sm:h-px sm:w-auto sm:min-w-2 sm:flex-1',
                   i <= currentIndex
                     ? 'bg-[#109A51]'
                     : i === currentIndex + 1
@@ -251,7 +258,7 @@ function TimelineStepper({ current }: { current: GroupStatus }) {
                 )}
               />
             )}
-            <div className="flex w-[38px] shrink-0 flex-col items-center gap-[7px]">
+            <div className="flex items-center gap-3 sm:w-[38px] sm:shrink-0 sm:flex-col sm:gap-[7px]">
               {isDone ? (
                 <span className="flex size-[30px] items-center justify-center rounded-full bg-[#109A51] text-white">
                   <Icon name="check" size={16} />
@@ -269,7 +276,9 @@ function TimelineStepper({ current }: { current: GroupStatus }) {
               )}
               <span
                 className={cn(
-                  'text-center font-sans text-[11px] leading-[1.33] lg:text-[12px]',
+                  // Beside the circle on mobile, so it reads at body size; under
+                  // it from sm, at the frames' 11px/12px.
+                  'font-sans text-[13px] leading-[1.33] sm:text-center sm:text-[11px] lg:text-[12px]',
                   isCurrent ? 'font-medium text-[#000000]' : 'font-normal text-[#6D6D6D]',
                 )}
               >
@@ -580,10 +589,11 @@ export function GroupDetailView({
           </p>
         </div>
 
-        {/* The seven steps do not compress below ~640px, so the stepper scrolls
-            inside the card rather than forcing the page to scroll sideways. */}
+        {/* Below sm the stepper is vertical and needs no minimum width. From sm
+            the row needs ~400px; the scroll stays only as a guard for a column
+            narrower than that, so the page itself never scrolls sideways. */}
         <div className="mt-[18px] -mx-1 overflow-x-auto">
-          <div className="min-w-[400px] px-1">
+          <div className="px-1 sm:min-w-[400px]">
             <TimelineStepper current={groupStatus} />
           </div>
         </div>

@@ -217,7 +217,7 @@ export function JoinOutcomeScreen({
         <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
           <p className="font-sans text-[14px] font-medium text-[#000000]">
             {filled
-              ? `${flight.spaces_total} of ${flight.spaces_total} members · Group is full`
+              ? `${seated} of ${flight.spaces_total} members · Group is full`
               : `${seated} of estimated ${flight.spaces_total} members`}
           </p>
           <span
