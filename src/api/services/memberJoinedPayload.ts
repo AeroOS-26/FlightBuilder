@@ -5,8 +5,7 @@
  * in the same place, and so the shape is a pure function of its inputs.
  */
 
-import { mapPet } from './petPayload'
-import type { MemberJoinedEvent, Pet } from '@/types'
+import type { FlightGroupPet, MemberJoinedEvent } from '@/types'
 
 interface BuildArgs {
   groupId: string
@@ -18,9 +17,13 @@ interface BuildArgs {
   name: string | null
   email: string
   phone: string | null
-  /** The party's pets as confirmed on the review screen. */
-  pets: Pet[]
-  readinessAccepted: boolean
+  /**
+   * The party's pets as confirmed on the review screen, already in the
+   * contract's shape. Mapped once by the caller, because the same objects are
+   * stored against the seat for flight_group.filled — mapping here as well
+   * would leave two places that could disagree.
+   */
+  pets: FlightGroupPet[]
   /** ISO timestamp for the event (caller stamps it). */
   sentAt: string
 }
@@ -34,7 +37,6 @@ export function buildMemberJoined({
   email,
   phone,
   pets,
-  readinessAccepted,
   sentAt,
 }: BuildArgs): MemberJoinedEvent {
   return {
@@ -56,7 +58,7 @@ export function buildMemberJoined({
       // The joiner is the contact for their own party, so the party's pets sit
       // with them — the same rule flight_group.created applies to the organizer.
       is_primary: true,
-      pets: pets.map((p) => mapPet(p, readinessAccepted)),
+      pets,
     },
   }
 }

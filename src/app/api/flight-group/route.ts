@@ -15,41 +15,8 @@ import { serverEnv, isZohoConfigured } from '@/config/serverEnv'
 import { forwardFreshworksContact } from '@/api/services/freshworksContact'
 import { currentViewer, type Viewer } from '@/features/auth/server/guard'
 import { createFlightGroup } from '@/features/group/server/groupStore'
+import { parseZohoEnvelope, unwrapZohoOutput } from '@/api/services/zohoWebhook'
 import type { CreateFlightRelayResponse, FlightGroupCreatedEvent } from '@/types'
-
-/**
- * Zoho's envelope around a CRM Function call.
- *
- * The function's own return value is a JSON *string* in `details.output` —
- * nothing useful sits at the top level. This is the same wrapping the public
- * read already unwraps (see features/public-flight/data/fetchPublicView.ts).
- *
- * `details.id` is deliberately NOT modelled: it is the Zoho *function's* id,
- * identical on every call. Reading it as a record id was the cause of the
- * duplicate-id defect raised 2026-08-10 (every flight came back with the same
- * value, because the real id was nested and never read). Leaving it off the
- * type keeps it from being reintroduced as a fallback.
- */
-interface ZohoEnvelope {
-  code?: string
-  message?: string
-  details?: { output?: string; userMessage?: string[] }
-}
-
-/** The function's actual result, parsed out of `details.output`. */
-interface ZohoFunctionResult {
-  event?: string
-  /** The created Flight Group record id — the value we want. */
-  flight_group_id?: string
-  /** The payload contract's name for the same value; accepted as an alias. */
-  zoho_flight_group_record_id?: string
-  group_id?: string
-  success?: boolean
-  message?: string
-  members_total?: number
-  members_succeeded?: number
-  members_failed?: number
-}
 
 export async function POST(request: Request) {
   if (!isZohoConfigured()) {
@@ -98,9 +65,9 @@ export async function POST(request: Request) {
     })
 
     const text = await upstream.text()
-    const envelope = safeParse(text)
+    const envelope = parseZohoEnvelope(text)
     // The function's real result is a JSON string inside details.output.
-    const fn = unwrapOutput(envelope)
+    const fn = unwrapZohoOutput(envelope)
 
     if (!upstream.ok) {
       return NextResponse.json(
@@ -216,35 +183,4 @@ async function mirrorFlightGroup(
       error instanceof Error ? error.message : error,
     )
   }
-}
-
-function safeParse(text: string): ZohoEnvelope | null {
-  try {
-    return JSON.parse(text) as ZohoEnvelope
-  } catch {
-    return null
-  }
-}
-
-/**
- * Pull the function's own result out of Zoho's envelope.
- *
- * `details.output` is a JSON *string*, so it needs a second parse. If the shape
- * ever changes we fall back to reading the envelope as the flat result rather
- * than failing the create — an unknown shape then yields no record id, which is
- * honest, instead of a wrong one.
- */
-function unwrapOutput(envelope: ZohoEnvelope | null): ZohoFunctionResult | null {
-  if (!envelope) return null
-
-  const raw = envelope.details?.output
-  if (typeof raw === 'string') {
-    try {
-      return JSON.parse(raw) as ZohoFunctionResult
-    } catch {
-      // Unparseable output — fall through to the flat reading below.
-    }
-  }
-
-  return envelope as ZohoFunctionResult
 }

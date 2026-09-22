@@ -17,6 +17,7 @@ import { pool, queryOne } from '@/features/auth/server/db'
 import { getProfile } from '@/features/auth/server/profile'
 import type {
   FlightGroupCreatedEvent,
+  FlightGroupPet,
   GroupDetailMember,
   GroupDetailView,
   Pet,
@@ -98,16 +99,24 @@ export async function createFlightGroup({
     // migration 0007.
     const partySeats = Math.max(1, flightGroup.members.length)
 
+    // The party's pets for this flight, as flight_group.created just sent them.
+    // They ride on whichever traveller is the primary contact, which need not be
+    // the organiser, so they are gathered from every member — the organiser's
+    // row is the only one the party has. flight_group.filled reads them back;
+    // see migration 0008.
+    const partyPets = flightGroup.members.flatMap((member) => member.pets)
+
     const seated = await client.query<{ id: number }>(
       `INSERT INTO flight_group_member
-         (flight_group_id, user_id, role, join_method, member_status, seats_committed)
-       VALUES ($1, $2, 'group_organizer', 'group_organizer', 'joined', $3)
+         (flight_group_id, user_id, role, join_method, member_status, seats_committed, pets)
+       VALUES ($1, $2, 'group_organizer', 'group_organizer', 'joined', $3, $4::jsonb)
        ON CONFLICT (flight_group_id, user_id) DO UPDATE
          SET member_status = 'joined',
              seats_committed = EXCLUDED.seats_committed,
+             pets = EXCLUDED.pets,
              updated_at = NOW()
        RETURNING id`,
-      [flightGroup.group_id, Number(organizerUserId), partySeats],
+      [flightGroup.group_id, Number(organizerUserId), partySeats, JSON.stringify(partyPets)],
     )
 
     await client.query('COMMIT')
@@ -143,6 +152,25 @@ export interface AddMemberResult {
    * none. Read under the same row lock, so `member.joined` needs no second query.
    */
   zohoRecordId: string | null
+  /**
+   * True only for the join that took the group's last places — the one that
+   * owes Zoho `flight_group.filled`. A retry of that join, or any later call,
+   * reads false, so the event cannot be sent twice from here.
+   */
+  filledByThisJoin: boolean
+}
+
+export interface AddMemberInput {
+  /**
+   * How many spaces this member takes: themselves plus any companions added on
+   * the review screen. At least 1, which is the truth for a lone traveller.
+   */
+  seats: number
+  /**
+   * The party's pets for this flight, exactly as `member.joined` sends them.
+   * Stored so `flight_group.filled` can send them again; see migration 0008.
+   */
+  pets: FlightGroupPet[]
 }
 
 /** The group exists but cannot fit this party. Nothing was written. */
@@ -170,15 +198,15 @@ export function isRefused(
  * holds the row lock. Checking after the insert would seat the member and then
  * report a failure, leaving a row behind for a join the member was told did not
  * happen. The check runs before the write and rolls back instead.
+ *
+ * **The fill is recorded here too**, for the same reason: whether this join is
+ * the one that filled the group is only knowable under the lock that orders
+ * the joins.
  */
 export async function addMember(
   groupId: string,
   userId: string,
-  /**
-   * How many spaces this member takes: themselves plus any companions added on
-   * the review screen. Defaults to 1, which is the truth for a lone traveller.
-   */
-  seatsCommitted = 1,
+  { seats: seatsCommitted, pets }: AddMemberInput,
 ): Promise<AddMemberResult | AddMemberRefused | null> {
   const client = await pool.connect()
 
@@ -248,17 +276,32 @@ export async function addMember(
       }
     }
 
-    const seated = await client.query<{ id: number }>(
-      `INSERT INTO flight_group_member
-         (flight_group_id, user_id, role, join_method, member_status, seats_committed)
-       VALUES ($1, $2, 'joiner', 'shared_link', 'joined', $3)
-       ON CONFLICT (flight_group_id, user_id) DO UPDATE
-         SET member_status = 'joined',
-             seats_committed = EXCLUDED.seats_committed,
-             updated_at = NOW()
-       RETURNING id`,
-      [groupId, Number(userId), seats],
-    )
+    // A member already seated is a retry of a join that succeeded, and gets that
+    // seat back exactly as it was. Rewriting it from the retry's body would let
+    // a second request change the party after the fact: more seats past the
+    // capacity check skipped above (overbooking by API call), or different pets
+    // after flight_group.filled has already sent the first ones.
+    //
+    // The upsert therefore only runs for a new member, or one returning from
+    // `left`/`cancelled` — and in both of those cases the capacity check ran.
+    let seatId: number
+    if (alreadyMember) {
+      seatId = existing.rows[0]!.id
+    } else {
+      const seated = await client.query<{ id: number }>(
+        `INSERT INTO flight_group_member
+           (flight_group_id, user_id, role, join_method, member_status, seats_committed, pets)
+         VALUES ($1, $2, 'joiner', 'shared_link', 'joined', $3, $4::jsonb)
+         ON CONFLICT (flight_group_id, user_id) DO UPDATE
+           SET member_status = 'joined',
+               seats_committed = EXCLUDED.seats_committed,
+               pets = EXCLUDED.pets,
+               updated_at = NOW()
+         RETURNING id`,
+        [groupId, Number(userId), seats, JSON.stringify(pets)],
+      )
+      seatId = seated.rows[0]!.id
+    }
 
     // Occupancy is the sum of parties, not a row count — a row is an account
     // and a space is a person. See migration 0007.
@@ -268,6 +311,23 @@ export async function addMember(
         WHERE flight_group_id = $1 AND member_status = 'joined'`,
       [groupId],
     )
+    const memberCount = Number(count.rows[0]!.count)
+
+    // Record the fill, once. The row is already locked above, and the update
+    // only lands while filled_at is null, so exactly one join per group can
+    // claim it — a retry of the filling join finds it set and claims nothing.
+    // status becomes authoritative from here, as migration 0005 intended once
+    // this event existed.
+    let filledByThisJoin = false
+    if (memberCount >= spacesTotal) {
+      const filled = await client.query(
+        `UPDATE flight_group
+            SET status = 'filled', filled_at = NOW(), updated_at = NOW()
+          WHERE flight_group_id = $1 AND filled_at IS NULL`,
+        [groupId],
+      )
+      filledByThisJoin = filled.rowCount === 1
+    }
 
     // Position by join order, ties broken by id. Counted rather than taken from
     // the row id: ids are shared by every group, so they say nothing about this
@@ -277,18 +337,19 @@ export async function addMember(
          FROM flight_group_member
         WHERE flight_group_id = $1 AND member_status = 'joined'
           AND (joined_at, id) <= (SELECT joined_at, id FROM flight_group_member WHERE id = $2)`,
-      [groupId, seated.rows[0]!.id],
+      [groupId, seatId],
     )
 
     await client.query('COMMIT')
 
     return {
-      memberId: String(seated.rows[0]!.id),
+      memberId: String(seatId),
       alreadyMember,
-      memberCount: Number(count.rows[0]!.count),
+      memberCount,
       spacesTotal,
       memberOrdinal: ordinal.rows[0]!.ordinal,
       zohoRecordId: group.rows[0]!.zoho_record_id,
+      filledByThisJoin,
     }
   } catch (error) {
     await client.query('ROLLBACK')
@@ -296,6 +357,136 @@ export async function addMember(
   } finally {
     client.release()
   }
+}
+
+/* ------------------------------------------------------------ filled event */
+
+/** A member of a filled group, as `flight_group.filled` needs them. */
+export interface FilledGroupMember {
+  memberId: number
+  accountId: string | null
+  name: string | null
+  email: string
+  role: 'group_organizer' | 'joiner'
+  joinMethod: 'group_organizer' | 'shared_link' | 'manual'
+  /** The party's pets, as sent on the event that seated this member. */
+  pets: FlightGroupPet[]
+}
+
+/** Everything `flight_group.filled` carries, read back from our own records. */
+export interface FilledGroupSource {
+  groupId: string
+  zohoRecordId: string | null
+  spacesTotal: number
+  /** People seated: the sum of every party, not a count of accounts. */
+  spacesOccupied: number
+  aircraftCategory: string | null
+  originCity: string
+  destinationCity: string
+  dateMode: 'specific' | 'range'
+  travelDate: string | null
+  earliestDate: string | null
+  latestDate: string | null
+  filledAt: Date
+  /** Organiser first, then joiners in join order. */
+  members: FilledGroupMember[]
+}
+
+interface FilledGroupRow {
+  flight_group_id: string
+  zoho_record_id: string | null
+  spaces_total: number
+  aircraft_category: string | null
+  origin_city: string
+  destination_city: string
+  date_mode: 'specific' | 'range'
+  travel_date: string | null
+  earliest_date: string | null
+  latest_date: string | null
+  filled_at: Date
+}
+
+interface FilledMemberRow {
+  id: number
+  role: 'group_organizer' | 'joiner'
+  join_method: 'group_organizer' | 'shared_link' | 'manual'
+  seats_committed: number
+  pets: FlightGroupPet[]
+  account_id: string | null
+  name: string | null
+  email: string
+}
+
+/**
+ * The group as `flight_group.filled` describes it, or null when it has not
+ * filled.
+ *
+ * Dates are read as text. pg hands a DATE back as a Date at local midnight,
+ * which lands on the previous day anywhere ahead of UTC — the trap
+ * `toISODate` below exists for. An event that goes to the CRM has no business
+ * passing through a timezone at all.
+ */
+export async function getFilledGroupSource(groupId: string): Promise<FilledGroupSource | null> {
+  const group = await queryOne<FilledGroupRow>(
+    `SELECT flight_group_id, zoho_record_id, spaces_total, aircraft_category,
+            origin_city, destination_city, date_mode,
+            travel_date::text AS travel_date,
+            earliest_date::text AS earliest_date,
+            latest_date::text AS latest_date,
+            filled_at
+       FROM flight_group
+      WHERE flight_group_id = $1 AND filled_at IS NOT NULL`,
+    [groupId],
+  )
+  if (!group) return null
+
+  const { rows } = await pool.query<FilledMemberRow>(
+    `SELECT fgm.id, fgm.role, fgm.join_method, fgm.seats_committed, fgm.pets,
+            u.account_id, u.name, u.email
+       FROM flight_group_member fgm
+       JOIN users u ON u.id = fgm.user_id
+      WHERE fgm.flight_group_id = $1 AND fgm.member_status = 'joined'
+      ORDER BY (fgm.role = 'group_organizer') DESC, fgm.joined_at ASC, fgm.id ASC`,
+    [groupId],
+  )
+
+  return {
+    groupId: group.flight_group_id,
+    zohoRecordId: group.zoho_record_id,
+    spacesTotal: group.spaces_total,
+    spacesOccupied: rows.reduce((sum, row) => sum + row.seats_committed, 0),
+    aircraftCategory: group.aircraft_category,
+    originCity: group.origin_city,
+    destinationCity: group.destination_city,
+    dateMode: group.date_mode,
+    travelDate: group.travel_date,
+    earliestDate: group.earliest_date,
+    latestDate: group.latest_date,
+    filledAt: group.filled_at,
+    members: rows.map((row) => ({
+      memberId: row.id,
+      accountId: row.account_id,
+      name: row.name,
+      email: row.email,
+      role: row.role,
+      joinMethod: row.join_method,
+      pets: row.pets ?? [],
+    })),
+  }
+}
+
+/**
+ * Record that Zoho accepted `flight_group.filled`.
+ *
+ * A filled group without this is a Deal that was never created — see the query
+ * in migration 0008.
+ */
+export async function markFilledEventSent(groupId: string): Promise<void> {
+  await pool.query(
+    `UPDATE flight_group SET filled_event_sent_at = NOW(), updated_at = NOW()
+      WHERE flight_group_id = $1`,
+    [groupId],
+  )
 }
 
 /* -------------------------------------------------------------------- read */

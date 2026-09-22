@@ -269,6 +269,51 @@ export interface MemberJoinedEvent {
   member: FlightGroupMember
 }
 
+/**
+ * A member as `flight_group.filled` carries it: the created/joined member
+ * without `phone` and `is_primary`, which section 4 does not list. Zoho already
+ * holds both from the event that seated the member.
+ */
+export type FlightGroupFilledMember = Omit<FlightGroupMember, 'phone' | 'is_primary'>
+
+/**
+ * The `flight_group.filled` event, contract section 4 — "the main push that
+ * creates the Deal, with all members and pets". Sent once, server-side, by the
+ * join that takes the group's last places. Zoho's handler is Pavan's.
+ */
+export interface FlightGroupFilledEvent {
+  event: 'flight_group.filled'
+  sent_at: string
+  flight_group: {
+    group_id: string
+    status: 'filled'
+    /** The organiser's membership, `fgm_<id>` from our roster. */
+    founder_member_id: string
+    /** When the filling join committed — not when this event was sent. */
+    filled_at: string
+    spaces_total: number
+    /** Zero on the fill; computed rather than hardcoded, so it stays honest. */
+    spaces_remaining: number
+    /** Null until an operator quotes; see FlightGroupCreatedEvent. */
+    aircraft_category: string | null
+    /** Section 4 carries the cities only, not the full created route. */
+    route: {
+      origin_city: string
+      destination_city: string
+    }
+    /**
+     * The same shape flight_group.created sends. Section 4's sample shows only a
+     * specific date, but the contract's dates_rules work both modes and forbid
+     * collapsing a range, so all four keys go every time.
+     */
+    dates: FlightGroupCreatedEvent['flight_group']['dates']
+    /** Organiser first, then joiners in join order. */
+    members: FlightGroupFilledMember[]
+  }
+  /** Zoho's record id for the group; null when none was stored at creation. */
+  zoho_flight_group_record_id: string | null
+}
+
 /* ================================================ GROUP DETAIL VIEW TYPES */
 
 /**

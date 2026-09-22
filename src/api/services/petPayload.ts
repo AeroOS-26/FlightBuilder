@@ -35,6 +35,27 @@ export function mapPet(pet: Pet, readinessAccepted: boolean): FlightGroupPet {
   }
 }
 
+/**
+ * A stored contract pet, re-emitted in the contract's key order.
+ *
+ * Pets kept for `flight_group.filled` pass through JSONB, which stores keys
+ * sorted by length rather than as written, so `crate_size` comes back ahead of
+ * `weight_lbs`. Order means nothing to a JSON parser, but these payloads are
+ * read against the contract side by side, so the event lists them the way the
+ * contract does.
+ */
+export function inContractOrder(pet: FlightGroupPet): FlightGroupPet {
+  return {
+    name: pet.name,
+    type: pet.type,
+    breed: pet.breed,
+    weight_lbs: pet.weight_lbs,
+    crate_size: pet.crate_size,
+    temperament: pet.temperament,
+    travel_readiness_accepted: pet.travel_readiness_accepted,
+  }
+}
+
 function parseWeight(value: string): number | null {
   const m = value.match(/\d+/)
   return m ? Number(m[0]) : null

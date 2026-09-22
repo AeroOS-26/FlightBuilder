@@ -1,7 +1,8 @@
 /**
  * Join a flight group: POST /api/groups/[groupId]/join
  *
- * Writes the membership to our own database and emits `member.joined` to Zoho.
+ * Writes the membership to our own database and emits `member.joined` to Zoho;
+ * the join that takes the group's last places also emits `flight_group.filled`.
  *
  * Idempotent: the seat is written with ON CONFLICT against the (group, user)
  * uniqueness constraint, so a double submit or a retried request returns the
@@ -9,20 +10,28 @@
  * the duration, so two simultaneous joins cannot both read the same remaining
  * count and overfill the flight.
  *
- * The party's pets arrive with the request and travel on the event only. They
- * are not stored here: the roster is keyed to accounts, and a pet on a flight
- * becomes a Zoho record through the event (contract section 7).
+ * The party's pets arrive with the request. They become Zoho records through
+ * the event (contract section 7), and are also stored against the seat exactly
+ * as sent, because `flight_group.filled` has to carry them again (migration
+ * 0008). They are not written to the member's saved profile.
  */
 
 import { NextResponse } from 'next/server'
 import { requireViewerOrUnauthorized, type Viewer } from '@/features/auth/server/guard'
-import { addMember, isRefused } from '@/features/group/server/groupStore'
+import {
+  addMember,
+  getFilledGroupSource,
+  isRefused,
+  markFilledEventSent,
+} from '@/features/group/server/groupStore'
 import { findByEmail } from '@/features/auth/server/members'
-import { serverEnv, isZohoConfigured } from '@/config/serverEnv'
 import { buildMemberJoined } from '@/api/services/memberJoinedPayload'
+import { buildFlightGroupFilled } from '@/api/services/flightGroupFilledPayload'
+import { mapPet } from '@/api/services/petPayload'
+import { sendZohoEvent } from '@/api/services/zohoWebhook'
 import { hasPetListErrors, validatePetList } from '@/features/flight-builder/validation'
 import { TEMPERAMENTS } from '@/features/flight-builder/config/petOptions'
-import type { MemberJoinResponse, Pet, PetTemperament } from '@/types'
+import type { FlightGroupPet, MemberJoinResponse, Pet, PetTemperament } from '@/types'
 
 interface JoinRequestBody {
   seats?: unknown
@@ -82,8 +91,13 @@ export async function POST(
     )
   }
 
+  // The contract's pet objects, mapped once. The same objects go out on
+  // member.joined and are stored against the seat, so flight_group.filled can
+  // send exactly what was sent here.
+  const partyPets = pets.map((pet) => mapPet(pet, readinessAccepted))
+
   try {
-    const seat = await addMember(groupId, viewer.id, seatsRequested)
+    const seat = await addMember(groupId, viewer.id, { seats: seatsRequested, pets: partyPets })
     if (!seat) {
       return NextResponse.json({ message: 'Group not found' }, { status: 404 })
     }
@@ -117,9 +131,15 @@ export async function POST(
         viewer,
         seatId: seat.memberId,
         zohoRecordId: seat.zohoRecordId,
-        pets,
-        readinessAccepted,
+        pets: partyPets,
       })
+    }
+
+    // Only the join that took the last places, and only once: addMember claims
+    // the fill under the group lock. Awaited after member.joined so the two
+    // arrive in order.
+    if (seat.filledByThisJoin) {
+      await emitFlightGroupFilled(groupId)
     }
 
     const response: MemberJoinResponse = {
@@ -190,7 +210,8 @@ function isTemperament(value: unknown): value is PetTemperament {
  * Never throws. The member is already seated in our database at this point, and
  * Zoho's unreliability is the reason reads were moved out of its request path in
  * the first place — so a failed emit must not fail a join the member completed.
- * It is logged loudly instead; reconciling a missed event is follow-up work.
+ * `sendZohoEvent` logs the outcome either way; reconciling a missed
+ * `member.joined` is follow-up work.
  */
 async function emitMemberJoined({
   groupId,
@@ -198,17 +219,13 @@ async function emitMemberJoined({
   seatId,
   zohoRecordId,
   pets,
-  readinessAccepted,
 }: {
   groupId: string
   viewer: Viewer
   seatId: string
   zohoRecordId: string | null
-  pets: Pet[]
-  readinessAccepted: boolean
+  pets: FlightGroupPet[]
 }): Promise<void> {
-  if (!isZohoConfigured()) return
-
   try {
     const member = await findByEmail(viewer.email)
 
@@ -221,31 +238,45 @@ async function emitMemberJoined({
       email: viewer.email,
       phone: member?.phone ?? null,
       pets,
-      readinessAccepted,
       sentAt: new Date().toISOString(),
     })
 
-    const controller = new AbortController()
-    const timer = setTimeout(() => controller.abort(), serverEnv.zohoTimeoutMs)
-
-    try {
-      const upstream = await fetch(serverEnv.zohoWebhookUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(event),
-        signal: controller.signal,
-      })
-      if (!upstream.ok) {
-        console.error(
-          `member.joined rejected for ${groupId}/user ${viewer.id}: HTTP ${upstream.status}`,
-        )
-      }
-    } finally {
-      clearTimeout(timer)
-    }
+    await sendZohoEvent(event, `member.joined ${groupId} fgm_${seatId}`)
   } catch (error) {
     console.error(
-      `member.joined emit failed for ${groupId}/user ${viewer.id}:`,
+      `member.joined could not be built for ${groupId}/user ${viewer.id}:`,
+      error instanceof Error ? error.message : error,
+    )
+  }
+}
+
+/**
+ * Tell Zoho the group filled — contract section 4, the push that creates the
+ * Deal.
+ *
+ * Sent after `member.joined`, never before, so Zoho holds the last member by
+ * the time it builds the Deal around them. Read back from our own records
+ * rather than assembled from this request, because it carries every member of
+ * the group, not just the one who joined.
+ *
+ * Never throws, for the same reason as `emitMemberJoined`. What it adds is a
+ * record of success: `filled_event_sent_at` is set only when Zoho accepts, so a
+ * group whose Deal was never created stays findable (see migration 0008).
+ */
+async function emitFlightGroupFilled(groupId: string): Promise<void> {
+  try {
+    const source = await getFilledGroupSource(groupId)
+    if (!source) {
+      console.error(`flight_group.filled not sent for ${groupId}: the group has no fill recorded.`)
+      return
+    }
+
+    const event = buildFlightGroupFilled(source, new Date().toISOString())
+    const outcome = await sendZohoEvent(event, `flight_group.filled ${groupId}`)
+    if (outcome.status === 'accepted') await markFilledEventSent(groupId)
+  } catch (error) {
+    console.error(
+      `flight_group.filled failed for ${groupId}:`,
       error instanceof Error ? error.message : error,
     )
   }
