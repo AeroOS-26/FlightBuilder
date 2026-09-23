@@ -27,17 +27,17 @@ import type { PublicView } from '@/types'
 const STATE_NOTE: Record<'forming' | 'filling', { title: string; body: string }> = {
   forming: {
     title: 'What Forming means',
-    body: 'The group is just getting started. The Group Organizer has created the flight and is inviting members. As spaces fill, we line up the operator and confirm the aircraft.',
+    body: 'The group is just getting started. The Group Organizer has proposed this charter and is inviting participants. Once the group fills, we request quotes from operators.',
   },
   filling: {
     title: 'What Filling means',
-    body: 'The group is forming. Once it reaches 4 members, we lock in an aircraft and request an operator quote.',
+    body: 'The group is forming. Once it fills, we request quotes from operators.',
   },
 }
 
 const WHOS_FLYING_NOTE: Record<'forming' | 'filling', string> = {
   forming: 'Be the first to join — share the route with friends or pet owners who might be flying.',
-  filling: 'Spaces are filling up. Register your interest to be kept in the loop as the group forms.',
+  filling: 'The group is filling. Register your interest to be kept in the loop as it forms.',
 }
 
 export function LiveFlightState({ flight }: { flight: PublicView }) {

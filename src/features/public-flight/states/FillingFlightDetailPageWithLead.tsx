@@ -64,11 +64,11 @@ export function FillingFlightDetailPageWithLead({
               <div className="bg-white rounded-lg p-4 md:p-6 border border-gray-200">
                 <p className="text-xs md:text-sm text-gray-600 font-semibold uppercase tracking-wide">Aircraft</p>
                 <p className="text-lg md:text-2xl font-bold text-gray-900 mt-2">{aircraftRowValue(flight.aircraft_category)}</p>
-                <p className="text-xs md:text-sm text-gray-500 mt-2">Final aircraft confirmed after group fills</p>
+                <p className="text-xs md:text-sm text-gray-500 mt-2">The aircraft is set once an operator commits.</p>
               </div>
 
               <div className="bg-white rounded-lg p-4 md:p-6 border border-amber-200 bg-amber-50">
-                <p className="text-xs md:text-sm text-amber-900 font-semibold uppercase tracking-wide">Spaces</p>
+                <p className="text-xs md:text-sm text-amber-900 font-semibold uppercase tracking-wide">Places</p>
                 <p className="text-lg md:text-2xl font-bold text-amber-600 mt-2">
                   {flight.spaces_remaining} of {flight.spaces_total}
                 </p>
@@ -111,8 +111,7 @@ export function FillingFlightDetailPageWithLead({
             <div className="bg-amber-50 rounded-lg p-6 md:p-8 border border-amber-200">
               <h2 className="text-xl font-semibold text-gray-900 mb-2">What "Filling" means</h2>
               <p className="text-gray-700">
-                The group is forming. Once it reaches {flight.spaces_total} members, we lock in an aircraft and request an
-                operator quote.
+                The group is forming. Once it fills, we request quotes from operators.
               </p>
             </div>
 

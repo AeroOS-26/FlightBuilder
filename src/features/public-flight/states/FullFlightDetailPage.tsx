@@ -62,7 +62,7 @@ export function FullFlightDetailPage({
               </div>
 
               <div className="bg-white rounded-lg p-4 md:p-6 border border-green-200 bg-green-50">
-                <p className="text-xs md:text-sm text-green-900 font-semibold uppercase tracking-wide">Spaces</p>
+                <p className="text-xs md:text-sm text-green-900 font-semibold uppercase tracking-wide">Places</p>
                 <p className="text-lg md:text-2xl font-bold text-green-600 mt-2">
                   {flight.spaces_total} of {flight.spaces_total} ✓
                 </p>
@@ -147,7 +147,7 @@ export function FullFlightDetailPage({
                   <div
                     key={i}
                     className="w-10 h-10 rounded-full bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center text-white text-sm font-bold"
-                    title={`Member ${i + 1}`}
+                    title={`Participant ${i + 1}`}
                   >
                     M{i + 1}
                   </div>
@@ -197,15 +197,16 @@ export function FullFlightDetailPage({
               <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
                 <h3 className="font-semibold text-blue-900 text-sm mb-2">Quote status</h3>
                 <ul className="text-xs md:text-sm text-blue-800 space-y-1">
-                  <li>✓ Group filled</li>
-                  <li>⏳ Requesting quote</li>
-                  <li>⏳ Receive quote</li>
-                  <li>⏳ Confirm booking</li>
+                  <li>✓ Group fills</li>
+                  <li>⏳ Operator quotes requested</li>
+                  <li>⏳ Group approves a quote</li>
+                  <li>⏳ Group fully funded</li>
+                  <li>⏳ Confirmed once the operator commits</li>
                 </ul>
               </div>
 
               <p className="text-xs text-gray-500 mt-6 text-center">
-                All members will receive updates via email
+                All participants will receive updates via email
               </p>
             </div>
           </div>

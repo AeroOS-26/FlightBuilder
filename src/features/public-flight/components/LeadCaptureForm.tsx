@@ -21,6 +21,7 @@ import { useState } from 'react'
 import { Button, Form, FormField, Select, TextInput, ErrorBanner } from '@/components/ui'
 import { Icon } from '@/components/common'
 import { useSubmitLead } from '../hooks/useSubmitLead'
+import { PRIVACY_NOTICE_ENABLED } from '@/config/features'
 import { MAX_PETS_PER_TRAVELER } from '@/features/flight-builder/config/capacity'
 
 const cardClass = 'rounded-[20px] border border-[#A8A8A8]/20 bg-white p-5 lg:p-6'
@@ -224,6 +225,21 @@ export function LeadCaptureForm({ groupId, onSuccess }: LeadCaptureFormProps) {
           <Icon name="info" size={14} className="shrink-0" />
           No account needed — we’ll email you as the group fills.
         </p>
+
+        {/* Sits beside the button because that is the moment details are handed
+            over. Hidden until the notice is written — see PRIVACY_NOTICE_ENABLED. */}
+        {PRIVACY_NOTICE_ENABLED && (
+          <p className="text-center font-sans text-[12px] text-[#000000]/60">
+            By registering your interest you agree to our{' '}
+            <a
+              href="/privacy"
+              className="font-medium text-[#112D7C] underline underline-offset-2 focus-ring"
+            >
+              privacy notice
+            </a>
+            .
+          </p>
+        )}
       </Form>
     </section>
   )

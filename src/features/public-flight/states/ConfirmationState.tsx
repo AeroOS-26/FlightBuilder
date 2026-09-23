@@ -32,7 +32,7 @@ const cardClass = 'rounded-[20px] border border-[#A8A8A8]/20 bg-white p-5 lg:p-6
 
 const NEXT_STEPS = [
   'Our team reviews the route and posts a shared and private estimate.',
-  'As members join, we line up the operator and confirm the aircraft.',
+  'Once the group fills, we request quotes from operators.',
   'We’ll email you as the group comes together — no account needed.',
 ]
 

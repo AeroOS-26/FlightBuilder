@@ -64,7 +64,7 @@ export function FillingFlightDetailPage({
               <div className="bg-white rounded-lg p-4 md:p-6 border border-gray-200">
                 <p className="text-xs md:text-sm text-gray-600 font-semibold uppercase tracking-wide">Aircraft</p>
                 <p className="text-lg md:text-2xl font-bold text-gray-900 mt-2">{aircraftRowValue(flight.aircraft_category)}</p>
-                <p className="text-xs md:text-sm text-gray-500 mt-2">Final aircraft confirmed after group fills</p>
+                <p className="text-xs md:text-sm text-gray-500 mt-2">The aircraft is set once an operator commits.</p>
               </div>
 
               <div className="bg-white rounded-lg p-4 md:p-6 border border-amber-200 bg-amber-50">
@@ -111,8 +111,7 @@ export function FillingFlightDetailPage({
             <div className="bg-amber-50 rounded-lg p-6 md:p-8 border border-amber-200">
               <h2 className="text-xl font-semibold text-gray-900 mb-2">What "Filling" means</h2>
               <p className="text-gray-700">
-                The group is forming. Once it reaches {flight.spaces_total} members, we lock in an aircraft and request an
-                operator quote.
+                The group is forming. Once it fills, we request quotes from operators.
               </p>
             </div>
 
@@ -172,10 +171,11 @@ export function FillingFlightDetailPage({
               <div className="mt-6 p-4 bg-amber-50 rounded-lg border border-amber-200">
                 <h3 className="font-semibold text-amber-900 text-sm mb-2">Next Steps</h3>
                 <ul className="text-xs md:text-sm text-amber-800 space-y-1">
-                  <li>✓ Join the group</li>
-                  <li>⏳ Wait for more members</li>
-                  <li>⏳ Once full, get operator quote</li>
-                  <li>⏳ Confirm and book</li>
+                  <li>⏳ Group fills</li>
+                  <li>⏳ Operator quotes requested</li>
+                  <li>⏳ Group approves a quote</li>
+                  <li>⏳ Group fully funded</li>
+                  <li>⏳ Confirmed once the operator commits</li>
                 </ul>
               </div>
 

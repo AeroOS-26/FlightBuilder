@@ -32,15 +32,15 @@ export function GroupFullState({ flight }: { flight: PublicView }) {
             <EstimatePendingCard />
             <WhosFlyingCard
               flight={flight}
-              note="This group has reached capacity and is no longer accepting new members."
+              note="This group is full and is not taking new participants."
             />
             <section className={cardClass}>
               <h2 className="font-heading text-[20px] font-medium text-[#000000] lg:text-[22px]">
                 This group is full
               </h2>
               <p className="mx-auto mt-2 max-w-[460px] font-sans text-[14px] leading-[150%] text-[#000000]/70">
-                All {flight.spaces_total} spaces have been filled. New groups form on this route
-                regularly, so it is worth checking back.
+                All {flight.spaces_total} places are taken. New groups form on this route regularly,
+                so it is worth checking back.
               </p>
             </section>
           </>
@@ -49,7 +49,7 @@ export function GroupFullState({ flight }: { flight: PublicView }) {
           <PublicAside
             stateNote={{
               title: 'What Group Full means',
-              body: 'Every space on this flight is taken. We’re lining up the operator to confirm it. Similar routes open up often.',
+              body: 'This group is full. We’re requesting operator quotes for it. New groups on similar routes form often.',
             }}
           />
         }

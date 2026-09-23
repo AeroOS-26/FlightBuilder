@@ -64,13 +64,13 @@ export function LoggedInFlightDetailPage({
                   {aircraftRowValue(flight.aircraft_category)}
                 </p>
                 <p className="text-xs md:text-sm text-gray-500 mt-2">
-                  Final aircraft confirmed after group fills
+                  The aircraft is set once an operator commits.
                 </p>
               </div>
 
               <div className="bg-white rounded-lg p-4 md:p-6 border border-gray-200">
                 <p className="text-xs md:text-sm text-gray-600 font-semibold uppercase tracking-wide">
-                  Spaces
+                  Places
                 </p>
                 <p className="text-lg md:text-2xl font-bold text-gray-900 mt-2">
                   {flight.spaces_remaining} of {flight.spaces_total}
@@ -172,10 +172,11 @@ export function LoggedInFlightDetailPage({
               <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
                 <h3 className="font-semibold text-blue-900 text-sm mb-2">Next Steps</h3>
                 <ul className="text-xs md:text-sm text-blue-800 space-y-1">
-                  <li>✓ Join the group</li>
-                  <li>✓ Wait for more members</li>
-                  <li>✓ Once full, get operator quote</li>
-                  <li>✓ Confirm and book</li>
+                  <li>⏳ Group fills</li>
+                  <li>⏳ Operator quotes requested</li>
+                  <li>⏳ Group approves a quote</li>
+                  <li>⏳ Group fully funded</li>
+                  <li>⏳ Confirmed once the operator commits</li>
                 </ul>
               </div>
 

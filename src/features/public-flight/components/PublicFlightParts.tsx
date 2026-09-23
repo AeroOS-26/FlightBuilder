@@ -226,7 +226,7 @@ export function FlightDetailsCard({ flight }: { flight: PublicView }) {
           <span className="flex flex-col items-end gap-1 lg:items-start">
             <span>{aircraftRowValue(flight.aircraft_category)}</span>
             <span className="text-right font-sans text-[12px] font-normal leading-[16px] text-[#000000]/55 lg:text-left">
-              Final aircraft confirmed after the group fills and the operator quote is locked.
+              The aircraft is set once an operator commits.
             </span>
           </span>
         </DetailRow>
@@ -283,7 +283,7 @@ function MemberRow({ role }: { role: 'organizer' | 'joiner' }) {
           className="size-9 shrink-0 rounded-full"
         />
         <span className="font-sans text-[14px] font-medium text-[#000000]">
-          {isOrganizer ? 'Group Organizer' : 'Member'}
+          {isOrganizer ? 'Group Organizer' : 'Participant'}
         </span>
       </span>
       <span
@@ -322,7 +322,7 @@ export function WhosFlyingCard({
         </h2>
         <span className="font-sans text-[13px] text-[#000000]/70 lg:text-[14px]">
           <span className="font-bold text-[#000000]">{filled}</span> of estimated{' '}
-          <span className="font-bold text-[#000000]">{total}</span> members
+          <span className="font-bold text-[#000000]">{total}</span> participants
         </span>
       </div>
 
@@ -334,7 +334,7 @@ export function WhosFlyingCard({
       </div>
       <div className="mt-1.5 flex items-center justify-between font-sans text-[12px] font-medium">
         <span className="text-[#000000]">
-          {filled}/{total} members
+          {filled}/{total} participants
         </span>
         <span className="uppercase tracking-[0.04em] text-[#000000]/60">{pct}% filled</span>
       </div>

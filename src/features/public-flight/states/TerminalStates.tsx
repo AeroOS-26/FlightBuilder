@@ -94,7 +94,7 @@ function Progress({ filled, total, right }: { filled: number; total: number; rig
       </div>
       <div className="flex items-center justify-between gap-3">
         <span className="font-sans text-[14px] font-bold leading-[1.3] text-[#000000]">
-          {filled}/ {total} members
+          {filled}/ {total} participants
         </span>
         <span className="font-sans text-[14px] font-normal leading-[1.3] text-[#000000]">
           {right}
@@ -167,13 +167,13 @@ export function QuotingState({ flight }: { flight: PublicView }) {
                 <h2 className={HEADING}>Who&rsquo;s flying</h2>
                 <p className="font-sans text-[14px] text-[#000000]">
                   <span className="font-bold">{total}</span> of estimated{' '}
-                  <span className="font-bold">{total}</span> members
+                  <span className="font-bold">{total}</span> participants
                 </p>
               </div>
               <Progress filled={total} total={total} right="100% FILLED" />
-              <AvatarStack count={total} caption={`${total} members in this group`} />
+              <AvatarStack count={total} caption={`${total} participants in this group`} />
               <InfoNote className="mt-4">
-                Group is locked — no new joiners possible. Members will be notified individually as
+                Group is locked and not taking new participants. Participants are notified individually as
                 quoting progresses.
               </InfoNote>
             </section>
@@ -220,7 +220,7 @@ export function ConfirmedState({ flight }: { flight: PublicView }) {
                 <h2 className={HEADING}>Who&rsquo;s flying</h2>
                 <span className="flex items-center gap-3">
                   <span className="font-sans text-[14px] text-[#000000]">
-                    {total} members confirmed for this flight
+                    {total} participants confirmed for this flight
                   </span>
                   <span className="inline-flex shrink-0 items-center rounded-full border border-[#F8CED0] bg-[#FCECED] px-[10px] py-1.5 font-sans text-[12px] font-medium uppercase leading-none text-[#D00416]">
                     Locked
@@ -228,9 +228,9 @@ export function ConfirmedState({ flight }: { flight: PublicView }) {
                 </span>
               </div>
               <Progress filled={total} total={total} right="100% Filled · Locked" />
-              <AvatarStack count={total} caption={`${total} members confirmed for this flight`} />
+              <AvatarStack count={total} caption={`${total} participants confirmed for this flight`} />
               <InfoNote className="mt-4">
-                Individual member details are private. The group is locked — no new joiners.
+                Individual participant details are private. The group is locked and not taking new participants.
               </InfoNote>
             </section>
             <NextMoveCard
@@ -266,7 +266,7 @@ export function CompletedState({ flight }: { flight: PublicView }) {
         }
       />
       <ArchiveNotice>
-        This flight took place on {when} and is preserved here for reference. Member, operator, and
+        This flight took place on {when} and is preserved here for reference. Participant, operator, and
         pricing details remain private.
       </ArchiveNotice>
       <PublicTwoColumn
@@ -277,13 +277,13 @@ export function CompletedState({ flight }: { flight: PublicView }) {
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <h2 className={HEADING}>Who&rsquo;s flying</h2>
                 <p className="font-sans text-[14px] text-[#000000]">
-                  {total} members flew on this route
+                  {total} participants flew on this route
                 </p>
               </div>
               <Progress filled={total} total={total} right="100% Filled · Completed" />
-              <AvatarStack count={total} caption={`${total} members confirmed for this flight`} />
+              <AvatarStack count={total} caption={`${total} participants confirmed for this flight`} />
               <InfoNote className="mt-4">
-                Individual member details remain private. This group is preserved here for
+                Individual participant details remain private. This group is preserved here for
                 reference only.
               </InfoNote>
             </section>
@@ -316,8 +316,8 @@ export function UnfilledState({ flight }: { flight: PublicView }) {
         subline="This group didn't reach capacity by the booking window · No flight took place"
       />
       <ArchiveNotice>
-        No flight took place. The booking window closed before this group reached the {total}-member
-        minimum — no charges occurred and member details remain private.
+        No flight took place. The booking window closed before this group reached the {total}-participant
+        minimum — no charges occurred and participant details remain private.
       </ArchiveNotice>
       <PublicTwoColumn
         main={
@@ -327,7 +327,7 @@ export function UnfilledState({ flight }: { flight: PublicView }) {
               <div className="flex flex-col gap-1">
                 <h2 className={HEADING}>Who joined</h2>
                 <p className="font-sans text-[14px] text-[#000000]/70">
-                  {joined} of {total} spaces filled — group didn&rsquo;t reach capacity
+                  {joined} of {total} places filled — group didn&rsquo;t reach capacity
                 </p>
               </div>
               <Progress
@@ -352,7 +352,7 @@ export function UnfilledState({ flight }: { flight: PublicView }) {
                       />
                       <span className="flex flex-col">
                         <span className="font-sans text-[14px] font-medium text-[#000000]/70">
-                          Unfilled space
+                          Unfilled place
                         </span>
                         <span className="font-sans text-[12px] text-[#000000]/50">
                           No one joined
@@ -366,7 +366,7 @@ export function UnfilledState({ flight }: { flight: PublicView }) {
                 ))}
               </ul>
               <InfoNote className="mt-4">
-                Individual member details remain private. No charges occurred because the group
+                Individual participant details remain private. No charges occurred because the group
                 never reached the minimum.
               </InfoNote>
             </section>
@@ -391,7 +391,7 @@ export function UnfilledState({ flight }: { flight: PublicView }) {
 const RAIL_CLOSER = {
   quoting: {
     title: 'What happens next',
-    body: 'Members are waiting on operator quotes. Once a quote is accepted, the flight is confirmed and the group is locked in. Typical wait: 24–48 hours.',
+    body: 'The group is waiting on operator quotes, usually 24 to 48 hours. The flight is confirmed only once an operator commits.',
     action: null,
   },
   confirmed: {
