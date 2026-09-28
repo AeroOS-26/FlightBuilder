@@ -78,6 +78,62 @@ export function buildFlightGroupCreated({
   }
 }
 
+/**
+ * Re-stamp a built `flight_group.created` with the organiser's real database id.
+ *
+ * The payload is assembled in the browser, where the only ids available are
+ * Zustand list keys — a counter plus a timestamp, regenerated on every page
+ * load and never written to Postgres. Sending those made the organiser arrive
+ * at Zoho as `fgm_traveler_founder` on creation and as `fgm_17` on
+ * `member.joined` and `flight_group.filled`, so one person held two member ids
+ * and nothing could be matched between the events. `docs/CLIENT-DECISIONS.md`
+ * §12; raised by Vivek on 2026-09-28 while tracing duplicate Participants.
+ *
+ * The relay calls this after the group is mirrored, which is the first moment a
+ * real `flight_group_member.id` exists.
+ *
+ * Only the organiser has a row: everyone else on the party is a name typed into
+ * the Flight Builder with no account, and `flight_group_member.user_id` is NOT
+ * NULL, so they cannot have one (see migration 0007 and `createFlightGroup`).
+ * They are numbered against the organiser's row instead — `fgm_17_2`,
+ * `fgm_17_3` — which is still not a row id, but is at least derived from one
+ * and identical every time this group is sent, rather than changing on each
+ * reload. They never appear in `member.joined` or `flight_group.filled`, so
+ * they cannot collide with a real id.
+ *
+ * Pure: returns a new event and leaves the input alone, because the Freshworks
+ * write maps the same object.
+ */
+export function withDatabaseMemberIds(
+  event: FlightGroupCreatedEvent,
+  organizerMemberId: string,
+): FlightGroupCreatedEvent {
+  const organiserId = memberId(organizerMemberId)
+  const members = event.flight_group.members
+  // By role, not by position — `mapMembers` orders by the draft's travellers and
+  // the organiser is only first by convention.
+  const organiserIndex = members.findIndex((m) => m.role === 'group_organizer')
+  const seatOfOrganiser = organiserIndex === -1 ? 0 : organiserIndex
+
+  // Party members are numbered in their own sequence from 2, not by array
+  // position, so the organiser sitting anywhere other than first cannot produce
+  // an `_1` reading as "the organiser's first".
+  let party = 1
+
+  return {
+    ...event,
+    flight_group: {
+      ...event.flight_group,
+      founder_member_id: organiserId,
+      members: members.map((member, index) => {
+        if (index === seatOfOrganiser) return { ...member, flight_group_member_id: organiserId }
+        party += 1
+        return { ...member, flight_group_member_id: `${organiserId}_${party}` }
+      }),
+    },
+  }
+}
+
 function mapRoute(draft: FlightDraft): FlightGroupCreatedEvent['flight_group']['route'] {
   const { from, to } = draft.route
   return {

@@ -32,8 +32,25 @@ export interface CreateFlightGroupInput {
   flightGroup: FlightGroupPayload
   organizerUserId: string
   petFriendly: boolean
-  /** Zoho's record id when the relay returned one; kept for reconciliation. */
+  /**
+   * Zoho's record id when it is already known.
+   *
+   * The create relay now mirrors **before** it calls Zoho — it has to, because
+   * the event carries the organiser's real `flight_group_member.id` and that id
+   * does not exist until the row does. So the relay passes `null` here and
+   * stamps the record id afterwards with `setGroupZohoRecordId`.
+   */
   zohoRecordId: string | null
+}
+
+export interface CreateFlightGroupResult {
+  /** The organiser's real `flight_group_member.id`, for the outbound event. */
+  organizerMemberId: string
+  /**
+   * Whether this call inserted the group, as opposed to finding it already
+   * there. Only the caller that created it may undo it — see `discardMirror`.
+   */
+  groupCreated: boolean
 }
 
 /**
@@ -49,14 +66,14 @@ export async function createFlightGroup({
   organizerUserId,
   petFriendly,
   zohoRecordId,
-}: CreateFlightGroupInput): Promise<{ organizerMemberId: string }> {
+}: CreateFlightGroupInput): Promise<CreateFlightGroupResult> {
   const { route, dates } = flightGroup
   const client = await pool.connect()
 
   try {
     await client.query('BEGIN')
 
-    await client.query(
+    const inserted = await client.query(
       `INSERT INTO flight_group (
          flight_group_id, status, share_link, spaces_total, aircraft_category,
          origin_input, origin_type, origin_city, origin_airport_code,
@@ -64,7 +81,8 @@ export async function createFlightGroup({
          date_mode, travel_date, earliest_date, latest_date,
          pet_friendly, operator_notes, organizer_user_id, zoho_record_id
        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)
-       ON CONFLICT (flight_group_id) DO NOTHING`,
+       ON CONFLICT (flight_group_id) DO NOTHING
+       RETURNING flight_group_id`,
       [
         flightGroup.group_id,
         flightGroup.status,
@@ -120,7 +138,57 @@ export async function createFlightGroup({
     )
 
     await client.query('COMMIT')
-    return { organizerMemberId: String(seated.rows[0]!.id) }
+    return {
+      organizerMemberId: String(seated.rows[0]!.id),
+      groupCreated: inserted.rowCount === 1,
+    }
+  } catch (error) {
+    await client.query('ROLLBACK')
+    throw error
+  } finally {
+    client.release()
+  }
+}
+
+/**
+ * Stamp Zoho's record id on a group we mirrored a moment earlier.
+ *
+ * Separate from the insert because the two ids are created in opposite orders:
+ * ours has to exist before the event is sent, and Zoho's only comes back in the
+ * reply to that event. Written unconditionally rather than only when null, so a
+ * re-created record can correct a stale pointer.
+ */
+export async function setGroupZohoRecordId(
+  groupId: string,
+  zohoRecordId: string,
+): Promise<void> {
+  await pool.query(
+    `UPDATE flight_group SET zoho_record_id = $2, updated_at = NOW()
+      WHERE flight_group_id = $1`,
+    [groupId, zohoRecordId],
+  )
+}
+
+/**
+ * Undo a mirror whose `flight_group.created` was then refused.
+ *
+ * The relay writes to Neon first so the event can carry a real member id, which
+ * means a refusal would otherwise leave a group here that exists nowhere else.
+ * The member is told the flight was not created and retries under a fresh group
+ * id, so the abandoned row would show up in their account as a flight that no
+ * one else can see.
+ *
+ * Only ever called for a group this request inserted (`groupCreated`), inside
+ * the same request, before any link to it has been handed out — so there is
+ * nothing to race with. A group that was already there is left alone.
+ */
+export async function discardMirror(groupId: string): Promise<void> {
+  const client = await pool.connect()
+  try {
+    await client.query('BEGIN')
+    await client.query(`DELETE FROM flight_group_member WHERE flight_group_id = $1`, [groupId])
+    await client.query(`DELETE FROM flight_group WHERE flight_group_id = $1`, [groupId])
+    await client.query('COMMIT')
   } catch (error) {
     await client.query('ROLLBACK')
     throw error
