@@ -122,8 +122,12 @@ export function JoinRequestDetailView({
     <div className={SHELL}>
       <section className="flex flex-col gap-1">
         <span className={EYEBROW}>Flight Club · Shared Flight</span>
-        <div className="flex flex-wrap items-center gap-3">
-          <h1 className="font-heading text-[24px] font-medium text-[#000000] lg:text-[32px]">
+        {/* `flex-wrap` dropped the tag onto its own line as soon as the
+            heading and the tag together passed the column width — which they
+            do on a phone. The frames keep it beside the heading at every size,
+            so the heading wraps inside its own box instead. */}
+        <div className="flex items-center gap-3">
+          <h1 className="min-w-0 font-heading text-[24px] font-medium leading-[1.15] text-[#000000] lg:text-[32px]">
             {name} asked to join
           </h1>
           <span className={TAG_WAITING}>Waiting on you</span>

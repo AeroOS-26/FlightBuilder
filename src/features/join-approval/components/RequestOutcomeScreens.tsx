@@ -20,6 +20,7 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { Icon } from '@/components/common'
+import { MEMBER_AREA_ENABLED } from '@/config/features'
 import {
   FOOTER_ITEM,
   FOOTER_PRIMARY,
@@ -137,8 +138,9 @@ export function RequestSentScreen({ flight, email }: RequestSentProps) {
     <div className={SHELL}>
       <section className="flex flex-col gap-3">
         <p className={EYEBROW}>Flight Club · Join a shared flight</p>
-        <div className="flex flex-wrap items-center gap-3">
-          <h1 className="font-heading text-[24px] font-medium text-[#000000] lg:text-[32px]">
+        {/* Never wraps the tag onto its own line — see UnderReviewView. */}
+        <div className="flex items-center gap-3">
+          <h1 className="min-w-0 font-heading text-[24px] font-medium leading-[1.15] text-[#000000] lg:text-[32px]">
             Request sent
           </h1>
           <span className={TAG_WAITING}>Under review</span>
@@ -171,20 +173,16 @@ export function RequestSentScreen({ flight, email }: RequestSentProps) {
           <Link href="/" className={`${FOOTER_SECONDARY} ${FOOTER_ITEM}`}>
             Browse Shared Flights
           </Link>
-          {/*
-            Shown because the frames draw it and the client asked for it twice
-            (2026-10-08), overriding the §15a "hide controls with no
-            destination" note for these two screens only. **There is no
-            `/dashboard` route yet**, so it 404s until one exists — point it
-            elsewhere or stub the route before this goes in front of anyone.
-            The global `MEMBER_AREA_ENABLED` stays false: it also gates the
-            builder's nav, which has the same problem and has not been asked
-            about.
-          */}
-          <Link href="/dashboard" className={`${FOOTER_PRIMARY} ${FOOTER_ITEM}`}>
-            Go To My Dashboard
-            <Icon name="arrow-right" className="size-[18px]" />
-          </Link>
+          {/* Hidden again. There is no `/dashboard` route and no travellers
+              page, so both of these 404. They were shown on 2026-10-08 at the
+              client's request; put back behind `MEMBER_AREA_ENABLED` on 10-09
+              once that was seen live. One flag the day the pages exist. */}
+          {MEMBER_AREA_ENABLED && (
+            <Link href="/dashboard" className={`${FOOTER_PRIMARY} ${FOOTER_ITEM}`}>
+              Go To My Dashboard
+              <Icon name="arrow-right" className="size-[18px]" />
+            </Link>
+          )}
         </div>
         <p className="font-sans text-[14px] text-[#000000]/70">
           The Group Organizer reviews every request.

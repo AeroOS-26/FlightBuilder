@@ -25,10 +25,15 @@
  *    and the viewer are badged.
  */
 
-import Link from 'next/link'
-import { Icon } from '@/components/common'
-import { DashedOutline } from '@/components/ui'
-import { aircraftRowValue, metroLabel, readableDate } from '@/features/public-flight/format'
+import Link from "next/link";
+import { Icon } from "@/components/common";
+import { MEMBER_AREA_ENABLED } from "@/config/features";
+import { DashedOutline } from "@/components/ui";
+import {
+  aircraftRowValue,
+  metroLabel,
+  readableDate,
+} from "@/features/public-flight/format";
 import {
   AVATAR,
   ORGANISER_BADGE,
@@ -38,7 +43,7 @@ import {
   STATUS_IN_GROUP_ORGANISER,
   VIEWER_BADGE,
   initialsOf,
-} from './ParticipantRow'
+} from "./ParticipantRow";
 import {
   FOOTER_ITEM,
   FOOTER_PRIMARY,
@@ -46,34 +51,36 @@ import {
   FOOTER_SECONDARY,
   SUMMARY_LABEL,
   SUMMARY_VALUE,
-} from './approvalChrome'
-import { RouteBand } from './RouteBand'
-import type { GroupDetailView } from '@/types'
-import type { ReactNode } from 'react'
+} from "./approvalChrome";
+import { RouteBand } from "./RouteBand";
+import type { GroupDetailView } from "@/types";
+import type { ReactNode } from "react";
 
-const SHELL = 'mx-auto flex w-full max-w-[804px] flex-col gap-[30px] px-4 py-8 sm:px-6'
+const SHELL =
+  "mx-auto flex w-full max-w-[804px] flex-col gap-[30px] px-4 py-8 sm:px-6";
 /** The outer panel. 24px radius over a 60% white with an `#A8A8A8/20` hairline. */
-const PANEL = 'flex flex-col gap-4 rounded-[24px] border border-[#A8A8A8]/20 bg-white/60 p-4'
+const PANEL =
+  "flex flex-col gap-4 rounded-[24px] border border-[#A8A8A8]/20 bg-white/60 p-4";
 /** A solid white card inside it: 20px radius, a heavier hairline. */
-const CARD = 'rounded-[20px] border border-[#A8A8A8]/40 bg-white p-4'
+const CARD = "rounded-[20px] border border-[#A8A8A8]/40 bg-white p-4";
 const EYEBROW =
-  'inline-flex w-fit items-center rounded-[8px] border border-[#98C3E1] bg-[#CFE3F1]/40 px-3 py-2.5 font-sans text-[12px] font-medium uppercase leading-none tracking-[0.5px] text-[#112D7C]'
+  "inline-flex w-fit items-center rounded-[8px] border border-[#98C3E1] bg-[#CFE3F1]/40 px-3 py-2.5 font-sans text-[12px] font-medium uppercase leading-none tracking-[0.5px] text-[#112D7C]";
 /**
  * Green, where 43 and 44 are amber. Waiting and arriving are different signals
  * and the frames colour them apart.
  */
 const TAG_PARTICIPANT =
-  'inline-flex shrink-0 items-center rounded-[7px] border border-[#84EBB4] bg-[#1FC16B]/10 px-2.5 py-[9px] font-sans text-[10px] font-medium uppercase leading-none tracking-[0.5px] text-[#109A51]'
+  "inline-flex shrink-0 items-center rounded-[7px] border border-[#84EBB4] bg-[#1FC16B]/10 px-2.5 py-[9px] font-sans text-[10px] font-medium uppercase leading-none tracking-[0.5px] text-[#109A51]";
 
 /** The three steps between a full group and a confirmed flight. */
 const WHAT_HAPPENS_NEXT = [
-  'Operator quotes are requested.',
-  'The group approves a quote.',
-  'Each participant pays their contribution toward the total charter price, until the group is fully funded.',
-]
+  "Operator quotes are requested.",
+  "The group approves a quote.",
+  "Each participant pays their contribution toward the total charter price, until the group is fully funded.",
+];
 
 function plural(n: number, one: string, many = `${one}s`): string {
-  return `${n} ${n === 1 ? one : many}`
+  return `${n} ${n === 1 ? one : many}`;
 }
 
 function Row({ label, children }: { label: string; children: ReactNode }) {
@@ -82,27 +89,32 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
       <dt className={SUMMARY_LABEL}>{label}</dt>
       <dd className={SUMMARY_VALUE}>{children}</dd>
     </div>
-  )
+  );
 }
 
 export function ApprovedParticipantView({ group }: { group: GroupDetailView }) {
-  const total = group.flight.spaces_total
-  const occupied = Math.max(0, total - group.flight.spaces_remaining)
-  const self = group.members.find((member) => member.is_self) ?? null
+  const total = group.flight.spaces_total;
+  const occupied = Math.max(0, total - group.flight.spaces_remaining);
+  const self = group.members.find((member) => member.is_self) ?? null;
 
   return (
     <div className={SHELL}>
       {/* Hero */}
       <section className="flex flex-col gap-1">
         <span className={EYEBROW}>Flight Club · Shared Flight</span>
-        <div className="flex flex-wrap items-center gap-3">
-          <h1 className="font-heading text-[24px] font-medium text-[#000000] lg:text-[32px]">
+        {/* `flex-wrap` dropped the tag onto its own line as soon as the
+            heading and the tag together passed the column width — which they
+            do on a phone. The frames keep it beside the heading at every size,
+            so the heading wraps inside its own box instead. */}
+        <div className="flex items-center gap-3">
+          <h1 className="min-w-0 font-heading text-[24px] font-medium leading-[1.15] text-[#000000] lg:text-[32px]">
             You are in the group
           </h1>
           <span className={TAG_PARTICIPANT}>Participant</span>
         </div>
         <p className="font-sans text-[14px] font-medium leading-[1.5] text-[#000000]">
-          Your request came through. This is the normal participant view of the group.
+          Your request came through. This is the normal participant view of the
+          group.
         </p>
       </section>
 
@@ -116,25 +128,34 @@ export function ApprovedParticipantView({ group }: { group: GroupDetailView }) {
           Your join request was approved
         </h2>
         <p className="mt-4 font-sans text-[14px] leading-[1.45] text-[#000000]">
-          You are in the group and your {self && self.places > 1 ? 'places are' : 'place is'}{' '}
-          counted. The flight itself is not confirmed yet. Operator quotes come next, and we will
-          email you when there is something to review.
+          You are in the group and your{" "}
+          {self && self.places > 1 ? "places are" : "place is"} counted. The
+          flight itself is not confirmed yet. Operator quotes come next, and we
+          will email you when there is something to review.
         </p>
       </section>
 
       <section className={PANEL}>
         <RouteBand
-          originCode={group.flight.route_origin_code ?? metroLabel(group.flight.route_origin_city)}
+          originCode={
+            group.flight.route_origin_code ??
+            metroLabel(group.flight.route_origin_city)
+          }
           originCity={metroLabel(group.flight.route_origin_city)}
           destinationCode={
-            group.flight.route_destination_code ?? metroLabel(group.flight.route_destination_city)
+            group.flight.route_destination_code ??
+            metroLabel(group.flight.route_destination_city)
           }
           destinationCity={metroLabel(group.flight.route_destination_city)}
         />
 
         <dl className={`flex flex-col gap-[18px] ${CARD}`}>
-          <Row label="Departure">{readableDate(group.flight.departure_date)}</Row>
-          <Row label="Aircraft class">{aircraftRowValue(group.flight.aircraft_category)}</Row>
+          <Row label="Departure">
+            {readableDate(group.flight.departure_date)}
+          </Row>
+          <Row label="Aircraft class">
+            {aircraftRowValue(group.flight.aircraft_category)}
+          </Row>
           <Row label="Group Organizer">{group.organizer_name}</Row>
           {/* People, not rows — a party of three is one roster entry holding
               three places. See migration 0007 and §19. */}
@@ -143,7 +164,8 @@ export function ApprovedParticipantView({ group }: { group: GroupDetailView }) {
           </Row>
           {self && (
             <Row label="Your place">
-              {plural(self.places, 'place')} · joined {readableDate(self.joined_at)}
+              {plural(self.places, "place")} · joined{" "}
+              {readableDate(self.joined_at)}
             </Row>
           )}
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -161,7 +183,7 @@ export function ApprovedParticipantView({ group }: { group: GroupDetailView }) {
           </h2>
           <ul className="flex flex-col gap-2.5">
             {group.members.map((member) => {
-              const isOrganiser = member.role === 'organizer'
+              const isOrganiser = member.role === "organizer";
               return (
                 <ParticipantRow key={member.user_id} isOrganiser={isOrganiser}>
                   <span className={AVATAR} aria-hidden="true">
@@ -172,21 +194,33 @@ export function ApprovedParticipantView({ group }: { group: GroupDetailView }) {
                       <span className="font-heading text-[16px] font-medium leading-[1.21] text-[#000000]">
                         {member.display_name}
                       </span>
-                      {isOrganiser && <span className={ORGANISER_BADGE}>Group Organizer</span>}
-                      {member.is_self && <span className={VIEWER_BADGE}>You</span>}
+                      {isOrganiser && (
+                        <span className={ORGANISER_BADGE}>Group Organizer</span>
+                      )}
+                      {member.is_self && (
+                        <span className={VIEWER_BADGE}>You</span>
+                      )}
                     </span>
                     <span className="block font-sans text-[12px] font-medium text-[#000000]/60">
-                      {plural(member.places, 'traveller')} ·{' '}
-                      {member.pet_count > 0 ? plural(member.pet_count, 'pet') : 'No pets'} ·{' '}
-                      {plural(member.places, 'place')}
-                      {member.is_self ? ` · Joined ${readableDate(member.joined_at)}` : ''}
+                      {plural(member.places, "traveller")} ·{" "}
+                      {member.pet_count > 0
+                        ? plural(member.pet_count, "pet")
+                        : "No pets"}{" "}
+                      · {plural(member.places, "place")}
+                      {member.is_self
+                        ? ` · Joined ${readableDate(member.joined_at)}`
+                        : ""}
                     </span>
                   </span>
-                  <span className={isOrganiser ? STATUS_IN_GROUP_ORGANISER : STATUS_IN_GROUP}>
+                  <span
+                    className={
+                      isOrganiser ? STATUS_IN_GROUP_ORGANISER : STATUS_IN_GROUP
+                    }
+                  >
                     In the group
                   </span>
                 </ParticipantRow>
-              )
+              );
             })}
           </ul>
         </div>
@@ -194,7 +228,9 @@ export function ApprovedParticipantView({ group }: { group: GroupDetailView }) {
 
       {/* What follows. Its own card on the frame, outside the panel above. */}
       <section className={CARD}>
-        <h2 className="font-heading text-[20px] font-medium text-[#000000]">What happens next</h2>
+        <h2 className="font-heading text-[20px] font-medium text-[#000000]">
+          What happens next
+        </h2>
         <ol className="mt-4 flex flex-col gap-3">
           {WHAT_HAPPENS_NEXT.map((step, index) => (
             <li key={step} className="flex items-start gap-3">
@@ -204,7 +240,9 @@ export function ApprovedParticipantView({ group }: { group: GroupDetailView }) {
               >
                 {index + 1}
               </span>
-              <span className="font-sans text-[16px] leading-[1.5] text-[#000000]">{step}</span>
+              <span className="font-sans text-[16px] leading-[1.5] text-[#000000]">
+                {step}
+              </span>
             </li>
           ))}
         </ol>
@@ -213,17 +251,31 @@ export function ApprovedParticipantView({ group }: { group: GroupDetailView }) {
         </p>
       </section>
 
-      <div className={FOOTER_ROW}>
-        {/* Both controls are drawn on the frame; neither has a page behind it
-            yet. Same position as frames 43 and 44 — see the note there. */}
-        <Link href="/complete-profile" className={`${FOOTER_SECONDARY} ${FOOTER_ITEM}`}>
-          Manage My Travelers
-        </Link>
-        <Link href="/dashboard" className={`${FOOTER_PRIMARY} ${FOOTER_ITEM}`}>
-          Go To My Dashboard
-          <Icon name="arrow-right" className="size-[18px]" />
-        </Link>
-      </div>
+      {/* Both controls are drawn on the frame and neither has a page behind
+          it — `/dashboard` does not exist, and there is no per-flight
+          travellers screen. Hidden rather than pointed at a 404, and the row
+          goes with them: an empty centred gap reads as a rendering fault. */}
+      {MEMBER_AREA_ENABLED && (
+        <div className={FOOTER_ROW}>
+          {/* kept together so one flag restores the pair the frame draws
+            the day those pages exist. */}
+          <>
+            <Link
+              href="/complete-profile"
+              className={`${FOOTER_SECONDARY} ${FOOTER_ITEM}`}
+            >
+              Manage My Travelers
+            </Link>
+            <Link
+              href="/dashboard"
+              className={`${FOOTER_PRIMARY} ${FOOTER_ITEM}`}
+            >
+              Go To My Dashboard
+              <Icon name="arrow-right" className="size-[18px]" />
+            </Link>
+          </>
+        </div>
+      )}
     </div>
-  )
+  );
 }
