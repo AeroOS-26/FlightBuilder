@@ -29,6 +29,32 @@ export const MEMBER_AREA_ENABLED: boolean = false
 export const PRIVACY_NOTICE_ENABLED: boolean = false
 
 /**
+ * Whether the footer links to the legal pages.
+ *
+ * Split out of `PRIVACY_NOTICE_ENABLED` on 2026-10-09, because that one flag
+ * was holding back two different things: a **link** to a page, and a **consent
+ * assertion** on the interest form ("By registering your interest you agree to
+ * our privacy notice").
+ *
+ * Charles, 8 October, asked for "the two page shells and the footer links on
+ * Friday even without text", so that Monday is a paste rather than a build.
+ * The **Terms of Service** link was the part genuinely missing — the footer had
+ * only Privacy — so that is what Friday added.
+ *
+ * It stays **off**, because the standing decision has not moved:
+ * `docs/CLIENT-DECISIONS.md`, 2026-09-22 — *"A privacy-notice link beside the
+ * interest form's button and 'Privacy & Cookies' in the footer. Built now but
+ * hidden; they switch on the day the notice is written."* The reason given then
+ * still holds: a link to a page that does not say anything is worse than no
+ * link, and the placeholders say only that the text is being finalised.
+ *
+ * Switching on is therefore part of the paste, not part of the build: on Monday
+ * the notice text lands and this and `PRIVACY_NOTICE_ENABLED` both flip. Which
+ * is what "a paste rather than a build" meant.
+ */
+export const LEGAL_PAGE_LINKS_ENABLED: boolean = false
+
+/**
  * Whether the join-approval flow is shown.
  *
  * The approval milestone turns joining into a request the Group Organizer

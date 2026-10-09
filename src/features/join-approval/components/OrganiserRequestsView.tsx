@@ -259,13 +259,18 @@ export function OrganiserRequestsView({ group, requests }: OrganiserRequestsView
               const busy = busyId === request.id
               return (
                 <article key={request.id} className={cn(ROW, 'flex flex-wrap items-center justify-between gap-4')}>
-                  <div className="flex min-w-0 flex-1 items-center gap-4">
+                  {/* `ROW_BODY` rather than `min-w-0 flex-1`: with no content
+                      floor the block shrinks to nothing on a phone and the name
+                      and its pill spill out of the card instead of the three
+                      controls wrapping below them. Measured 95px over at
+                      360px before this. */}
+                  <div className={cn('flex items-center gap-4', ROW_BODY)}>
                     <span className={AVATAR} aria-hidden="true">
                       {initialsOf(request.requesterName)}
                     </span>
                     <div className="flex min-w-0 flex-1 flex-col gap-1.5">
                       <div className="flex flex-wrap items-center gap-2">
-                        <p className="font-heading text-[16px] font-medium leading-[1.21] text-[#000000]">
+                        <p className="min-w-0 break-words font-heading text-[16px] font-medium leading-[1.21] text-[#000000]">
                           {request.requesterName ?? 'Flight Club member'}
                         </p>
                         {oversized && (

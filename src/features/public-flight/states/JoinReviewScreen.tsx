@@ -1089,7 +1089,8 @@ function SharedFlightCard({
 function Detail({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-2">
-      <dt className="font-sans text-[14px] font-medium uppercase tracking-[0.5px] text-[#080B2B]">
+      {/* 12px on the 440 frame, 14 on the desktop one. */}
+      <dt className="font-sans text-[12px] font-medium uppercase tracking-[0.5px] text-[#080B2B] lg:text-[14px]">
         {label}
       </dt>
       <dd className="font-heading text-[16px] font-medium text-[#000000] lg:text-[18px]">
