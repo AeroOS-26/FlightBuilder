@@ -15,6 +15,7 @@ import { useMutation } from '@tanstack/react-query'
 import { flightService } from '@/api/services'
 import { useFlightBuilderStore } from '@/features/flight-builder/store/flightBuilderStore'
 import { useStepNavigation } from './useStepNavigation'
+import { ACKNOWLEDGMENT_TEXT_VERSION } from '@/features/flight-builder/config/acknowledgment'
 import type { ApiError } from '@/types'
 
 export function useCreateFlight() {
@@ -24,7 +25,17 @@ export function useCreateFlight() {
   const { goTo } = useStepNavigation()
 
   const mutation = useMutation({
-    mutationFn: () => flightService.createFlight({ draft, founder }),
+    // The acceptance rides beside the payload. `founder.id` is the `acct_`
+    // string the contract calls `account_id`, not the database row id.
+    mutationFn: ({ acknowledged }: { acknowledged: boolean } = { acknowledged: false }) =>
+      flightService.createFlight({
+        draft,
+        founder,
+        acknowledgment:
+          acknowledged && founder?.id
+            ? { accountId: founder.id, textVersion: ACKNOWLEDGMENT_TEXT_VERSION }
+            : null,
+      }),
     onSuccess: ({ flight }) => {
       // Persist the record so the Share step can read it, then advance.
       setCreatedFlight(flight)
@@ -34,7 +45,9 @@ export function useCreateFlight() {
 
   return {
     /** Trigger flight creation from the current draft. */
-    confirm: () => mutation.mutate(),
+    confirm: () => mutation.mutate({ acknowledged: false }),
+    /** The same, with the organiser's acknowledgment recorded alongside it. */
+    confirmWithAcknowledgment: () => mutation.mutate({ acknowledged: true }),
     isPending: mutation.isPending,
     isError: mutation.isError,
     error: mutation.error as ApiError | null,

@@ -16,6 +16,7 @@ import { forwardFreshworksContact } from '@/api/services/freshworksContact'
 import { currentViewer, type Viewer } from '@/features/auth/server/guard'
 import {
   createFlightGroup,
+  type OrganizerAcknowledgmentInput,
   discardMirror,
   setGroupZohoRecordId,
   type CreateFlightGroupResult,
@@ -23,6 +24,19 @@ import {
 import { withDatabaseMemberIds } from '@/api/services/flightPayload'
 import { parseZohoEnvelope, unwrapZohoOutput } from '@/api/services/zohoWebhook'
 import type { CreateFlightRelayResponse, FlightGroupCreatedEvent } from '@/types'
+
+/**
+ * What the Flight Builder posts.
+ *
+ * `event` is forwarded to Zoho untouched; `acknowledgment` never leaves this
+ * server. The discriminator is `flight_group`, not `event` — the event object
+ * has its own `event` field carrying the event *name*, so that one cannot tell
+ * the two shapes apart.
+ */
+interface CreateFlightGroupRequest {
+  event: FlightGroupCreatedEvent
+  acknowledgment?: OrganizerAcknowledgmentInput | null
+}
 
 export async function POST(request: Request) {
   if (!isZohoConfigured()) {
@@ -32,11 +46,37 @@ export async function POST(request: Request) {
     )
   }
 
+  // The body is an envelope, not the event alone.
+  //
+  // The organiser's acknowledgment has to reach us with the create and must not
+  // reach Zoho: the request body *is* the `flight_group.created` payload, so a
+  // field added to the event would be forwarded verbatim. Wrapping is what
+  // makes that impossible rather than merely avoided — `event` is all that is
+  // ever sent on. A bare event body is still accepted, so nothing that posts
+  // the old shape breaks.
   let payload: FlightGroupCreatedEvent
+  let acknowledgment: OrganizerAcknowledgmentInput | null = null
   try {
-    payload = (await request.json()) as FlightGroupCreatedEvent
+    const body = (await request.json()) as Record<string, unknown>
+    if (body && typeof body === 'object' && !('flight_group' in body)) {
+      const envelope = body as unknown as CreateFlightGroupRequest
+      payload = envelope.event
+      acknowledgment = envelope.acknowledgment ?? null
+    } else {
+      payload = body as unknown as FlightGroupCreatedEvent
+    }
   } catch {
     return NextResponse.json({ message: 'Invalid request body.' }, { status: 400 })
+  }
+
+  // An acceptance with no account id behind it is not evidence of anything, and
+  // `account_id` is the column that outlives the account. Refuse rather than
+  // store an empty string.
+  if (acknowledgment && !acknowledgment.accountId?.trim()) {
+    return NextResponse.json(
+      { message: 'The acknowledgment is missing the account it was made under.' },
+      { status: 400 },
+    )
   }
 
   // This route's auth posture, stated once and in the open.
@@ -63,7 +103,7 @@ export async function POST(request: Request) {
   // that exists nowhere else, so every exit below undoes it. What is NOT
   // acceptable is the reverse — telling the member their flight failed when
   // Zoho has it, because they retry and the CRM gets two.
-  const mirror = await mirrorFlightGroup(payload, viewer)
+  const mirror = await mirrorFlightGroup(payload, viewer, acknowledgment)
   const groupId = payload.flight_group.group_id
 
   // What actually goes on the wire. Without a mirror there is no database id to
@@ -195,6 +235,7 @@ export async function POST(request: Request) {
 async function mirrorFlightGroup(
   payload: FlightGroupCreatedEvent,
   viewer: Viewer | null,
+  acknowledgment: OrganizerAcknowledgmentInput | null,
 ): Promise<CreateFlightGroupResult | null> {
   // No session, no mirror. This is a fail-safe, not a choice:
   // flight_group_member.user_id is NOT NULL (migration 0004), so the
@@ -225,6 +266,8 @@ async function mirrorFlightGroup(
       // Zoho has not been called yet, so there is no record id to store. The
       // relay stamps it on once the event comes back accepted.
       zohoRecordId: null,
+      // Same transaction as the group. Never forwarded.
+      acknowledgment,
     })
   } catch (error) {
     console.error(

@@ -11,7 +11,8 @@
 import { StepShell } from './StepShell'
 import { ErrorBanner } from '@/components/ui'
 import { SectionHeading, SidePanel, TripSummaryPanel, TripSummaryRows } from '@/features/flight-builder/components'
-import { useCreateFlight } from '@/features/flight-builder/hooks'
+import { useCreateFlight, useStepNavigation } from '@/features/flight-builder/hooks'
+import { ORGANIZER_ACKNOWLEDGMENT_ENABLED as ACKNOWLEDGMENT_ON } from '@/config/features'
 import { cn } from '@/utils/cn'
 
 interface TimelineItem {
@@ -112,10 +113,17 @@ function ReviewTimelineChip({ label, tone }: { label: string; tone: 'accent' | '
 
 export function ReviewStep() {
   const { confirm, isPending, isError, error } = useCreateFlight()
+  const { goTo } = useStepNavigation()
+
+  // With the acknowledgment on, Review no longer creates anything: it hands
+  // over to frame 09B, and the group is written there once the organiser has
+  // accepted. Nothing is sent in between, so Cancel on that screen costs the
+  // organiser nothing but the two clicks.
+  const onCreate = ACKNOWLEDGMENT_ON ? () => goTo('acknowledge') : confirm
 
   return (
     <StepShell
-      onContinue={confirm}
+      onContinue={onCreate}
       continueDisabled={isPending}
       bodyClassName="gap-6 p-4"
       stackClassName="max-lg:gap-[18px]"

@@ -11,7 +11,14 @@
 import type { IconName } from '@/components/common/Icon'
 
 /** Stable, URL-safe id for each step. Used as the route segment. */
-export type StepId = 'route' | 'dates' | 'pets' | 'notes' | 'review' | 'share'
+export type StepId =
+  | 'route'
+  | 'dates'
+  | 'pets'
+  | 'notes'
+  | 'review'
+  | 'acknowledge'
+  | 'share'
 
 export interface StepDefinition {
   id: StepId

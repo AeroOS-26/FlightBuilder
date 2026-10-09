@@ -24,6 +24,7 @@ const SUBTITLES: Record<StepId, string> = {
   pets: 'Who and which pets are flying with you?',
   notes: 'Anything we should know before we build it?',
   review: 'One last look before we create your shared flight.',
+  acknowledge: '',
   share: '',
 }
 

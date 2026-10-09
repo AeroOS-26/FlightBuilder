@@ -14,6 +14,7 @@ import {
   NotesStep,
   ReviewStep,
   ShareStep,
+  AcknowledgmentStep,
 } from '@/features/flight-builder/steps'
 import { FIRST_STEP, STEP_IDS } from '@/features/flight-builder/config/steps'
 import type { StepId } from '@/types'
@@ -24,6 +25,7 @@ const stepComponents: Record<StepId, React.ComponentType> = {
   pets: PetsStep,
   notes: NotesStep,
   review: ReviewStep,
+  acknowledge: AcknowledgmentStep,
   share: ShareStep,
 }
 

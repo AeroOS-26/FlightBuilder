@@ -60,6 +60,20 @@ export const STEPS: readonly StepDefinition[] = [
     backLabel: 'Review',
   },
   {
+    // Frame 09B. Between Review and the create call: the group is not written
+    // until the organiser has accepted the six statements, so this is a step in
+    // the flow rather than a dialog over Review. Out of the stepper, because
+    // the frame has none — it is a gate, not a stage.
+    id: 'acknowledge',
+    label: 'Acknowledgment',
+    icon: 'arrow-right',
+    path: 'acknowledge',
+    showInStepper: false,
+    skippable: false,
+    continueLabel: null,
+    backLabel: 'Acknowledgment',
+  },
+  {
     id: 'share',
     label: 'Share link',
     icon: 'arrow-right',

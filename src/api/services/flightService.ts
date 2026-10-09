@@ -32,6 +32,13 @@ const RELAY_ENDPOINT = '/api/flight-group'
 interface CreateFlightArgs {
   draft: FlightDraft
   founder: MemberIdentity | null
+  /**
+   * The Group Organizer's acceptance, when the acknowledgment screen is on.
+   *
+   * Posted **beside** the event rather than inside it. The relay forwards the
+   * event verbatim, so a field added to the payload would reach the CRM.
+   */
+  acknowledgment?: { accountId: string; textVersion: number } | null
 }
 
 /**
@@ -46,6 +53,7 @@ interface CreateFlightArgs {
 export async function createFlight({
   draft,
   founder,
+  acknowledgment = null,
 }: CreateFlightArgs): Promise<CreateFlightResponse> {
   const ids = generateIdentifiers(draft)
   const sentAt = new Date().toISOString()
@@ -62,7 +70,7 @@ export async function createFlight({
   const res = await fetch(RELAY_ENDPOINT, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
+    body: JSON.stringify({ event: payload, acknowledgment }),
   })
 
   if (res.ok) {

@@ -56,3 +56,17 @@ export const APPROVAL_FLOW_ENABLED: boolean = true
  * through to the join flow again and frame 46 is never reached.
  */
 export const DECLINED_MAY_REQUEST_AGAIN: boolean = false
+
+/**
+ * Frame 09B — the Group Organizer acknowledgment between Review and the create.
+ *
+ * On: the Review CTA opens the acknowledgment, and the group is written only
+ * once the six statements have been accepted, with the acceptance stored in the
+ * same transaction (migration 0011, `docs/CLIENT-DECISIONS.md` §18).
+ *
+ * Off: Review creates the group directly, exactly as before. The flag exists so
+ * the gate can be lifted without reverting the screen, not because the client
+ * has asked for it to be optional — Charles, 8 October: the six statements are
+ * final and the screen ships.
+ */
+export const ORGANIZER_ACKNOWLEDGMENT_ENABLED: boolean = true

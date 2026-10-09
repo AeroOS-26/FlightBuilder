@@ -27,11 +27,29 @@ type FlightGroupPayload = FlightGroupCreatedEvent['flight_group']
 
 /* ------------------------------------------------------------------ create */
 
+/**
+ * The organiser's acceptance, as it arrived beside the create payload.
+ *
+ * `accountId` is the `acct_` string rather than a key, and is stored as a
+ * literal — see migration 0011 and §18. Null when the member has no account id
+ * yet, which the route refuses rather than storing empty.
+ */
+export interface OrganizerAcknowledgmentInput {
+  accountId: string
+  textVersion: number
+}
+
 export interface CreateFlightGroupInput {
   /** The same object sent to Zoho, so the mapping stays a rename. */
   flightGroup: FlightGroupPayload
   organizerUserId: string
   petFriendly: boolean
+  /**
+   * Written in the same transaction as the group, because a Charter Group must
+   * never exist without its acceptance. Optional only so the builder can be run
+   * with the acknowledgment turned off; the route decides, not this function.
+   */
+  acknowledgment?: OrganizerAcknowledgmentInput | null
   /**
    * Zoho's record id when it is already known.
    *
@@ -66,6 +84,7 @@ export async function createFlightGroup({
   organizerUserId,
   petFriendly,
   zohoRecordId,
+  acknowledgment,
 }: CreateFlightGroupInput): Promise<CreateFlightGroupResult> {
   const { route, dates } = flightGroup
   const client = await pool.connect()
@@ -136,6 +155,25 @@ export async function createFlightGroup({
        RETURNING id`,
       [flightGroup.group_id, Number(organizerUserId), partySeats, JSON.stringify(partyPets)],
     )
+
+    // The acceptance, inside the same transaction. `DO NOTHING` because the
+    // group insert above is also conflict-tolerant: a replayed create must not
+    // read as a second acceptance, and the unique constraint would otherwise
+    // roll the whole thing back.
+    if (acknowledgment) {
+      await client.query(
+        `INSERT INTO organizer_acknowledgment
+           (flight_group_id, user_id, account_id, text_version)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (flight_group_id) DO NOTHING`,
+        [
+          flightGroup.group_id,
+          Number(organizerUserId),
+          acknowledgment.accountId,
+          acknowledgment.textVersion,
+        ],
+      )
+    }
 
     await client.query('COMMIT')
     return {
