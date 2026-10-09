@@ -43,6 +43,8 @@ import {
   sessionVersionFor,
 } from './members'
 import { consumeToken } from './tokens'
+import { checkIpRateLimit } from './rateLimit'
+import { clientKeyFrom } from '@/utils/clientKey'
 
 /**
  * Sign-in failures, tagged so the page can render frame 32's three variants.
@@ -92,6 +94,9 @@ export class ServiceUnavailableError extends CredentialsSignin {
  * The way out is Forgot password, which works for them: `setPassword` writes a
  * hash whether or not one was there, so reset doubles as "set a password".
  */
+export class TooManyRequestsError extends CredentialsSignin {
+  code = 'too-many-requests'
+}
 export class NoPasswordSetError extends CredentialsSignin {
   code = 'no-password'
 }
@@ -111,10 +116,19 @@ export const authConfig: NextAuthConfig = {
         email: { label: 'Email', type: 'email' },
         password: { label: 'Password', type: 'password' },
       },
-      async authorize(raw) {
+      async authorize(raw, request) {
         const email = typeof raw?.email === 'string' ? raw.email : ''
         const password = typeof raw?.password === 'string' ? raw.password : ''
         if (!email || !password) throw new AccountNotFoundError()
+
+        // Per-account lockout already stops someone grinding one address:
+        // five failures and `registerFailedAttempt` locks it for fifteen
+        // minutes, in the database, so it survives instance churn. What it
+        // cannot see is one caller trying a few passwords against a thousand
+        // different addresses — every account stays under its own threshold
+        // and nothing ever locks. That is what this covers, and only that.
+        const ipRate = checkIpRateLimit(clientKeyFrom(request as Request))
+        if (!ipRate.allowed) throw new TooManyRequestsError()
 
         let member
         try {

@@ -44,13 +44,3 @@ export function checkRateLimit(key: string): RateLimitResult {
   return { allowed: true, retryAfterSec: 0 }
 }
 
-/**
- * Best-effort client IP from proxy headers (Vercel/most hosts set these).
- * Falls back to a shared key so the limiter still functions if headers are
- * absent — it degrades to a global cap rather than failing open per-request.
- */
-export function clientKeyFrom(request: Request): string {
-  const fwd = request.headers.get('x-forwarded-for')
-  if (fwd) return fwd.split(',')[0]!.trim()
-  return request.headers.get('x-real-ip') ?? 'unknown'
-}

@@ -108,6 +108,20 @@ export interface Pet {
   /** Weight bucket in lbs, kept as a string to match the select options. */
   weight: string
   temperament: PetTemperament | ''
+  /**
+   * Whether this animal is a qualified service animal.
+   *
+   * Stored as a plain yes/no and nothing else: counsel's position is that
+   * permitted inquiries and authorised documentation belong to the operating
+   * carrier, not to our form (client, 2026-09-29). No documents, no
+   * description, nothing about the person.
+   *
+   * It exists because counsel's terms price additional pets by size and apply a
+   * pet cap, and both are disapplied for a qualified service animal — without
+   * the flag Perro Air cannot apply its own rule. Those two effects come later;
+   * this is the capture.
+   */
+  serviceAnimal: boolean
 }
 
 /**

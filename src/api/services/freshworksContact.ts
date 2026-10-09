@@ -82,8 +82,11 @@ function tripDatePhrase(dates: FlightGroupCreatedEvent['flight_group']['dates'])
  */
 function tripDetails(fg: FlightGroupCreatedEvent['flight_group']): string {
   const lines: string[] = [`Estimated party: ${fg.spaces_total} travellers`]
+  // Freshworks keeps its own frozen shape (27 July): the Zoho events now send
+  // null for an absent value, but this mapping is not part of that contract, so
+  // null is flattened to "" at this boundary rather than leaking across.
   fg.members
-    .filter((m) => m.name.trim() !== '')
+    .filter((m) => (m.name ?? '').trim() !== '')
     .forEach((m, i) => {
       const isOrganizer =
         m.flight_group_member_id === fg.founder_member_id || m.role === 'group_organizer'
@@ -147,7 +150,7 @@ export function mapFlightGroupToFreshworksContact(
     cf_dog_details: dogDetails(pets),
     cf_number_of_cats: pets.filter((p) => !isDog(p.type)).length,
     cf_other_pet_details: otherPetDetails(pets),
-    cf_additional_comments: fg.operator_notes,
+    cf_additional_comments: fg.operator_notes ?? '',
     external_id: opts.testMode
       ? (opts.testExternalId ?? 'AER-TEST-0001')
       : buildExternalId(fg.group_id, creator?.flight_group_member_id ?? fg.founder_member_id),

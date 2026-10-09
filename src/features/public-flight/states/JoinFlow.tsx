@@ -17,7 +17,11 @@
 import { useState } from 'react'
 import { JoinReviewScreen } from './JoinReviewScreen'
 import { JoinOutcomeScreen } from './JoinOutcomeScreen'
+import { APPROVAL_FLOW_ENABLED } from '@/config/features'
+import { RequestSentScreen } from '@/features/join-approval/components/RequestOutcomeScreens'
+import { metroLabel, formatDateRange } from '../format'
 import type { MemberJoinResponse, Pet, PublicView, Traveler } from '@/types'
+import type { ShareFlightDetail } from '../PublicFlightPage'
 
 /**
  * The public view with the roster's counts laid over it, when the join sent
@@ -44,6 +48,8 @@ export function JoinFlow({
   initialTravelers,
   initialPets,
   reference,
+  viewerEmail,
+  flightDetail,
 }: {
   token: string
   flight: PublicView
@@ -56,8 +62,36 @@ export function JoinFlow({
    * member is never shown a reference that belongs to nobody.
    */
   reference?: string
+  /** Where the decision will be sent, shown on frame 43. */
+  viewerEmail?: string
+  /** Airport codes and the organiser's name — frame 42's shared-flight card. */
+  flightDetail?: ShareFlightDetail
 }) {
   const [joined, setJoined] = useState<MemberJoinResponse | null>(null)
+  const [requested, setRequested] = useState(false)
+
+  // Frame 43. Nothing here comes from the response: a request seats nobody, so
+  // there are no counts to lay over the flight and no reference to show.
+  //
+  // The summary is built from the same `flightDetail` frame 42 uses one screen
+  // earlier, so the airport codes, the organiser's name and the departure date
+  // read identically on both. It used to pass null codes, no organiser and the
+  // raw ISO date, which dropped the Group Organizer row entirely.
+  if (requested) {
+    return (
+      <RequestSentScreen
+        email={viewerEmail ?? 'your email address'}
+        flight={{
+          originCity: metroLabel(flight.route_origin_city),
+          originCode: flightDetail?.originCode ?? null,
+          destinationCity: metroLabel(flight.route_destination_city),
+          destinationCode: flightDetail?.destinationCode ?? null,
+          departureDate: formatDateRange(flight.estimated_date_range),
+          organizerName: flightDetail?.organizerName ?? undefined,
+        }}
+      />
+    )
+  }
 
   if (joined) {
     return (
@@ -81,6 +115,9 @@ export function JoinFlow({
       initialTravelers={initialTravelers}
       initialPets={initialPets}
       onJoined={setJoined}
+      onRequested={() => setRequested(true)}
+      flightDetail={flightDetail}
+      viewerEmail={viewerEmail}
     />
   )
 }

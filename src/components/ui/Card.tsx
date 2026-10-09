@@ -37,8 +37,23 @@ export const dashedReadinessSurfaceClass =
 /** Dashed outline for legal / privacy callouts on white. */
 export const dashedPanelSurfaceClass = 'relative overflow-visible rounded-[16px] bg-white'
 
-/** SVG dashed stroke that follows rounded corners (Figma primary blue). */
-export function DashedOutline({ radius = DASHED_RADIUS }: { radius?: number }) {
+/**
+ * SVG dashed stroke that follows rounded corners (Figma primary blue).
+ *
+ * `dash` is the SVG `stroke-dasharray`. The builder's panels are 12/8; frame
+ * 44's "Not available yet" box is 8/8, and a CSS `border-dashed` cannot be told
+ * either — hence the SVG.
+ */
+export function DashedOutline({
+  radius = DASHED_RADIUS,
+  dash = '12 8',
+  stroke = '#112D7C',
+}: {
+  radius?: number
+  dash?: string
+  /** Frame 45's confirmation box is the same outline in `#109A51`. */
+  stroke?: string
+}) {
   const hostRef = useRef<HTMLDivElement>(null)
   const [box, setBox] = useState({ w: 0, h: 0 })
 
@@ -82,9 +97,9 @@ export function DashedOutline({ radius = DASHED_RADIUS }: { radius?: number }) {
             height={box.h - 1}
             rx={r}
             ry={r}
-            stroke="#112D7C"
+            stroke={stroke}
             strokeWidth={1}
-            strokeDasharray="12 8"
+            strokeDasharray={dash}
           />
         </svg>
       )}

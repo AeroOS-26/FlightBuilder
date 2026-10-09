@@ -16,6 +16,7 @@
 
 import { SPACES_ESTIMATE } from '@/features/flight-builder/config/capacity'
 import { mapPet } from './petPayload'
+import { nullIfBlank } from './payloadValue'
 import type {
   FlightDraft,
   FlightGroupCreatedEvent,
@@ -72,7 +73,7 @@ export function buildFlightGroupCreated({
       aircraft_category: null,
       route: mapRoute(draft),
       dates: mapDates(draft),
-      operator_notes: draft.notes ?? '',
+      operator_notes: nullIfBlank(draft.notes),
       members: mapMembers(draft, founder),
     },
   }
@@ -137,12 +138,12 @@ export function withDatabaseMemberIds(
 function mapRoute(draft: FlightDraft): FlightGroupCreatedEvent['flight_group']['route'] {
   const { from, to } = draft.route
   return {
-    origin_input: from?.city ?? '',
+    origin_input: nullIfBlank(from?.city),
     origin_type: from?.kind ?? 'city',
     origin_city: placeCityLabel(from),
     // ICAO code only when a specific airport is locked; null for a whole city.
     origin_airport_code: from?.kind === 'airport' ? from.code : null,
-    destination_input: to?.city ?? '',
+    destination_input: nullIfBlank(to?.city),
     destination_type: to?.kind ?? 'city',
     destination_city: placeCityLabel(to),
     destination_airport_code: to?.kind === 'airport' ? to.code : null,
@@ -179,14 +180,14 @@ function mapMembers(draft: FlightDraft, founder: MemberIdentity | null): FlightG
       // form. Empty only while no account exists — confirmed by the client as
       // the intended behaviour, and what we agreed in July when the seeded
       // placeholder was swapped for an empty string.
-      account_id: isFounder && founder ? founder.id : '',
-      name: t.name,
-      email: isFounder && founder ? founder.email : '',
+      account_id: isFounder && founder ? nullIfBlank(founder.id) : null,
+      name: nullIfBlank(t.name),
+      email: isFounder && founder ? nullIfBlank(founder.email) : null,
       // Always sent, null when unknown, per the 2026-08-19 contract. Only the
       // organizer has an identity at creation; the other travelers on the party
       // are names, so null there is accurate rather than missing. An empty
       // string would assert "no phone" where we simply do not have one.
-      phone: (isFounder && founder ? founder.phone?.trim() : '') || null,
+      phone: isFounder && founder ? nullIfBlank(founder.phone) : null,
       // "group_organizer" per the 2026-07-24 contract (Founder renamed). The
       // field NAMES are unchanged; only these role/join_method VALUES changed.
       role: isFounder ? 'group_organizer' : 'joiner',

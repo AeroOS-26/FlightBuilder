@@ -51,6 +51,7 @@ const SEED_PETS = [
     breed: 'Golden Retriever',
     weight: '68',
     temperament: 'Experienced Traveler' as const,
+    serviceAnimal: false,
   },
 ]
 

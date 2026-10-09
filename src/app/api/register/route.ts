@@ -27,9 +27,21 @@ import { issueToken } from '@/features/auth/server/tokens'
 import { sendVerificationEmail, isEmailConfigured } from '@/features/auth/server/email'
 import { validateSignUp, isClean } from '@/features/auth/validation'
 import { appUrl } from '@/config/appUrl'
+import { checkIpRateLimit, checkEmailRateLimit, rateLimitResponse } from '@/features/auth/server/rateLimit'
+import { clientKeyFrom } from '@/utils/clientKey'
 
 
 export async function POST(request: Request) {
+  // Apply IP rate limiting
+  const ip = clientKeyFrom(request)
+  const ipRate = checkIpRateLimit(ip)
+  if (!ipRate.allowed) {
+    return NextResponse.json(
+      { message: 'Too many registration attempts. Please wait a moment and try again.' },
+      { status: 429, headers: { 'Retry-After': String(ipRate.retryAfterSec) } }
+    )
+  }
+
   if (!isDatabaseConfigured()) {
     return NextResponse.json(
       { message: 'Accounts are not configured on the server.' },
@@ -47,6 +59,15 @@ export async function POST(request: Request) {
   const email = typeof body.email === 'string' ? body.email : ''
   const password = typeof body.password === 'string' ? body.password : ''
   const name = typeof body.name === 'string' ? body.name.trim() : undefined
+
+  // Apply per-email rate limiting
+  const emailRate = checkEmailRateLimit(email)
+  if (!emailRate.allowed) {
+    return NextResponse.json(
+      { message: 'Too many registration attempts for this email. Please wait a moment and try again.' },
+      { status: 429, headers: { 'Retry-After': String(emailRate.retryAfterSec) } }
+    )
+  }
 
   // The same rules the form applies, re-checked here: a client can be bypassed.
   const errors = validateSignUp({ email, password })

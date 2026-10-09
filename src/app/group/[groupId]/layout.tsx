@@ -13,6 +13,8 @@
 import { notFound } from 'next/navigation'
 import { requireVerifiedViewer, getMembership } from '@/features/auth/server/guard'
 import { auth } from '@/features/auth/server/auth'
+import { APPROVAL_FLOW_ENABLED } from '@/config/features'
+import { getMemberRequest } from '@/features/join-approval/server/joinRequestStore'
 import { MemberNav } from '@/features/onboarding/components/MemberNav'
 import { BrokerDisclosureFooter } from '@/components/common'
 
@@ -37,7 +39,18 @@ export default async function GroupLayout({ children, params }: GroupLayoutProps
   // screen.
   const membership = await getMembership(groupId, viewer.id)
   if (!membership) {
-    notFound()
+    // One exception, and only one: the person waiting on a decision about this
+    // group. Frame 44 is theirs, the page below draws it, and it showed as a
+    // 404 until this guard let them past — the page's own branch could never
+    // run. Found live on 2026-10-05 with jr_13.
+    //
+    // It opens no more than that. The request detail route under this layout
+    // keeps its own organiser-only guard, the page gives a requester counts and
+    // never a roster, and anyone without a pending request still gets the 404
+    // that stops this route confirming a group exists.
+    const waiting =
+      APPROVAL_FLOW_ENABLED && (await getMemberRequest(groupId, viewer.id))?.status === 'pending'
+    if (!waiting) notFound()
   }
 
   const session = await auth()

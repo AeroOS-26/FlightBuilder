@@ -12,6 +12,7 @@
  */
 
 import { inContractOrder } from './petPayload'
+import { nullIfBlank } from './payloadValue'
 import type { FilledGroupSource } from '@/features/group/server/groupStore'
 import type { FlightGroupFilledEvent } from '@/types'
 
@@ -31,7 +32,7 @@ export function buildFlightGroupFilled(
       // The organiser's real membership row. flight_group.created still sends a
       // browser-generated id here (an open mismatch, docs/CLIENT-DECISIONS.md
       // §12), so Zoho cannot rely on this matching what it received at creation.
-      founder_member_id: organiser ? memberId(organiser.memberId) : '',
+      founder_member_id: organiser ? memberId(organiser.memberId) : null,
       filled_at: source.filledAt.toISOString(),
       spaces_total: source.spacesTotal,
       spaces_remaining: Math.max(0, source.spacesTotal - source.spacesOccupied),
@@ -48,11 +49,10 @@ export function buildFlightGroupFilled(
       },
       members: source.members.map((member) => ({
         flight_group_member_id: memberId(member.memberId),
-        // "" rather than null when absent, the same as member.joined sends —
-        // which of the two the contract wants is still open with the client.
-        account_id: member.accountId ?? '',
-        name: member.name ?? '',
-        email: member.email,
+        // Absent is null, never "" — settled by the client 2026-09-29.
+        account_id: nullIfBlank(member.accountId),
+        name: nullIfBlank(member.name),
+        email: nullIfBlank(member.email),
         role: member.role,
         join_method: member.joinMethod,
         member_status: 'joined',

@@ -54,6 +54,7 @@ const emptyPet = (): Pet => ({
   breed: '',
   weight: '',
   temperament: '',
+  serviceAnimal: false,
 })
 
 /** The three toggles under "Stay in the loop", verbatim from the frame. */

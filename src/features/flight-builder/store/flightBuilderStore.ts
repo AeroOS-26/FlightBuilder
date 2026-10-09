@@ -37,7 +37,15 @@ function founderTraveler(member: MemberIdentity): Traveler {
 }
 
 function emptyPet(): Pet {
-  return { id: nextId('pet'), name: '', type: '', breed: '', weight: '', temperament: '' }
+  return {
+    id: nextId('pet'),
+    name: '',
+    type: '',
+    breed: '',
+    weight: '',
+    temperament: '',
+    serviceAnimal: false,
+  }
 }
 
 const emptyDraft: FlightDraft = {

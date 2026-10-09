@@ -5,6 +5,7 @@
  * mapped two ways depending on which event carries it.
  */
 
+import { nullIfBlank } from './payloadValue'
 import type { FlightGroupPet, Pet } from '@/types'
 
 /**
@@ -23,14 +24,15 @@ export function mapPet(pet: Pet, readinessAccepted: boolean): FlightGroupPet {
   return {
     name: pet.name,
     type: pet.type,
-    breed: pet.breed,
+    breed: nullIfBlank(pet.breed),
     // The weight select stores whole pounds as a string ("68"); the contract
     // wants the number. Anything unparseable goes as null rather than a guess.
     weight_lbs: parseWeight(pet.weight),
     crate_size: null, // CONFIRM: crate size not captured in the flow.
+    // Null when not chosen — absent is null, never "" (client, 2026-09-29).
     temperament: pet.temperament
       ? (TEMPERAMENT_PAYLOAD_VALUE[pet.temperament] ?? pet.temperament.toLowerCase())
-      : '',
+      : null,
     travel_readiness_accepted: readinessAccepted,
   }
 }

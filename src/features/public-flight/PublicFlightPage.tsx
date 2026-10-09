@@ -28,6 +28,18 @@ import type { Pet, PublicFlightResult, PublicView, Traveler } from '@/types'
  * visitors get `undefined`, and existing members never reach the client page at
  * all — they are redirected to their group on the server.
  */
+/**
+ * What frame 42's "The shared flight" card needs and the public view cannot
+ * supply: the airport codes and the organiser's name. The public view is
+ * Zoho's public-safe read — it carries no names by design and no codes at all —
+ * so these come from our own database on the share route.
+ */
+export interface ShareFlightDetail {
+  originCode: string | null
+  destinationCode: string | null
+  organizerName: string | null
+}
+
 export interface ShareViewer {
   /** User identity — email for header display. */
   id?: string
@@ -47,9 +59,15 @@ interface PublicFlightPageProps {
   initialData?: PublicFlightResult
   /** See ShareViewer. Absent for an anonymous visitor. */
   viewer?: ShareViewer
+  flightDetail?: ShareFlightDetail
 }
 
-export function PublicFlightPage({ token, initialData, viewer }: PublicFlightPageProps) {
+export function PublicFlightPage({
+  token,
+  initialData,
+  viewer,
+  flightDetail,
+}: PublicFlightPageProps) {
   const { data, isLoading, isError, refetch } = usePublicFlight(token, initialData)
 
   return (
@@ -58,7 +76,12 @@ export function PublicFlightPage({ token, initialData, viewer }: PublicFlightPag
       {isError && <PublicFlightError onRetry={() => refetch()} />}
       {!isLoading && !isError && data?.status === 'not_found' && <NotFoundState />}
       {!isLoading && !isError && data?.status === 'ok' && (
-        <StateForFlight flight={data.flight} token={token} viewer={viewer} />
+        <StateForFlight
+          flight={data.flight}
+          token={token}
+          viewer={viewer}
+          flightDetail={flightDetail}
+        />
       )}
     </PublicPageShell>
   )
@@ -76,10 +99,12 @@ function StateForFlight({
   flight,
   token,
   viewer,
+  flightDetail,
 }: {
   flight: PublicView
   token: string
   viewer?: ShareViewer
+  flightDetail?: ShareFlightDetail
 }) {
   switch (flight.group_state_public) {
     case 'full':
@@ -98,6 +123,8 @@ function StateForFlight({
             flight={flight}
             initialTravelers={viewer.travelers}
             initialPets={viewer.pets}
+            viewerEmail={viewer.email}
+            flightDetail={flightDetail}
           />
         )
       }

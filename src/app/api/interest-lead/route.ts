@@ -25,14 +25,15 @@ import { isPublicViewConfigured } from '@/config/serverEnv'
 import { forwardInterestLead } from '@/features/public-flight/data/leadWrite'
 import { fetchGroupPublicView } from '@/features/public-flight/data/fetchPublicView'
 import { resolveGroupById } from '@/features/public-flight/data/sampleGroups'
-import { checkRateLimit, clientKeyFrom } from '@/features/public-flight/data/rateLimit'
+import { checkRateLimit } from '@/features/public-flight/data/rateLimit'
+import { clientKeyFrom } from '@/utils/clientKey'
 import { groupIdFromSlug } from '@/features/public-flight/format'
 import type { InterestLeadResponse } from '@/types'
 
 /** Resolved group + its Zoho record id, from the live read or sample data. */
 interface ResolvedGroup {
   group_id: string
-  zoho_flight_group_record_id: string
+  zoho_flight_group_record_id: string | null
 }
 
 /**
@@ -47,7 +48,7 @@ async function resolveGroup(groupId: string): Promise<ResolvedGroup | null> {
     if (res.status !== 'ok') return null
     return {
       group_id: res.flight.group_id,
-      zoho_flight_group_record_id: res.recordId ?? '',
+      zoho_flight_group_record_id: res.recordId ?? null,
     }
   }
   const sample = resolveGroupById(groupId)

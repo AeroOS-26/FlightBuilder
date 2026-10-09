@@ -51,11 +51,17 @@ import { cache } from 'react'
 import type { Metadata } from 'next'
 import { notFound, redirect } from 'next/navigation'
 import { PublicFlightPage } from '@/features/public-flight/PublicFlightPage'
-import type { ShareViewer } from '@/features/public-flight/PublicFlightPage'
+import type { ShareViewer, ShareFlightDetail } from '@/features/public-flight/PublicFlightPage'
 import { resolvePublicFlight } from '@/features/public-flight/data/resolvePublicFlight'
-import { formatDateRange, metroLabel } from '@/features/public-flight/format'
+import { formatDateRange, metroLabel, readableDate } from '@/features/public-flight/format'
 import { currentViewer, getMembership } from '@/features/auth/server/guard'
 import { getProfile } from '@/features/auth/server/profile'
+import { APPROVAL_FLOW_ENABLED, DECLINED_MAY_REQUEST_AGAIN } from '@/config/features'
+import {
+  getMemberRequest,
+  getRequesterGroupView,
+} from '@/features/join-approval/server/joinRequestStore'
+import { RequestNotApprovedScreen } from '@/features/join-approval/components/RequestOutcomeScreens'
 import type { PublicFlightResult } from '@/types'
 
 /**
@@ -123,6 +129,9 @@ export default async function SharePage({
   // Anonymous, or the upstream read failed. Either way there is nobody to scope
   // a join to, so the page renders exactly as it did before.
   let shareViewer: ShareViewer | undefined
+  // Frame 42 names the organiser and the airports. Neither is on the public
+  // view, so they are read here and handed down with the viewer.
+  let flightDetail: ShareFlightDetail | undefined
 
   if (viewer && resolved.status === 'ok') {
     const groupId = resolved.flight.group_id
@@ -134,9 +143,65 @@ export default async function SharePage({
       redirect(`/group/${encodeURIComponent(groupId)}`)
     }
 
+    // An open or closed request outranks the join form. Without this a
+    // requester reopening the share link is offered frame 42 again and the
+    // submit endpoint answers 409 — the screen promises something the server
+    // refuses.
+    if (APPROVAL_FLOW_ENABLED) {
+      const request = await getMemberRequest(groupId, viewer.id)
+
+      // Waiting on the organiser. Frame 44 lives on the group route, which
+      // opens to exactly this person, so send them to it rather than drawing a
+      // second copy of it here.
+      if (request?.status === 'pending') {
+        redirect(`/group/${encodeURIComponent(groupId)}`)
+      }
+
+      // Frame 46. It belongs on this route and not on /group: its eyebrow reads
+      // "Join a shared flight", and the person is not a member, so /group's
+      // 404-to-everyone-else rule should still cover them.
+      //
+      // Declined and lapsed land here alike — neither is in the group and
+      // neither holds a place. A lapse is not a decline and the copy should say
+      // so, which has no frame; raised with the client.
+      if (
+        !DECLINED_MAY_REQUEST_AGAIN &&
+        (request?.status === 'declined' || request?.status === 'lapsed')
+      ) {
+        const view = await getRequesterGroupView(groupId)
+        if (view) {
+          return (
+            <RequestNotApprovedScreen
+              flight={{
+                // The same treatment frames 42 and 43 give these: the metro
+                // label rather than "Las Vegas, Nevada, United States", the
+                // stored airport code when there is one, and a written date
+                // rather than the raw ISO the column holds.
+                originCity: metroLabel(view.originCity),
+                originCode: view.originCode,
+                destinationCity: metroLabel(view.destinationCity),
+                destinationCode: view.destinationCode,
+                departureDate: view.departureDate ? readableDate(view.departureDate) : '',
+                organizerName: view.organizerName ?? undefined,
+              }}
+            />
+          )
+        }
+      }
+    }
+
     // Frame 40 shows "Pulled from your profile", so seed it from there. An
     // empty list is passed as undefined, not as [], so the screen falls back to
     // its own blank first traveller rather than rendering a party of nobody.
+    const detail = await getRequesterGroupView(groupId)
+    if (detail) {
+      flightDetail = {
+        originCode: detail.originCode,
+        destinationCode: detail.destinationCode,
+        organizerName: detail.organizerName,
+      }
+    }
+
     const profile = await getProfile(viewer.id)
     shareViewer = {
       id: viewer.id,
@@ -147,6 +212,11 @@ export default async function SharePage({
   }
 
   return (
-    <PublicFlightPage token={token} initialData={initialData} viewer={shareViewer} />
+    <PublicFlightPage
+      token={token}
+      initialData={initialData}
+      viewer={shareViewer}
+      flightDetail={flightDetail}
+    />
   )
 }

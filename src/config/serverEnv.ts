@@ -121,6 +121,30 @@ export function isZohoConfigured(): boolean {
   return true
 }
 
+/**
+ * Whether a send should be written to the log instead of handed to Postmark.
+ *
+ * The client's Postmark account is capped at 100 emails. A local run through
+ * the approval flow sends four of them, and a day of testing would eat the
+ * allowance the real members need.
+ *
+ * `SUPPRESS_EMAIL_DELIVERY=true` keeps every send path intact — the template
+ * alias, the model, the recipient, the failure handling — and stops only at the
+ * network call, logging what would have gone. The flow under test is therefore
+ * the real one.
+ *
+ * **Development only, deliberately.** An env var that can silence production
+ * email is a worse problem than a spent quota, so this is ignored anywhere
+ * `NODE_ENV` is not `development`. On the preview Charles tests against, the
+ * emails really send — which is the point of him testing there.
+ */
+export function isEmailDeliverySuppressed(): boolean {
+  return (
+    process.env.NODE_ENV === 'development' &&
+    process.env.SUPPRESS_EMAIL_DELIVERY === 'true'
+  )
+}
+
 function isLocalUrl(url: string): boolean {
   try {
     const { hostname } = new URL(url)

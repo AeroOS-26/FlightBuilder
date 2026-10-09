@@ -683,11 +683,18 @@ export async function getGroupDetail(
   if (!group) return null
 
   const { rows: memberRows } = await pool.query<MemberRow>(
+    // `fgm.pets`, not the member's saved profile.
+    //
+    // Pets are per flight, not per account: migration 0008 stores the party's
+    // pets on the membership exactly as they were sent, because contract
+    // section 7 makes the flight payload the source every time and a member may
+    // have edited their saved pets since. Reading `member_profile` here showed
+    // "No pets" on a flight carrying two, because the organiser's saved profile
+    // happened to be empty — the flight's own pets were never consulted.
     `SELECT fgm.user_id, u.name, u.email, fgm.role, fgm.joined_at,
-            fgm.seats_committed, mp.pets
+            fgm.seats_committed, fgm.pets
        FROM flight_group_member fgm
        JOIN users u ON u.id = fgm.user_id
-       LEFT JOIN member_profile mp ON mp.user_id = fgm.user_id
       WHERE fgm.flight_group_id = $1 AND fgm.member_status = 'joined'
       ORDER BY fgm.joined_at ASC`,
     [groupId],
@@ -705,6 +712,8 @@ export async function getGroupDetail(
       joined_at: row.joined_at.toISOString(),
       member_status: 'confirmed',
       is_self: row.user_id === viewerId,
+      places: row.seats_committed,
+      pet_count: (row.pets ?? []).length,
       pet_summary: petSummary(row.pets ?? []),
     }
   })

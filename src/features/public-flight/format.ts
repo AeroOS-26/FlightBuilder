@@ -62,6 +62,21 @@ export function aircraftExample(category: string): string {
 export const AIRCRAFT_PENDING_LABEL = 'Confirmed at quote'
 
 /**
+ * "2026-06-18" -> "June 18, 2026", the form every approval frame writes dates in.
+ *
+ * Four screens had their own copy of this and one of them was `en-GB`, so frame
+ * 49 read "18 June 2026" where its neighbours read "June 18, 2026". A value
+ * that is not a date is returned untouched rather than rendered as
+ * "Invalid Date".
+ */
+export function readableDate(value: string): string {
+  const d = new Date(value)
+  return Number.isNaN(d.getTime())
+    ? value
+    : d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+}
+
+/**
  * The value for a **labelled** AIRCRAFT row or cell.
  *
  * Two treatments exist for an unknown aircraft, and which one applies is a

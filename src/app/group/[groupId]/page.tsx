@@ -6,6 +6,18 @@ import { RefreshOnFocus } from '@/components/common'
 import { auth } from '@/features/auth/server/auth'
 import { getMembership } from '@/features/auth/server/guard'
 import { fetchGroupDetail } from '@/services/groupDataService.server'
+import { APPROVAL_FLOW_ENABLED } from '@/config/features'
+import {
+  listPendingRequests,
+  listLapsedRequests,
+  lastApprovedRequest,
+  getMemberRequest,
+  getRequesterGroupView,
+} from '@/features/join-approval/server/joinRequestStore'
+import { UnderReviewView } from '@/features/join-approval/components/UnderReviewView'
+import { ApprovedParticipantView } from '@/features/join-approval/components/ApprovedParticipantView'
+import { OrganiserRequestsView } from '@/features/join-approval/components/OrganiserRequestsView'
+import { GroupFullOrganiserView } from '@/features/join-approval/components/GroupFullOrganiserView'
 import { metroLabel } from '@/features/public-flight/format'
 import type { GroupStatus } from '@/types'
 
@@ -76,6 +88,30 @@ export default async function GroupPage({ params }: GroupPageProps) {
   // exists to someone with no business knowing.
   const membership = await getMembership(groupId, session.user.id)
   if (!membership) {
+    // Frame 44. The 404 rule stands for everyone else — this opens the page to
+    // exactly one more person, the one waiting on a decision about it, and
+    // shows them counts rather than a roster. Anyone without a pending request
+    // still learns nothing about whether the group exists.
+    if (APPROVAL_FLOW_ENABLED) {
+      const request = await getMemberRequest(groupId, session.user.id)
+
+      if (request?.status === 'pending') {
+        const view = await getRequesterGroupView(groupId)
+        if (view) {
+          return (
+            <UnderReviewView
+              {...view}
+              placesRequested={request.placesRequested}
+              requestedAt={request.requestedAt.toISOString().slice(0, 10)}
+            />
+          )
+        }
+      }
+
+      // A decided request is not this route's business. Frame 46 lives on
+      // /share, where the request was made, so a declined or lapsed person
+      // falls through to the 404 every other non-member gets.
+    }
     notFound()
   }
 
@@ -93,6 +129,80 @@ export default async function GroupPage({ params }: GroupPageProps) {
   // organiser at creation — one lookup answers both "may this person be here"
   // and "which view do they get", rather than special-casing the creator.
   const viewerRole = membership.role === 'group_organizer' ? ('organizer' as const) : ('joiner' as const)
+
+  // Frame 47 replaces this page for the organiser while approval is on: what is
+  // waiting on them is the point of the screen, and the roster is context for
+  // it. Off, the page is exactly what it was.
+  if (APPROVAL_FLOW_ENABLED && viewerRole === 'organizer') {
+    // Frame 49 takes over from 47 once the group is full: there is nothing left
+    // to approve, so the screen becomes what just happened and what follows.
+    if (groupStatus === 'filled') {
+      const [filled, lapsed] = await Promise.all([
+        lastApprovedRequest(groupId),
+        listLapsedRequests(groupId),
+      ])
+      return (
+        <>
+          <RefreshOnFocus />
+          <GroupFullOrganiserView
+            group={groupDetail}
+            filledBy={filled?.requesterName ?? null}
+            lapsed={lapsed.map((request) => request.requesterName ?? 'A Flight Club member')}
+          />
+        </>
+      )
+    }
+
+    const pending = await listPendingRequests(groupId)
+    return (
+      <>
+        <RefreshOnFocus />
+        <OrganiserRequestsView
+          group={groupDetail}
+          requests={pending.map((request) => ({
+            id: request.id,
+            requesterName: request.requesterName,
+            placesRequested: request.placesRequested,
+            // Counted from what the request carried, not from the profile —
+            // travellers are editable per flight (frame 42).
+            travellerCount: Math.max(1, request.travelers.length),
+            petCount: request.pets.length,
+            // Flattened, because frame 47 separates every descriptor with its
+            // own dot — "1 pet · Nube · Cat · 9lbs" — rather than joining each
+            // animal into a single label.
+            petBits: request.pets.flatMap((pet) =>
+              [pet.name, pet.type, pet.weight_lbs ? `${pet.weight_lbs}lbs` : null].filter(
+                (bit): bit is string => Boolean(bit),
+              ),
+            ),
+            requestedAt: request.requestedAt.toISOString().slice(0, 10),
+          }))}
+        />
+      </>
+    )
+  }
+
+  // Frame 45. A joiner who came in through the approval flow gets the
+  // participant screen the frame draws — hero, confirmation, route band,
+  // roster, what follows — not the old group page with a banner laid on it.
+  //
+  // Keyed on having an approved request rather than on the approval being
+  // recent. The frame is the participant view, so there is nothing to fade out
+  // of; a 24-hour window would have dropped the member back onto a completely
+  // different layout the next day. A member who joined before approvals existed
+  // has no request at all and keeps the page they have always had.
+  const ownRequest = APPROVAL_FLOW_ENABLED
+    ? await getMemberRequest(groupId, session.user.id)
+    : null
+
+  if (ownRequest?.status === 'approved') {
+    return (
+      <>
+        <RefreshOnFocus />
+        <ApprovedParticipantView group={groupDetail} />
+      </>
+    )
+  }
 
   return (
     <>

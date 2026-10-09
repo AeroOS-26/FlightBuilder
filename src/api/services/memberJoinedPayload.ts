@@ -5,6 +5,7 @@
  * in the same place, and so the shape is a pure function of its inputs.
  */
 
+import { nullIfBlank } from './payloadValue'
 import type { FlightGroupPet, MemberJoinedEvent } from '@/types'
 
 interface BuildArgs {
@@ -46,12 +47,11 @@ export function buildMemberJoined({
     zoho_flight_group_record_id: zohoRecordId,
     member: {
       flight_group_member_id: `fgm_${seatId}`,
-      // "" rather than null when absent, as before. Which of the two the contract
-      // wants is still open with the client, so this does not change it.
-      account_id: accountId ?? '',
-      name: name ?? '',
-      email,
-      phone: phone?.trim() || null,
+      // Absent is null, never "" — settled by the client 2026-09-29.
+      account_id: nullIfBlank(accountId),
+      name: nullIfBlank(name),
+      email: nullIfBlank(email),
+      phone: nullIfBlank(phone),
       role: 'joiner',
       join_method: 'shared_link',
       member_status: 'joined',

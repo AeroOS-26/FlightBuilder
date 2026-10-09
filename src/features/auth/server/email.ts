@@ -34,7 +34,7 @@ import 'server-only'
  *       request body needs inspecting rather than just a success.
  */
 
-import { serverEnv } from '@/config/serverEnv'
+import { serverEnv, isEmailDeliverySuppressed } from '@/config/serverEnv'
 import {
   MAGIC_LINK_TTL_MINUTES,
   EMAIL_VERIFICATION_TTL_MINUTES,
@@ -51,8 +51,21 @@ const POSTMARK_ENDPOINT =
 /** Passed as `product_name` on all three templates, settled with the client. */
 const PRODUCT_NAME = 'Flight Club'
 
-/** The three templates that exist in the client's Postmark account. */
-export type TemplateAlias = 'email-verification' | 'magic-link' | 'password-reset'
+/** The account templates. */
+type AccountAlias = 'email-verification' | 'magic-link' | 'password-reset'
+
+/**
+ * The approval templates, added by the client 2026-10-07. The alias is what
+ * Postmark matches on, so an unknown one fails the send rather than falling
+ * back to anything.
+ */
+export type ApprovalAlias =
+  | 'join-request-received'
+  | 'join-request-approved'
+  | 'join-request-declined'
+  | 'join-request-group-filled'
+
+export type TemplateAlias = AccountAlias | ApprovalAlias
 
 /**
  * What the client's templates accept. Optional keys are omitted entirely when
@@ -66,6 +79,25 @@ interface TemplateModel {
   name?: string
   operating_system?: string
   browser_name?: string
+}
+
+/**
+ * What the four approval templates accept. Every key is optional because the
+ * templates do not all use the same ones — only the organiser's reads
+ * `organizer_name` and `places_requested`, and only the approved one reads
+ * `group_link` — and an unused key is simply ignored by Postmark.
+ *
+ * `places_requested` arrives pre-formatted as "1 place" or "2 places" so the
+ * template needs no pluralisation. Client's instruction, 2026-10-07.
+ */
+export interface ApprovalTemplateModel {
+  product_name: string
+  requester_name?: string
+  organizer_name?: string
+  route?: string
+  departure_date?: string
+  places_requested?: string
+  group_link?: string
 }
 
 export type SendResult =
@@ -151,13 +183,26 @@ function buildModel(
   }
 }
 
-async function send(to: string, alias: TemplateAlias, model: TemplateModel): Promise<SendResult> {
+async function send(
+  to: string,
+  alias: TemplateAlias,
+  model: TemplateModel | ApprovalTemplateModel,
+): Promise<SendResult> {
   if (!isEmailConfigured()) {
     return {
       ok: false,
       reason: 'not-configured',
       message: 'Email delivery is not configured on the server.',
     }
+  }
+
+  // Everything above this line is the real path; only the network call is
+  // skipped. See `isEmailDeliverySuppressed` for why.
+  if (isEmailDeliverySuppressed()) {
+    console.info(
+      `[email] SUPPRESSED ${alias} -> ${to} :: ${JSON.stringify(model)}`,
+    )
+    return { ok: true, messageId: null }
   }
 
   const controller = new AbortController()
@@ -231,4 +276,19 @@ export function sendPasswordResetEmail(
   client?: ClientDescription,
 ): Promise<SendResult> {
   return send(to, 'password-reset', buildModel(url, PASSWORD_RESET_TTL_MINUTES, name, client))
+}
+
+/**
+ * Send one of the approval templates.
+ *
+ * Exposed separately from the account sends because the model is different and
+ * the aliases are the client's, not ours — keeping them in one signature means
+ * a typo is a type error rather than a silent Postmark rejection.
+ */
+export function sendApprovalEmail(
+  to: string,
+  alias: ApprovalAlias,
+  model: Omit<ApprovalTemplateModel, 'product_name'>,
+): Promise<SendResult> {
+  return send(to, alias, { product_name: PRODUCT_NAME, ...model })
 }

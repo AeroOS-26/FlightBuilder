@@ -191,7 +191,13 @@ function parsePets(raw: unknown): Pet[] | null {
       return null
     }
 
-    pets.push({ id: `pet-${index}`, name, type, breed, weight, temperament })
+    // Accepted and stored, deliberately not forwarded. The pet object's
+    // service-animal field is held until Vivek confirms it exists on the
+    // Zoho side (client, 2026-09-29), so `mapPet` does not carry it yet.
+    // Anything other than an explicit true is false — an absent flag is
+    // not a claim.
+    const serviceAnimal = fields.service_animal === true
+    pets.push({ id: `pet-${index}`, name, type, breed, weight, temperament, serviceAnimal })
   }
   return pets
 }

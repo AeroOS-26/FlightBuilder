@@ -196,8 +196,15 @@ function MemberRow({ member }: { member: GroupDetailMember }) {
             {member.display_name}
             {member.is_self && ' (You)'}
           </span>
-          {member.pet_summary && (
-            <span className={cn(LABEL_12, 'text-[#000000]/60')}>{member.pet_summary}</span>
+          {/* See GroupDetailMember.places: the roster is one row per account
+              and capacity is counted in people, so a party of two is one row
+              holding two places. */}
+          {(member.places > 1 || member.pet_summary) && (
+            <span className={cn(LABEL_12, 'text-[#000000]/60')}>
+              {[member.places > 1 ? `${member.places} places` : null, member.pet_summary]
+                .filter(Boolean)
+                .join(' · ')}
+            </span>
           )}
         </span>
       </span>
@@ -217,7 +224,7 @@ function MemberRow({ member }: { member: GroupDetailMember }) {
 
   // Organizer row carries a 1px gradient edge, so it needs a padded wrapper.
   return isOrganizer ? (
-    <li className="rounded-[20px] bg-[linear-gradient(90deg,#D3A26D_0%,#3EAF72_100%)] p-px">
+    <li className="rounded-[20px] bg-[linear-gradient(90deg,#D3A26D80_0%,#3EAF7280_100%)] p-px">
       {body}
     </li>
   ) : (
@@ -314,10 +321,21 @@ export function GroupDetailView({
 
   const isOrganizer = viewerRole === 'organizer'
   const flight = group.flight
-  const memberCount = group.members.length
-  const spacesRemaining = Math.max(0, flight.spaces_total - memberCount)
+  /**
+   * People, not rows.
+   *
+   * `group.members` is one entry per account, and a party of two travels on
+   * one. Deriving occupancy from its length reported a six-place group with a
+   * two-place organiser as "3 of 6" to a member while the organiser's own
+   * screen correctly said "4 of 6" — the same flight, two different numbers.
+   *
+   * `spaces_remaining` is the server's figure, summed from `seats_committed`
+   * (migration 0007), and is what every other surface reads.
+   */
+  const placesTaken = Math.max(0, flight.spaces_total - flight.spaces_remaining)
+  const spacesRemaining = Math.max(0, flight.spaces_remaining)
   const isFull = spacesRemaining === 0
-  const pct = flight.spaces_total > 0 ? Math.round((memberCount / flight.spaces_total) * 100) : 0
+  const pct = flight.spaces_total > 0 ? Math.round((placesTaken / flight.spaces_total) * 100) : 0
 
   const shareHref = `https://${group.share_url.replace(/^https?:\/\//, '')}`
   const shareText = `Join my shared flight ${flight.route_origin_city} to ${flight.route_destination_city} — ${shareHref}`
@@ -366,8 +384,8 @@ export function GroupDetailView({
           {/* Once full the count is no longer an estimate, and the frames say so. */}
           <p className="font-sans text-[14px] font-medium leading-[1.3] text-[#000000]">
             {isFull
-              ? `${memberCount} of ${flight.spaces_total} members · group locked`
-              : `${memberCount} of estimated ${flight.spaces_total} members`}
+              ? `${placesTaken} of ${flight.spaces_total} participants · group locked`
+              : `${placesTaken} of estimated ${flight.spaces_total} participants`}
           </p>
         </div>
         <ul className="mt-4 flex flex-col gap-1.5">
@@ -391,7 +409,7 @@ export function GroupDetailView({
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className={HEADING}>Group Progress</h2>
           <p className="font-sans text-[14px] font-bold leading-[1.3] text-[#000000]">
-            {memberCount} of {flight.spaces_total} spaces filled
+            {placesTaken} of {flight.spaces_total} spaces filled
           </p>
         </div>
 
@@ -404,7 +422,7 @@ export function GroupDetailView({
           </div>
           <div className="flex items-center justify-between gap-3">
             <span className="font-sans text-[14px] font-bold leading-[1.3] text-[#000000]">
-              {memberCount}/ {flight.spaces_total} members
+              {placesTaken}/ {flight.spaces_total} participants
             </span>
             <span className="font-sans text-[14px] font-normal leading-[1.3] text-[#000000]">
               {pct}% FILLED

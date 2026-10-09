@@ -16,7 +16,11 @@ import { serverEnv, isLeadWriteConfigured, leadWriteUrl } from '@/config/serverE
 export interface InterestLeadEvent {
   source: 'mvp_join_page'
   group_id: string
-  zoho_flight_group_record_id: string
+  /**
+   * Null when Zoho returned none, matching member.joined and
+   * flight_group.filled. Absent is null, never "" — client, 2026-09-29.
+   */
+  zoho_flight_group_record_id: string | null
   lead: {
     name: string
     email: string

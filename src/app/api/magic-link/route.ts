@@ -33,6 +33,8 @@ import { signIn } from '@/features/auth/server/auth'
 import { buildAccountCreated, emitAccountCreated } from '@/features/auth/server/accountCreated'
 import { validateEmail } from '@/features/auth/validation'
 import { appUrl } from '@/config/appUrl'
+import { checkIpRateLimit, checkEmailRateLimit, rateLimitResponse } from '@/features/auth/server/rateLimit'
+import { clientKeyFrom } from '@/utils/clientKey'
 
 /**
  * Request a link.
@@ -76,6 +78,15 @@ export async function POST(request: Request) {
   const back = (params: string) =>
     NextResponse.redirect(new URL(`/signin?${params}`, request.url), 303)
 
+  // Apply rate limiting
+  const ip = clientKeyFrom(request)
+  const ipRate = checkIpRateLimit(ip)
+  if (!ipRate.allowed) {
+    return isFormPost
+      ? back('error=CredentialsSignin&code=too-many-requests')
+      : rateLimitResponse(ipRate.retryAfterSec)
+  }
+
   if (!isDatabaseConfigured()) {
     return isFormPost
       ? back('error=CredentialsSignin&code=service-unavailable')
@@ -98,6 +109,14 @@ export async function POST(request: Request) {
     return isFormPost
       ? back(`error=link-email-invalid&email=${encodeURIComponent(email)}`)
       : NextResponse.json({ message: invalid }, { status: 422 })
+  }
+
+  // Apply per-email rate limiting
+  const emailRate = checkEmailRateLimit(email)
+  if (!emailRate.allowed) {
+    return isFormPost
+      ? back('error=CredentialsSignin&code=too-many-requests')
+      : rateLimitResponse(emailRate.retryAfterSec)
   }
 
   if (!isEmailConfigured()) {

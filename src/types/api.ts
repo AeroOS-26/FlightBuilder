@@ -68,11 +68,12 @@ export interface FlightGroupCreatedEvent {
      */
     aircraft_category: string | null
     route: {
-      origin_input: string
+      /** Null when no place was resolved — client, 2026-09-29. */
+      origin_input: string | null
       origin_type: 'city' | 'airport'
       origin_city: string
       origin_airport_code: string | null
-      destination_input: string
+      destination_input: string | null
       destination_type: 'city' | 'airport'
       destination_city: string
       destination_airport_code: string | null
@@ -83,16 +84,22 @@ export interface FlightGroupCreatedEvent {
       earliest_date: string | null
       latest_date: string | null
     }
-    operator_notes: string
+    /** Null when the organiser left the notes box empty — client, 2026-09-29. */
+    operator_notes: string | null
     members: FlightGroupMember[]
   }
 }
 
 export interface FlightGroupMember {
   flight_group_member_id: string
-  account_id: string
-  name: string
-  email: string
+  /**
+   * Absent is null, never "" — client, 2026-09-29. See `nullIfBlank`.
+   * A traveller on the organiser's party has no account, and only the
+   * organiser has an email at creation, so both are legitimately unknown.
+   */
+  account_id: string | null
+  name: string | null
+  email: string | null
   /**
    * Contact phone; Zoho maps to Flight Group Member + Contact (not Flight Group).
    *
@@ -113,10 +120,12 @@ export interface FlightGroupMember {
 export interface FlightGroupPet {
   name: string
   type: string
-  breed: string
+  /** Optional on the form, so null when not given — client, 2026-09-29. */
+  breed: string | null
   weight_lbs: number | null
   crate_size: string | null
-  temperament: string
+  /** Null when not chosen — client, 2026-09-29. See `nullIfBlank`. */
+  temperament: string | null
   travel_readiness_accepted: boolean
 }
 
@@ -287,8 +296,8 @@ export interface FlightGroupFilledEvent {
   flight_group: {
     group_id: string
     status: 'filled'
-    /** The organiser's membership, `fgm_<id>` from our roster. */
-    founder_member_id: string
+    /** The organiser's membership, `fgm_<id>` from our roster; null if absent. */
+    founder_member_id: string | null
     /** When the filling join committed — not when this event was sent. */
     filled_at: string
     spaces_total: number
@@ -404,6 +413,129 @@ export interface GroupDetailMember {
   joined_at: string
   member_status: 'pending' | 'confirmed'
   is_self: boolean
+  /**
+   * Places this membership holds: the member plus the companions travelling on
+   * their party. One for most people; more for anyone who brought others.
+   *
+   * The roster has one row per account, and capacity is counted in people, so
+   * without this the two disagree in plain sight: a six-place group whose
+   * organiser brought one companion draws five rows under "6 of 6 people".
+   * The companions cannot be named — they have no account and no row of their
+   * own (migration 0007) — so the row says how many places it holds instead.
+   */
+  places: number
+  /**
+   * How many animals travel with this membership. The label below names them;
+   * frame 49 counts them ("1 pet", "No pets"), and a count cannot be recovered
+   * from a label that joins names with commas.
+   */
+  pet_count: number
   /** Pet label under the name — "dog", "Biscuit (Golden Retriever)". Null when none. */
   pet_summary: string | null
+}
+
+/**
+ * `join_request.created` — contract section 3a.
+ *
+ * The request takes no place and seats nobody, so there is no membership behind
+ * it. Zoho creates a Join Request record holding the pets in a subform; no
+ * Contact, no Flight Group Member, no Pet records, and capacity untouched.
+ */
+export interface JoinRequestCreatedEvent {
+  event: 'join_request.created'
+  sent_at: string
+  group_id: string
+  zoho_flight_group_record_id: string | null
+  join_request: {
+    /** `jr_<row id>`, the key 3b matches on and what makes a redelivery safe. */
+    join_request_id: string
+    request_status: 'pending'
+    requested_at: string
+    /** People, not accounts. Pets do not take a place. */
+    places_needed: number
+    travelers_count: number
+    requester: {
+      /**
+       * OPEN with Vivek, 2026-10-01: the sample carries an `fgm_` id here, but
+       * no membership row exists until the organiser approves — that is the
+       * point of the request. Nothing invented until he answers.
+       */
+      flight_group_member_id: string | null
+      account_id: string | null
+      name: string | null
+      email: string | null
+      phone: string | null
+      role: 'joiner'
+      join_method: 'shared_link'
+      pets: FlightGroupPet[]
+    }
+  }
+}
+
+/**
+ * `join_request.closed` — contract section 3b.
+ *
+ * Closes a request that never became a membership. `closed_by` is `system` for
+ * a lapse, because nobody decided it: a request still pending when the group
+ * fills closes on its own.
+ */
+export interface JoinRequestClosedEvent {
+  event: 'join_request.closed'
+  sent_at: string
+  group_id: string
+  zoho_flight_group_record_id: string | null
+  join_request: {
+    join_request_id: string
+    /** Three outcomes only. `approved` is sent alongside `member.joined`. */
+    request_status: 'approved' | 'declined' | 'lapsed_group_filled'
+    closed_at: string
+    /**
+     * `system` for a lapse. For a decline or an approval, the organiser's
+     * `fgm_` id — an id resolves to a person and a fixed string does not, and
+     * counsel asked for enough detail to explain each decision.
+     */
+    closed_by: string
+    places_needed: number
+    /**
+     * Null on a decline or a lapse. On an approval, the membership the approval
+     * produced — the only thing joining a request to the membership that came
+     * out of it, which counsel's retention rules depend on.
+     */
+    flight_group_member_id: string | null
+    requester: {
+      account_id: string | null
+      name: string | null
+      email: string | null
+    }
+  }
+}
+
+/**
+ * `member.removed` — contract section 3c.
+ *
+ * Marks, never deletes: the Contact stays, the membership keeps its Flight
+ * Group link with a removed marker, and the pets on that flight are marked
+ * rather than erased. `spaces_remaining` is the value **after** the removal and
+ * Zoho takes it as sent rather than recalculating, so it has to be right.
+ */
+export interface MemberRemovedEvent {
+  event: 'member.removed'
+  sent_at: string
+  group_id: string
+  zoho_flight_group_record_id: string | null
+  removal_reason: 'compliance_review_failed'
+  removed_at: string
+  member: {
+    flight_group_member_id: string
+    account_id: string | null
+    name: string | null
+    email: string | null
+    places_released: number
+  }
+  flight_group: {
+    group_status: string
+    spaces_total: number
+    /** After the removal. Zoho does not recalculate this. */
+    spaces_remaining: number
+  }
 }

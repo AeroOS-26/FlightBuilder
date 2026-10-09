@@ -14,15 +14,43 @@ import {
 import type { PetFieldErrors } from '@/features/flight-builder/validation'
 import type { Pet, PetTemperament } from '@/types'
 
+/**
+ * Shown only where the client asked for it — the join request (frame 42) — so
+ * the Flight Builder and the profile form keep the card they already have.
+ * Opt-in rather than flag-gated inside the card, because the same component
+ * serves three surfaces and only one of them asks the question.
+ */
+const SERVICE_ANIMAL_CHOICES = ['No', 'Yes'] as const
+type ServiceAnimalChoice = (typeof SERVICE_ANIMAL_CHOICES)[number]
+
+/**
+ * Counsel's wording, 2026-09-29. Legal text: not to be reworded, shortened or
+ * reflowed without the client confirming it with their attorney.
+ */
+const SERVICE_ANIMAL_NOTE =
+  'A qualified service animal is not subject to the travel readiness confirmation. ' +
+  'The operating carrier may still make the inquiries permitted by law, request the ' +
+  'documentation authorised by law, and assess the animal’s behaviour. For a large ' +
+  'service animal, carriage depends on an accommodation and safety assessment by the carrier.'
+
 interface PetCardProps {
   pet: Pet
   index: number
   errors?: PetFieldErrors
   onChange: (patch: Partial<Omit<Pet, 'id'>>) => void
   onRemove: () => void
+  /** Ask whether this animal is a service animal. Join request only. */
+  showServiceAnimal?: boolean
 }
 
-export function PetCard({ pet, index, errors, onChange, onRemove }: PetCardProps) {
+export function PetCard({
+  pet,
+  index,
+  errors,
+  onChange,
+  onRemove,
+  showServiceAnimal = false,
+}: PetCardProps) {
   const idBase = `pet-${pet.id}`
   return (
     <div className="flex flex-col gap-3 rounded-[16px] border border-[#CDCDCD] bg-white p-4 lg:gap-2 lg:px-[14px] lg:py-[10px]">
@@ -96,6 +124,31 @@ export function PetCard({ pet, index, errors, onChange, onRemove }: PetCardProps
           onChange={(temperament) => onChange({ temperament })}
         />
       </FormField>
+
+      {showServiceAnimal && (
+        <>
+          <FormField
+            label={`Is ${pet.name.trim() || `Pet ${index + 1}`} a service animal?`}
+            className="items-start"
+            labelClassName="font-heading text-[16px] mt-[19px] font-medium leading-normal text-[#000000]"
+          >
+            <PillGroup<ServiceAnimalChoice>
+              value={pet.serviceAnimal ? 'Yes' : 'No'}
+              options={SERVICE_ANIMAL_CHOICES}
+              onChange={(choice) => onChange({ serviceAnimal: choice === 'Yes' })}
+            />
+          </FormField>
+
+          {/* Only once the answer is yes: the note explains what the answer
+              changes, so showing it beforehand would read as a warning about a
+              question not yet asked. */}
+          {pet.serviceAnimal && (
+            <p className="font-sans text-[13px] leading-[1.5] text-[#000000]/70">
+              {SERVICE_ANIMAL_NOTE}
+            </p>
+          )}
+        </>
+      )}
     </div>
   )
 }

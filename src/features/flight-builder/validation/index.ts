@@ -210,9 +210,22 @@ export function validatePetList(input: PetListInput): PetListErrors {
       ? `Up to ${MAX_PETS_PER_TRAVELER} pets per traveller — that is ${petCap} for this party.`
       : undefined
 
-  const petsPresent = input.petsEnabled && input.pets.length > 0
+  /**
+   * Only pets that are subject to the confirmation can require it.
+   *
+   * A qualified service animal is not subject to travel readiness — frame 42
+   * says so, and the screen does not offer a checkbox for one. Demanding the
+   * acceptance anyway left a request whose only pet is a service animal unable
+   * to submit at all: the rule asked for a confirmation the screen had no way
+   * to give.
+   *
+   * The Flight Builder is unaffected — it does not set `serviceAnimal`, so
+   * every pet there still requires the acceptance exactly as before.
+   */
+  const needsReadiness =
+    input.petsEnabled && input.pets.some((pet) => !pet.serviceAnimal)
   const readiness =
-    petsPresent && !input.readinessAccepted
+    needsReadiness && !input.readinessAccepted
       ? 'Please confirm Travel Readiness before continuing.'
       : undefined
 

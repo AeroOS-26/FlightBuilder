@@ -25,6 +25,8 @@ import {
 import { isDatabaseConfigured } from '@/features/auth/server/db'
 import { validateNewPassword, isClean, validateEmail } from '@/features/auth/validation'
 import { appUrl } from '@/config/appUrl'
+import { checkIpRateLimit, checkEmailRateLimit, rateLimitResponse } from '@/features/auth/server/rateLimit'
+import { clientKeyFrom } from '@/utils/clientKey'
 
 
 export async function POST(request: Request) {
@@ -32,11 +34,24 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: 'Accounts are not configured.' }, { status: 503 })
   }
 
+  // Apply IP rate limiting
+  const ip = clientKeyFrom(request)
+  const ipRate = checkIpRateLimit(ip)
+  if (!ipRate.allowed) {
+    return rateLimitResponse(ipRate.retryAfterSec)
+  }
+
   const body = (await request.json().catch(() => null)) as { email?: unknown } | null
   const email = typeof body?.email === 'string' ? body.email.trim() : ''
 
   const invalid = validateEmail(email)
   if (invalid) return NextResponse.json({ message: invalid }, { status: 422 })
+
+  // Apply per-email rate limiting
+  const emailRate = checkEmailRateLimit(email)
+  if (!emailRate.allowed) {
+    return rateLimitResponse(emailRate.retryAfterSec)
+  }
 
   if (!isEmailConfigured()) {
     return NextResponse.json(

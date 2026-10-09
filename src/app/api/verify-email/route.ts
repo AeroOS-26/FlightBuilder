@@ -24,10 +24,19 @@ import {
 } from '@/features/auth/server/accountCreated'
 import { isDatabaseConfigured } from '@/features/auth/server/db'
 import { appUrl } from '@/config/appUrl'
+import { checkIpRateLimit, rateLimitResponse } from '@/features/auth/server/rateLimit'
+import { clientKeyFrom } from '@/utils/clientKey'
 
 
 /** Issue and send a verification link. Used at sign-up and by Resend on frame 36. */
 export async function POST(request: Request) {
+  // Apply IP rate limiting
+  const ip = clientKeyFrom(request)
+  const ipRate = checkIpRateLimit(ip)
+  if (!ipRate.allowed) {
+    return rateLimitResponse(ipRate.retryAfterSec)
+  }
+
   if (!isDatabaseConfigured()) {
     return NextResponse.json({ message: 'Accounts are not configured.' }, { status: 503 })
   }
@@ -68,6 +77,16 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const token = searchParams.get('token') ?? ''
   const email = searchParams.get('email') ?? ''
+  
+  // Apply IP rate limiting for verification link consumption
+  const ip = clientKeyFrom(request)
+  const ipRate = checkIpRateLimit(ip)
+  if (!ipRate.allowed) {
+    // Redirect to error page with rate limit message
+    return NextResponse.redirect(
+      `${appUrl()}/verify-email?email=${encodeURIComponent(email)}&reason=too-many-attempts`
+    )
+  }
   const back = (reason: string) =>
     NextResponse.redirect(
       `${appUrl()}/verify-email?email=${encodeURIComponent(email)}&reason=${reason}`,

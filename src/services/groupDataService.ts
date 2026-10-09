@@ -71,3 +71,44 @@ export async function joinGroup(
 
   return (await res.json()) as MemberJoinResponse
 }
+
+/** What `POST /requests` answers with. A request, not a membership. */
+export interface JoinRequestResponse {
+  success: boolean
+  join_request_id: string
+  status: string
+  places_requested: number
+}
+
+/**
+ * Ask to join, under the approval flow.
+ *
+ * Sibling of `joinGroup` rather than a replacement: the old endpoint still
+ * serves the pre-approval path while `APPROVAL_FLOW_ENABLED` is off, and the
+ * two answer different things — one seats you, this one does not.
+ */
+export async function requestToJoin(
+  groupId: string,
+  { travelers, pets, readinessAccepted, email }: {
+    travelers: { id: string; name: string }[]
+    pets: unknown[]
+    /** Frame 42's contact address, when the requester changed it. */
+    email?: string
+    readinessAccepted: boolean
+  },
+): Promise<JoinRequestResponse> {
+  const res = await fetch(`/api/groups/${encodeURIComponent(groupId)}/requests`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ travelers, pets, readiness_accepted: readinessAccepted, email }),
+  })
+
+  if (!res.ok) {
+    // 409 covers a full group, an existing membership and a request already
+    // waiting. The server's wording is specific to which, so it is passed
+    // through rather than flattened into one message.
+    const body = (await res.json().catch(() => null)) as { message?: string } | null
+    throw new Error(body?.message ?? 'Your request could not be sent. Please try again.')
+  }
+  return (await res.json()) as JoinRequestResponse
+}
