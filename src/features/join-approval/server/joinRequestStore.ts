@@ -650,3 +650,154 @@ export async function getGroupEmailContext(
     groupLink: row.share_link,
   }
 }
+
+/** What Perro Air's own check came back as. Contract section 3c, route (b). */
+export type CheckOutcome = 'cleared' | 'failed'
+
+export interface CheckRecorded {
+  /** False when the request already carried this result — a retried callback. */
+  changed: boolean
+  /** The requester, for the removal event. */
+  userId: string
+  /** Set only when a failed check took a seated participant back out. */
+  removal: {
+    seatId: number
+    placesReleased: number
+    spacesTotal: number
+    /** After the removal. */
+    spacesRemaining: number
+    /** The group's state once the place reopened. */
+    groupStatus: string
+    removedAt: string
+  } | null
+}
+
+/** The removal half, named so the route can pass it around. */
+export type CheckRemoval = NonNullable<CheckRecorded['removal']>
+
+export type CheckRefusal = { refused: 'not-found' }
+
+/**
+ * Record the result of Perro Air's check, and act on a failure.
+ *
+ * The check is deliberately not the organiser's decision and deliberately not a
+ * product screen — Chuck works a queue inside Zoho and the result comes back
+ * here (client, 2026-09-23). Route (b) is the live route; the same function
+ * serves route (a), because marking by hand is this call made by hand.
+ *
+ * **A failed check removes the participant and reopens the place** (migration
+ * 0009). That only applies to someone who actually holds one: a result can
+ * arrive while the organiser has not answered yet — the requester sees Under
+ * review until both halves are done — and there is nothing to take back then.
+ * So the status is always recorded; the removal happens only when the request
+ * was approved and the seat is still joined.
+ *
+ * Idempotent. Zoho will retry, and a second callback must not remove a second
+ * time or emit `member.removed` twice, so a result that matches what is already
+ * stored reports `changed: false` and does nothing.
+ *
+ * Capacity is never stored — it is `SUM(seats_committed)` over joined rows — so
+ * flipping the member out reopens the place by itself. `filled_at` is left
+ * alone on purpose: it records that the group *did* fill, and clearing it would
+ * let `flight_group.filled` fire a second time. Only `status` moves back.
+ */
+export async function recordPerroCheck(
+  groupId: string,
+  requestId: number,
+  outcome: CheckOutcome,
+): Promise<CheckRecorded | CheckRefusal> {
+  const client = await pool.connect()
+  try {
+    await client.query('BEGIN')
+    await client.query('SET TRANSACTION ISOLATION LEVEL SERIALIZABLE')
+
+    const group = await client.query<{ spaces_total: number; status: string }>(
+      `SELECT spaces_total, status FROM flight_group
+        WHERE flight_group_id = $1 FOR UPDATE`,
+      [groupId],
+    )
+    if (!group.rows[0]) {
+      await client.query('ROLLBACK')
+      return { refused: 'not-found' }
+    }
+
+    const found = await client.query<Row>(
+      `SELECT ${SELECT_COLUMNS} FROM join_request
+        WHERE id = $1 AND flight_group_id = $2 FOR UPDATE`,
+      [requestId, groupId],
+    )
+    const request = found.rows[0]
+    if (!request) {
+      await client.query('ROLLBACK')
+      return { refused: 'not-found' }
+    }
+
+    const userId = String(request.user_id)
+    if (request.check_status === outcome) {
+      await client.query('ROLLBACK')
+      return { changed: false, userId, removal: null }
+    }
+
+    await client.query(
+      `UPDATE join_request
+          SET check_status = $3, check_decided_at = NOW(), updated_at = NOW()
+        WHERE id = $1 AND flight_group_id = $2`,
+      [requestId, groupId, outcome],
+    )
+
+    // Nothing to take back unless the organiser approved and the seat is still
+    // held. `RETURNING` so the event can name the real membership row.
+    let removal: CheckRecorded['removal'] = null
+    if (outcome === 'failed' && request.status === 'approved') {
+      const seat = await client.query<{ id: number; seats_committed: number }>(
+        `UPDATE flight_group_member
+            SET member_status = 'cancelled', left_at = NOW(), updated_at = NOW()
+          WHERE flight_group_id = $1 AND user_id = $2 AND member_status = 'joined'
+        RETURNING id, seats_committed`,
+        [groupId, request.user_id],
+      )
+      const row = seat.rows[0]
+      if (row) {
+        const after = await client.query<{ count: string }>(
+          `SELECT COALESCE(SUM(seats_committed), 0)::text AS count
+             FROM flight_group_member
+            WHERE flight_group_id = $1 AND member_status = 'joined'`,
+          [groupId],
+        )
+        const spacesTotal = group.rows[0].spaces_total
+        const spacesRemaining = Math.max(0, spacesTotal - Number(after.rows[0]?.count ?? 0))
+
+        // The column said 'filled'; a place is open again, so it does not any
+        // more. The screens derive their state from occupancy and correct
+        // themselves, but the stored value should not contradict them.
+        const groupStatus = spacesRemaining > 0 && group.rows[0].status === 'filled'
+          ? 'filling'
+          : group.rows[0].status
+        if (groupStatus !== group.rows[0].status) {
+          await client.query(
+            `UPDATE flight_group SET status = $2, updated_at = NOW()
+              WHERE flight_group_id = $1`,
+            [groupId, groupStatus],
+          )
+        }
+
+        removal = {
+          seatId: row.id,
+          placesReleased: row.seats_committed,
+          spacesTotal,
+          spacesRemaining,
+          groupStatus,
+          removedAt: new Date().toISOString(),
+        }
+      }
+    }
+
+    await client.query('COMMIT')
+    return { changed: true, userId, removal }
+  } catch (error) {
+    await client.query('ROLLBACK')
+    throw error
+  } finally {
+    client.release()
+  }
+}

@@ -42,6 +42,16 @@ interface ServerEnv {
   /** Request timeout (ms) for the upstream Zoho call. */
   zohoTimeoutMs: number
   /**
+   * Shared secret Zoho presents when it calls **us** — contract section 3c,
+   * route (b). The only inbound write path in the app, so the only place a
+   * secret is checked rather than sent.
+   *
+   * Empty → the endpoint answers 503 rather than running unauthenticated. An
+   * inbound route that is open when its secret is missing is worse than one
+   * that is briefly unavailable. Server-only.
+   */
+  zohoCallbackSecret: string
+  /**
    * Postmark server token. Provider settled by the client 19 Aug; the token and
    * sender domain follow once DNS is through. Empty → the three link flows
    * report not-configured instead of sending. Server-only.
@@ -80,10 +90,11 @@ export const serverEnv: ServerEnv = {
   zohoPublicViewUrl: process.env.ZOHO_PUBLIC_VIEW_URL ?? '',
   zohoLeadWriteUrl: process.env.ZOHO_LEAD_WRITE_URL ?? '',
   zohoTimeoutMs: Number(process.env.ZOHO_TIMEOUT_MS) || 15000,
+  zohoCallbackSecret: process.env.ZOHO_CALLBACK_SECRET ?? '',
   postmarkServerToken: process.env.POSTMARK_SERVER_TOKEN ?? '',
   emailFrom: process.env.EMAIL_FROM ?? '',
   postmarkStream: process.env.POSTMARK_MESSAGE_STREAM ?? 'outbound',
-  // Commented out 2026-10-12, not deleted: Chuck has moved trip records to
+  // Commented out 2026-10-12, not deleted: clinet has moved trip records to
   // Zoho only (10-11), and the client may reopen this later. See
   // `docs/FRESHWORKS-TO-ZOHO-MOVE.md`.
   // freshworksWebhookUrl: process.env.FRESHWORKS_WEBHOOK_URL ?? '',
@@ -160,6 +171,16 @@ function isLocalUrl(url: string): boolean {
   } catch {
     return false
   }
+}
+
+/**
+ * True when the inbound check callback can be authenticated.
+ *
+ * Checked before the route does anything, so a deployment that has not been
+ * given the secret refuses the call rather than trusting it.
+ */
+export function isCheckCallbackConfigured(): boolean {
+  return serverEnv.zohoCallbackSecret.length > 0
 }
 
 /** True when the public-view read URL is configured (else use sample data). */
