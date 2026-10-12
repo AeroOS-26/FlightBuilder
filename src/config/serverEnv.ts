@@ -51,23 +51,28 @@ interface ServerEnv {
   emailFrom: string
   /** Postmark message stream; defaults to "outbound". */
   postmarkStream: string
+  // Commented out 2026-10-12, not deleted: Chuck has moved trip records to
+  // Zoho only (10-11), and the client may reopen this later. See
+  // `docs/FRESHWORKS-TO-ZOHO-MOVE.md`.
+  /*
   /**
    * Freshworks contact-write endpoint URL (with its key embedded, same pattern
    * as the Zoho URLs). Server-only. A second, independent POST off the Flight
    * Builder submission, decoupled from Zoho. Empty → the Freshworks write is
    * skipped entirely (no-op), so nothing posts until this is configured.
-   */
+   *\/
   freshworksWebhookUrl: string
-  /** Freshworks API key — sent as `Authorization: Token token=<key>`. Server-only. */
+  /** Freshworks API key — sent as `Authorization: Token token=<key>`. Server-only. *\/
   freshworksApiKey: string
-  /** Request timeout (ms) for the upstream Freshworks call. */
+  /** Request timeout (ms) for the upstream Freshworks call. *\/
   freshworksTimeoutMs: number
   /**
    * When true, Freshworks writes are marked as test records (last_name="TEST",
    * synthetic external_id) so they can be filtered and cleared from the live
    * instance afterwards — there is no Freshworks sandbox.
-   */
+   *\/
   freshworksTestMode: boolean
+  */
 }
 
 export const serverEnv: ServerEnv = {
@@ -78,10 +83,13 @@ export const serverEnv: ServerEnv = {
   postmarkServerToken: process.env.POSTMARK_SERVER_TOKEN ?? '',
   emailFrom: process.env.EMAIL_FROM ?? '',
   postmarkStream: process.env.POSTMARK_MESSAGE_STREAM ?? 'outbound',
-  freshworksWebhookUrl: process.env.FRESHWORKS_WEBHOOK_URL ?? '',
-  freshworksApiKey: process.env.FRESHWORKS_API_KEY ?? '',
-  freshworksTimeoutMs: Number(process.env.FRESHWORKS_TIMEOUT_MS) || 15000,
-  freshworksTestMode: process.env.FRESHWORKS_TEST_MODE === 'true',
+  // Commented out 2026-10-12, not deleted: Chuck has moved trip records to
+  // Zoho only (10-11), and the client may reopen this later. See
+  // `docs/FRESHWORKS-TO-ZOHO-MOVE.md`.
+  // freshworksWebhookUrl: process.env.FRESHWORKS_WEBHOOK_URL ?? '',
+  // freshworksApiKey: process.env.FRESHWORKS_API_KEY ?? '',
+  // freshworksTimeoutMs: Number(process.env.FRESHWORKS_TIMEOUT_MS) || 15000,
+  // freshworksTestMode: process.env.FRESHWORKS_TEST_MODE === 'true',
 }
 
 /** True when the webhook URL is configured (lets the relay fail clearly). */
@@ -172,7 +180,10 @@ export function isLeadWriteConfigured(): boolean {
   return leadWriteUrl().length > 0
 }
 
-/** True when the Freshworks endpoint is configured (else the write is skipped). */
-export function isFreshworksConfigured(): boolean {
-  return serverEnv.freshworksWebhookUrl.length > 0
-}
+// Commented out 2026-10-12, not deleted: Chuck has moved trip records to
+  // Zoho only (10-11), and the client may reopen this later. See
+  // `docs/FRESHWORKS-TO-ZOHO-MOVE.md`.
+// /** True when the Freshworks endpoint is configured (else the write is skipped). */
+// export function isFreshworksConfigured(): boolean {
+//   return serverEnv.freshworksWebhookUrl.length > 0
+// }

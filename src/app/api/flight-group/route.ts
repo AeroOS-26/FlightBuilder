@@ -12,7 +12,10 @@
 
 import { NextResponse } from 'next/server'
 import { serverEnv, isZohoConfigured } from '@/config/serverEnv'
-import { forwardFreshworksContact } from '@/api/services/freshworksContact'
+// Commented out 2026-10-12, not deleted: Chuck has moved trip records to
+// Zoho only (10-11), and the client may reopen this later. See
+// `docs/FRESHWORKS-TO-ZOHO-MOVE.md`.
+// import { forwardFreshworksContact } from '@/api/services/freshworksContact'
 import { currentViewer, type Viewer } from '@/features/auth/server/guard'
 import {
   createFlightGroup,
@@ -110,14 +113,17 @@ export async function POST(request: Request) {
   // use, so the browser ids stand — see mirrorFlightGroup for when that happens.
   const outbound = mirror ? withDatabaseMemberIds(payload, mirror.organizerMemberId) : payload
 
-  // Independent, decoupled Freshworks contact write off the SAME submission.
-  // Fired now so it runs alongside the Zoho call, awaited in `finally` so it
-  // completes before the function returns. It never throws and self-skips when
-  // unconfigured, so it can neither delay nor break flight creation, and it
-  // does not depend on the Zoho outcome (uses an AER id, never the Zoho id).
-  // Given the re-stamped event, so its external_id names the same member id
-  // Zoho is about to receive rather than a browser key.
-  const freshworksWrite = forwardFreshworksContact(outbound)
+  // Commented out 2026-10-12, not deleted: Chuck has moved trip records to
+  // Zoho only (10-11), and the client may reopen this later. See
+  // `docs/FRESHWORKS-TO-ZOHO-MOVE.md`.
+  // // Independent, decoupled Freshworks contact write off the SAME submission.
+  // // Fired now so it runs alongside the Zoho call, awaited in `finally` so it
+  // // completes before the function returns. It never throws and self-skips when
+  // // unconfigured, so it can neither delay nor break flight creation, and it
+  // // does not depend on the Zoho outcome (uses an AER id, never the Zoho id).
+  // // Given the re-stamped event, so its external_id names the same member id
+  // // Zoho is about to receive rather than a browser key.
+  // const freshworksWrite = forwardFreshworksContact(outbound)
 
   // Forward to Zoho with a timeout so a hung upstream doesn't hang the request.
   const controller = new AbortController()
@@ -212,9 +218,9 @@ export async function POST(request: Request) {
     )
   } finally {
     clearTimeout(timer)
-    // Ensure the independent Freshworks write finishes before the serverless
-    // function returns (it never throws and never changes the response above).
-    await freshworksWrite
+    // // Ensure the independent Freshworks write finishes before the serverless
+    // // function returns (it never throws and never changes the response above).
+    // await freshworksWrite
   }
 }
 

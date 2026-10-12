@@ -1,4 +1,33 @@
 /**
+ * Freshworks contact write — **COMMENTED OUT, 2026-10-12. Do not re-enable.**
+ *
+ * The Flight Builder wrote a contact here on every submission, beside the Zoho
+ * write. Ankush caught one from the other side on 2026-10-09 — the organiser,
+ * the route, the travellers, the pet with its name and weight — and Charles
+ * asked the same night for the write to stop. The endpoint and key were cleared
+ * from Vercel that evening.
+ *
+ * Chuck's decision, 2026-10-11: trip records go to **Zoho only**, the same way
+ * the Request a Seat form now does. "Let's finish the move."
+ *
+ * Kept as comment rather than deleted, deliberately. Every field below is the
+ * record of what was sent to a second CRM, and the privacy notices have to
+ * describe that accurately — including historically. Deleting it would leave
+ * only the git history to answer from.
+ *
+ * Our side of the move is this file going quiet: every field it mapped was
+ * already derived from the `flight_group.created` event that goes to Zoho, so
+ * nothing stops being collected. Capturing those fields on the Zoho record is
+ * Vivek and Pavan's side. See `docs/FRESHWORKS-TO-ZOHO-MOVE.md`.
+ */
+
+// Nothing below runs. The file exports nothing, so an import of it will not
+// compile — which is the point: it cannot come back by accident.
+export {}
+
+/* ---------------------------------------------------------------------------
+
+/**
  * Freshworks contact write — server-only.
  *
  * A second, INDEPENDENT POST off the Flight Builder submission, decoupled from
@@ -21,19 +50,19 @@
  * the key embedded. The exact request envelope is confirmable against Ankush's
  * API doc / WP plugin; it is isolated in `forwardFreshworksContact` so the body
  * shape is a one-line change if the plugin expects a wrapper.
- */
+ *\/
 
 import { serverEnv, isFreshworksConfigured } from '@/config/serverEnv'
 import type { FlightGroupCreatedEvent, FlightGroupMember, FreshworksContact } from '@/types'
 
 interface MapOptions {
-  /** Testing: last_name="TEST" and a synthetic external_id (never a real id pair). */
+  /** Testing: last_name="TEST" and a synthetic external_id (never a real id pair). *\/
   testMode?: boolean
-  /** Synthetic external_id to use in test mode; falls back to a fixed test id. */
+  /** Synthetic external_id to use in test mode; falls back to a fixed test id. *\/
   testExternalId?: string
 }
 
-/** The creator = the Group Organizer (founder), else the primary, else first. */
+/** The creator = the Group Organizer (founder), else the primary, else first. *\/
 function resolveCreator(fg: FlightGroupCreatedEvent['flight_group']): FlightGroupMember | null {
   const byFounder = fg.members.find((m) => m.flight_group_member_id === fg.founder_member_id)
   const byRole = fg.members.find((m) => m.role === 'group_organizer')
@@ -41,7 +70,7 @@ function resolveCreator(fg: FlightGroupCreatedEvent['flight_group']): FlightGrou
   return byFounder ?? byRole ?? byPrimary ?? fg.members[0] ?? null
 }
 
-/** "2026-09" from the earliest known date (range → earliest, else the specific). */
+/** "2026-09" from the earliest known date (range → earliest, else the specific). *\/
 function flightMonth(dates: FlightGroupCreatedEvent['flight_group']['dates']): string {
   const iso = dates.date_mode === 'range' ? dates.earliest_date : dates.travel_date
   const fallback = iso ?? dates.earliest_date ?? dates.travel_date
@@ -50,7 +79,7 @@ function flightMonth(dates: FlightGroupCreatedEvent['flight_group']['dates']): s
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
-/** "18 Jun 2026" from an ISO date; empty string when unparseable. */
+/** "18 Jun 2026" from an ISO date; empty string when unparseable. *\/
 function formatDay(iso: string | null): string {
   if (!iso) return ''
   const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})/)
@@ -59,7 +88,7 @@ function formatDay(iso: string | null): string {
   return `${Number(d)} ${MONTHS[Number(mo) - 1] ?? mo} ${y}`
 }
 
-/** Human date phrase for cf_trip_details, e.g. "flexible, 8 to 26 Sep 2026". */
+/** Human date phrase for cf_trip_details, e.g. "flexible, 8 to 26 Sep 2026". *\/
 function tripDatePhrase(dates: FlightGroupCreatedEvent['flight_group']['dates']): string {
   const { earliest_date, latest_date, travel_date, date_mode } = dates
   if (date_mode === 'range' && earliest_date && latest_date && earliest_date !== latest_date) {
@@ -79,7 +108,7 @@ function tripDatePhrase(dates: FlightGroupCreatedEvent['flight_group']['dates'])
  * cf_trip_details — the party listed by name plus trip context. The header count
  * is the estimate (spaces_total); when it exceeds the names we actually have,
  * the count stays the estimate (per the sheet).
- */
+ *\/
 function tripDetails(fg: FlightGroupCreatedEvent['flight_group']): string {
   const lines: string[] = [`Estimated party: ${fg.spaces_total} travellers`]
   // Freshworks keeps its own frozen shape (27 July): the Zoho events now send
@@ -98,14 +127,14 @@ function tripDetails(fg: FlightGroupCreatedEvent['flight_group']): string {
   return lines.join('\n')
 }
 
-/** All pets across the party (they ride on the primary member, but aggregate to be safe). */
+/** All pets across the party (they ride on the primary member, but aggregate to be safe). *\/
 function allPets(fg: FlightGroupCreatedEvent['flight_group']) {
   return fg.members.flatMap((m) => m.pets)
 }
 
 const isDog = (type: string) => type.trim().toLowerCase() === 'dog'
 
-/** "1. Mixed, Leo, lbs 65" per dog. */
+/** "1. Mixed, Leo, lbs 65" per dog. *\/
 function dogDetails(pets: ReturnType<typeof allPets>): string {
   return pets
     .filter((p) => isDog(p.type))
@@ -113,7 +142,7 @@ function dogDetails(pets: ReturnType<typeof allPets>): string {
     .join('\n')
 }
 
-/** "1. Cat, Starburst, lbs 10" per non-dog pet. */
+/** "1. Cat, Starburst, lbs 10" per non-dog pet. *\/
 function otherPetDetails(pets: ReturnType<typeof allPets>): string {
   return pets
     .filter((p) => !isDog(p.type))
@@ -121,12 +150,12 @@ function otherPetDetails(pets: ReturnType<typeof allPets>): string {
     .join('\n')
 }
 
-/** AER + group id + creator member id — unique per entry, generated our side. */
+/** AER + group id + creator member id — unique per entry, generated our side. *\/
 function buildExternalId(groupId: string, memberId: string): string {
   return `AER-${groupId}-${memberId}`
 }
 
-/** Map a `flight_group.created` event to the frozen Freshworks contact shape. */
+/** Map a `flight_group.created` event to the frozen Freshworks contact shape. *\/
 export function mapFlightGroupToFreshworksContact(
   event: FlightGroupCreatedEvent,
   opts: MapOptions = {},
@@ -167,7 +196,7 @@ const CONTACT_STATUS_ID = 28000448812 // a status under the Customer stage
  * Freshsales Contacts API body shape: standard fields at the contact level, all
  * cf_* fields nested under `custom_field`. Direct create (no `unique_identifier`)
  * — per Ankush: no search, multiple entries per email allowed, direct import.
- */
+ *\/
 export function toFreshworksApiBody(c: FreshworksContact) {
   return {
     contact: {
@@ -194,13 +223,13 @@ export function toFreshworksApiBody(c: FreshworksContact) {
   }
 }
 
-/** Result of a Freshworks write attempt — for logging, never surfaced to the user. */
+/** Result of a Freshworks write attempt — for logging, never surfaced to the user. *\/
 export interface FreshworksWriteResult {
   skipped?: boolean
   success?: boolean
   status?: number
   message?: string
-  /** Parsed upstream response (contact id on success, errors on failure). */
+  /** Parsed upstream response (contact id on success, errors on failure). *\/
   data?: unknown
 }
 
@@ -214,7 +243,7 @@ export interface FreshworksWriteResult {
  * outcome — console.error on any failure (HTTP error, timeout, network), a
  * concise console.info on success — so a failed write surfaces in the server
  * logs rather than going silent.
- */
+ *\/
 export async function forwardFreshworksContact(
   event: FlightGroupCreatedEvent,
 ): Promise<FreshworksWriteResult> {
@@ -265,3 +294,6 @@ export async function forwardFreshworksContact(
     clearTimeout(timer)
   }
 }
+
+
+--------------------------------------------------------------------------- */
