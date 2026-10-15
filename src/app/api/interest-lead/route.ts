@@ -24,6 +24,7 @@ import { NextResponse } from 'next/server'
 import { isPublicViewConfigured } from '@/config/serverEnv'
 import { forwardInterestLead } from '@/features/public-flight/data/leadWrite'
 import { fetchGroupPublicView } from '@/features/public-flight/data/fetchPublicView'
+import { isDelinked } from '@/features/public-flight/data/delinkedGroups'
 import { resolveGroupById } from '@/features/public-flight/data/sampleGroups'
 import { checkRateLimit } from '@/features/public-flight/data/rateLimit'
 import { clientKeyFrom } from '@/utils/clientKey'
@@ -42,6 +43,13 @@ interface ResolvedGroup {
  * The form sends the real group_id, but we also derive it from a slug for safety.
  */
 async function resolveGroup(groupId: string): Promise<ResolvedGroup | null> {
+  // The second public read path, and the one the share page's own interest form
+  // posts to. A de-linked group has to be unknown here too, or the page would
+  // be gone while the form behind it still accepted submissions against it —
+  // and the form is the part Chuck objected to. Same answer as an unknown
+  // group: null, which the caller turns into its existing rejection.
+  if (isDelinked(groupId)) return null
+
   if (isPublicViewConfigured()) {
     const id = groupIdFromSlug(groupId)
     const res = await fetchGroupPublicView(id)

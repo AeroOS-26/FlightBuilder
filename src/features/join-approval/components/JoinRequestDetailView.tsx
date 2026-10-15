@@ -35,7 +35,8 @@
 import { useState } from 'react'
 import { DashedOutline, Dialog } from '@/components/ui'
 import { Icon } from '@/components/common'
-import { readableDate } from '@/features/public-flight/format'
+import { formatDateRange, readableDate } from '@/features/public-flight/format'
+import { decisionCopy } from './decisionCopy'
 import {
   ACTION_APPROVE,
   ACTION_DECLINE,
@@ -48,6 +49,7 @@ import {
   SUMMARY_VALUE,
   TAG_WAITING,
 } from './approvalChrome'
+import type { EstimatedDateRange } from '@/types'
 
 export interface RequestDetail {
   id: number
@@ -65,7 +67,8 @@ interface JoinRequestDetailViewProps {
   request: RequestDetail
   /** Route and date for the subheading. */
   routeLabel: string
-  departureDate: string
+  /** The travel window. A group booked on a range shows both ends of it. */
+  departure: EstimatedDateRange
   spacesRemaining: number
   /** How many requests are waiting in total, this one included. */
   waitingCount: number
@@ -101,14 +104,21 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
 export function JoinRequestDetailView({
   request,
   routeLabel,
-  departureDate,
+  departure,
   spacesRemaining,
   waitingCount,
   onApprove,
   onDecline,
   busy = false,
 }: JoinRequestDetailViewProps) {
-  const [confirming, setConfirming] = useState(false)
+  /**
+   * Which decision is waiting on a confirmation.
+   *
+   * This was a boolean, because only declining was guarded. Approving is the
+   * irreversible one — it seats someone, may fill the group, and fires
+   * `member.joined` — so it is confirmed too (client, 2026-10-12, finding 2).
+   */
+  const [confirming, setConfirming] = useState<'approve' | 'decline' | null>(null)
 
   const name = request.requesterName ?? 'This member'
   const oversized = request.placesRequested > spacesRemaining
@@ -117,6 +127,10 @@ export function JoinRequestDetailView({
   // than quoted — saying "which makes the group full" when four places remain
   // would be wrong in front of the person deciding.
   const fillsGroup = !oversized && request.placesRequested >= spacesRemaining
+
+  const copy = confirming
+    ? decisionCopy(confirming, name, request.placesRequested, spacesRemaining)
+    : null
 
   return (
     <div className={SHELL}>
@@ -133,7 +147,7 @@ export function JoinRequestDetailView({
           <span className={TAG_WAITING}>Waiting on you</span>
         </div>
         <p className="font-sans text-[14px] font-medium leading-[1.5] text-[#000000]">
-          {routeLabel} · {readableDate(departureDate)}.{' '}
+          {routeLabel} · {formatDateRange(departure)}.{' '}
           {waitingCount > 1
             ? `One of ${spelled(waitingCount)} requests waiting on your decision.`
             : 'Waiting on your decision.'}
@@ -188,7 +202,7 @@ export function JoinRequestDetailView({
       <div className={FOOTER_ROW}>
         <button
           type="button"
-          onClick={() => setConfirming(true)}
+          onClick={() => setConfirming('decline')}
           disabled={busy}
           className={`${ACTION_DECLINE} ${FOOTER_ITEM}`}
         >
@@ -197,7 +211,7 @@ export function JoinRequestDetailView({
         </button>
         <button
           type="button"
-          onClick={() => void onApprove()}
+          onClick={() => setConfirming('approve')}
           disabled={oversized || busy}
           className={`${ACTION_APPROVE} ${FOOTER_ITEM}`}
         >
@@ -206,39 +220,43 @@ export function JoinRequestDetailView({
         </button>
       </div>
 
-      <Dialog
-        open={confirming}
-        onClose={() => setConfirming(false)}
-        title={`Decline ${name}?`}
-        actions={
-          <>
-            <button
-              type="button"
-              onClick={() => setConfirming(false)}
-              disabled={busy}
-              className={`${FOOTER_SECONDARY} ${DIALOG_ITEM}`}
-            >
-              Keep the request
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setConfirming(false)
-                void onDecline()
-              }}
-              disabled={busy}
-              className={`${FOOTER_PRIMARY} ${DIALOG_ITEM}`}
-            >
-              Decline request
-            </button>
-          </>
-        }
-      >
-        {/* "without a reason" is the product rule, not a limitation of the
-            screen: a decline gives none, and nothing is invented to fill it. */}
-        They will be told their request was not approved, without a reason. The open place stays
-        open for other requests.
-      </Dialog>
+      {/* The sentences come from `decisionCopy`, shared with frame 47's list —
+          both screens decide the same two things and must not word them two
+          ways. "without a reason" is the product rule rather than a limitation
+          of the screen, so it is stated rather than left to be discovered. */}
+      {copy && (
+        <Dialog
+          open
+          onClose={() => setConfirming(null)}
+          title={copy.title}
+          actions={
+            <>
+              <button
+                type="button"
+                onClick={() => setConfirming(null)}
+                disabled={busy}
+                className={`${FOOTER_SECONDARY} ${DIALOG_ITEM}`}
+              >
+                {copy.cancelLabel}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const decision = confirming
+                  setConfirming(null)
+                  void (decision === 'approve' ? onApprove() : onDecline())
+                }}
+                disabled={busy}
+                className={`${FOOTER_PRIMARY} ${DIALOG_ITEM}`}
+              >
+                {copy.confirmLabel}
+              </button>
+            </>
+          }
+        >
+          {copy.body}
+        </Dialog>
+      )}
     </div>
   )
 }

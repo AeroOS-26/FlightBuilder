@@ -27,6 +27,8 @@
 import { useState } from 'react'
 import { Icon } from '@/components/common'
 import { DashedOutline } from '@/components/ui'
+import { cn } from '@/utils/cn'
+import { TAP_TARGET, TAP_TARGET_LINK } from '@/utils/tapTarget'
 import { useCreateFlight, useStepNavigation } from '@/features/flight-builder/hooks'
 import {
   ACKNOWLEDGMENT_CANCEL,
@@ -138,7 +140,10 @@ export function AcknowledgmentStep() {
           onClick={submit}
           disabled={isPending}
           aria-busy={isPending || undefined}
-          className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-[12px] bg-[#000000] px-3.5 py-2 text-center font-sans text-[14px] font-medium text-white transition-opacity hover:opacity-90 focus-ring disabled:cursor-not-allowed disabled:opacity-55"
+          className={cn(
+            'inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-[12px] bg-[#000000] px-3.5 py-2 text-center font-sans text-[14px] font-medium text-white transition-opacity hover:opacity-90 focus-ring disabled:cursor-not-allowed disabled:opacity-55',
+            TAP_TARGET,
+          )}
         >
           {isPending ? 'Creating your Charter Group…' : ACKNOWLEDGMENT_SUBMIT}
           {!isPending && <Icon name="arrow-right" className="size-[18px] shrink-0" />}
@@ -148,7 +153,10 @@ export function AcknowledgmentStep() {
           type="button"
           onClick={() => goTo('review')}
           disabled={isPending}
-          className="font-sans text-[14px] text-[#000000] underline-offset-2 hover:underline focus-ring disabled:opacity-55"
+          className={cn(
+            'font-sans text-[14px] text-[#000000] underline-offset-2 hover:underline focus-ring disabled:opacity-55',
+            TAP_TARGET_LINK,
+          )}
         >
           {ACKNOWLEDGMENT_CANCEL}
         </button>

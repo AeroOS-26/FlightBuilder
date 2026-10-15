@@ -20,7 +20,7 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { Icon } from '@/components/common'
-import { MEMBER_AREA_ENABLED } from '@/config/features'
+import { BROWSE_FLIGHTS_ENABLED, MEMBER_AREA_ENABLED } from '@/config/features'
 import {
   FOOTER_ITEM,
   FOOTER_PRIMARY,
@@ -169,21 +169,28 @@ export function RequestSentScreen({ flight, email }: RequestSentProps) {
       </section>
 
       <div className="flex flex-col items-center gap-5">
-        <div className={FOOTER_ROW}>
-          <Link href="/" className={`${FOOTER_SECONDARY} ${FOOTER_ITEM}`}>
-            Browse Shared Flights
-          </Link>
-          {/* Hidden again. There is no `/dashboard` route and no travellers
-              page, so both of these 404. They were shown on 2026-10-08 at the
-              client's request; put back behind `MEMBER_AREA_ENABLED` on 10-09
-              once that was seen live. One flag the day the pages exist. */}
-          {MEMBER_AREA_ENABLED && (
-            <Link href="/dashboard" className={`${FOOTER_PRIMARY} ${FOOTER_ITEM}`}>
-              Go To My Dashboard
-              <Icon name="arrow-right" className="size-[18px]" />
-            </Link>
-          )}
-        </div>
+        {/* Conditional row: with both controls hidden an empty centred gap
+            reads as a rendering fault. */}
+        {(BROWSE_FLIGHTS_ENABLED || MEMBER_AREA_ENABLED) && (
+          <div className={FOOTER_ROW}>
+            {/* No browse surface exists yet — see `BROWSE_FLIGHTS_ENABLED`. */}
+            {BROWSE_FLIGHTS_ENABLED && (
+              <Link href="/" className={`${FOOTER_SECONDARY} ${FOOTER_ITEM}`}>
+                Browse Shared Flights
+              </Link>
+            )}
+            {/* Hidden again. There is no `/dashboard` route and no travellers
+                page, so both of these 404. They were shown on 2026-10-08 at the
+                client's request; put back behind `MEMBER_AREA_ENABLED` on 10-09
+                once that was seen live. One flag the day the pages exist. */}
+            {MEMBER_AREA_ENABLED && (
+              <Link href="/dashboard" className={`${FOOTER_PRIMARY} ${FOOTER_ITEM}`}>
+                Go To My Dashboard
+                <Icon name="arrow-right" className="size-[18px]" />
+              </Link>
+            )}
+          </div>
+        )}
         <p className="font-sans text-[14px] text-[#000000]/70">
           The Group Organizer reviews every request.
         </p>
@@ -226,9 +233,14 @@ export function RequestNotApprovedScreen({ flight }: { flight: SharedFlightSumma
           You can also start a group of your own and invite people to it.
         </p>
         <div className={FOOTER_ROW}>
-          <Link href="/" className={`${FOOTER_SECONDARY} ${FOOTER_ITEM}`}>
-            Browse Shared Flights
-          </Link>
+          {/* No browse surface exists yet — see `BROWSE_FLIGHTS_ENABLED`. The
+              row keeps its second control, which does have a page behind it, so
+              this screen still offers the way forward it is here to offer. */}
+          {BROWSE_FLIGHTS_ENABLED && (
+            <Link href="/" className={`${FOOTER_SECONDARY} ${FOOTER_ITEM}`}>
+              Browse Shared Flights
+            </Link>
+          )}
           <Link href="/build" className={`${FOOTER_PRIMARY} ${FOOTER_ITEM}`}>
             Start My Own Shared Flight
             <Icon name="arrow-right" className="size-[18px] shrink-0" />

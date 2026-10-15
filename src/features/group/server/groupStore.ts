@@ -629,7 +629,20 @@ interface MemberRow {
 
 /** "3 days ago", "12 days ago", "Today". */
 function timeAgo(when: Date): string {
-  const days = Math.floor((Date.now() - when.getTime()) / 86_400_000)
+  /*
+   * Calendar days, not elapsed hours.
+   *
+   * This divided the millisecond difference by 86,400,000, which answers "how
+   * many 24-hour periods ago" — a different question. A group created at 23:00
+   * on the 10th and read at 10:00 on the 12th is 35 hours old, so it floored to
+   * 1 and read "Yesterday" two days later (client, 2026-10-12, finding 23).
+   *
+   * Comparing midnights instead makes "Yesterday" mean yesterday's date,
+   * however few hours ago that was. Both are reduced to local midnight first,
+   * because that is the boundary the words describe.
+   */
+  const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
+  const days = Math.round((startOfDay(new Date()) - startOfDay(when)) / 86_400_000)
   if (days <= 0) return 'Today'
   if (days === 1) return 'Yesterday'
   return `${days} days ago`

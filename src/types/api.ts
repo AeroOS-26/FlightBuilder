@@ -337,6 +337,17 @@ export interface FlightGroupFilledEvent {
  * Flight Group Detail frames, in order — the stepper renders this list, so
  * adding a state here adds a step there.
  */
+/**
+ * The group's lifecycle state.
+ *
+ * The eight the CRM sends on `flight_group.status_changed`, plus `closed` for
+ * rows written before the terminal state was split in two (migration 0012).
+ * Nothing new writes `closed`; it is here so existing rows still type.
+ *
+ * `forming`, `filling` and `filled` are derived from occupancy on our side.
+ * Everything from `quoting` onward is set by the CRM, because that is where a
+ * human moves it.
+ */
 export type GroupStatus =
   | 'forming'
   | 'filling'
@@ -344,6 +355,9 @@ export type GroupStatus =
   | 'quoting'
   | 'confirmed'
   | 'booked'
+  | 'closed_completed'
+  | 'closed_unfilled'
+  /** @deprecated Legacy rows only — see migration 0012. */
   | 'closed'
 
 /** A traveler on the viewer's own booking ("Your travelers and pets"). */

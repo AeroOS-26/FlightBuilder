@@ -129,6 +129,7 @@ const shareFooterClass =
 
 export function ShareStep() {
   const flight = useFlightBuilderStore((s) => s.createdFlight)
+  const resetDraft = useFlightBuilderStore((s) => s.reset)
   const hasPets = useFlightBuilderStore(
     (s) => s.draft.petsEnabled && s.draft.pets.length > 0,
   )
@@ -448,6 +449,40 @@ export function ShareStep() {
               ))}
             </ol>
           </DashedCard>
+
+          {/*
+            The way out of the builder.
+
+            `useStepGuard` pins the organiser here once a flight exists, so that
+            going back cannot fire a second create against the same group id.
+            Nothing cleared that pin, so `/build/route` bounced to this screen
+            for ever and the only escape was a fresh tab — an organiser could
+            not create a second group at all (client, 2026-10-12, finding 6).
+
+            `reset()` is the legitimate release: it clears `createdFlight` and
+            the draft together, so the next create is a genuinely new group
+            rather than a repeat of this one. The group just made is untouched
+            by it — it is already written, its link keeps working, and the
+            Manage control below reaches it — so this is not destructive and
+            needs no confirmation.
+          */}
+          <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <Button
+              variant="secondary"
+              onClick={() => router.push(`/group/${encodeURIComponent(flight.groupCode)}`)}
+            >
+              Manage This Group
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                resetDraft()
+                router.push(`/build/${FIRST_STEP}`)
+              }}
+            >
+              Create Another Shared Flight
+            </Button>
+          </div>
 
           {/* Flight Group Detail and My Dashboard are Flight Club screens in the
               next phase. They were disabled here so they read as inactive

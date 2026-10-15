@@ -70,7 +70,7 @@ export default async function JoinRequestPage({ params }: PageProps) {
         requestedAt: request.requestedAt.toISOString().slice(0, 10),
       }}
       routeLabel={`${metroLabel(group.flight.route_origin_city)} → ${metroLabel(group.flight.route_destination_city)}`}
-      departureDate={group.flight.departure_date}
+      departure={group.flight.estimated_date_range}
       spacesRemaining={Math.max(0, group.flight.spaces_remaining)}
       waitingCount={pending.length}
     />

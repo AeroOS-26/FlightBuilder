@@ -19,12 +19,13 @@ import {
   JoinRequestDetailView,
   type RequestDetail,
 } from './JoinRequestDetailView'
+import type { EstimatedDateRange } from '@/types'
 
 interface RequestDecisionPanelProps {
   groupId: string
   request: RequestDetail
   routeLabel: string
-  departureDate: string
+  departure: EstimatedDateRange
   spacesRemaining: number
   waitingCount: number
 }
@@ -33,7 +34,7 @@ export function RequestDecisionPanel({
   groupId,
   request,
   routeLabel,
-  departureDate,
+  departure,
   spacesRemaining,
   waitingCount,
 }: RequestDecisionPanelProps) {
@@ -73,7 +74,7 @@ export function RequestDecisionPanel({
       <JoinRequestDetailView
         request={request}
         routeLabel={routeLabel}
-        departureDate={departureDate}
+        departure={departure}
         spacesRemaining={spacesRemaining}
         waitingCount={waitingCount}
         busy={busy}

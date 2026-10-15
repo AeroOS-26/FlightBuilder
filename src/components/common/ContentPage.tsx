@@ -64,12 +64,24 @@ export function ContentPage({
             </a>
             .
           </p>
+          {/*
+            `/` rather than `/signin`, because this shell serves the 404 as well
+            as terms, privacy and support — and a signed-in member was being
+            offered "Back to sign in" on all four (client, 2026-10-12, finding
+            3, found on a declined request's URL).
+
+            `/` is the entry router: it resolves the session and sends a visitor
+            to sign-in and a member to their own home. So one link is correct
+            for both, and these pages stay statically rendered — reading the
+            session here would make four public pages dynamic to change a
+            single label.
+          */}
           <p>
             <a
-              href="/signin"
+              href="/"
               className="font-sans text-[14px] font-medium text-[#0A1B49] underline underline-offset-2"
             >
-              Back to sign in
+              Go to Flight Club
             </a>
           </p>
         </article>

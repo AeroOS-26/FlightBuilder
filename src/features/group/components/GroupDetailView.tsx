@@ -53,6 +53,11 @@ const STATUS_LABEL: Record<GroupStatus, string> = {
   quoting: 'Quoting',
   confirmed: 'Confirmed',
   booked: 'Booked',
+  // The two terminal states the CRM sends. Worded as the public page already
+  // words them (`stateLabel` in PublicFlightParts), so one group does not read
+  // two ways depending on which screen you are on.
+  closed_completed: 'Closed · Completed',
+  closed_unfilled: 'Closed · Unfilled',
   closed: 'Closed',
 }
 
@@ -65,6 +70,8 @@ const STATUS_PILL: Record<GroupStatus, string> = {
   quoting: 'border-[#98C3E1] bg-[#CFE3F1]/40 text-[#112D7C]',
   confirmed: 'border-[#84EBB4] bg-[#1FC16B]/10 text-[#109A51]',
   booked: 'border-[#84EBB4] bg-[#1FC16B]/10 text-[#109A51]',
+  closed_completed: 'border-[#84EBB4] bg-[#1FC16B]/10 text-[#109A51]',
+  closed_unfilled: 'border-[#F8CED0] bg-[#F8CED0]/50 text-[#D00416]',
   closed: 'border-[#D0D0D0] bg-[#F5F5F5] text-[#6D6D6D]',
 }
 
@@ -87,6 +94,8 @@ const HERO_GLOW: Record<GroupStatus, string> = {
   quoting: 'bg-[linear-gradient(90deg,#EEF4FA_0%,#E4EFF8_38%,rgba(255,255,255,0)_95%)]',
   confirmed: 'bg-[linear-gradient(90deg,#E8F5EE_0%,#DAEEE3_38%,rgba(255,255,255,0)_95%)]',
   booked: 'bg-[linear-gradient(90deg,#E8F5EE_0%,#DAEEE3_38%,rgba(255,255,255,0)_95%)]',
+  closed_completed: 'bg-[linear-gradient(90deg,#E8F5EE_0%,#DAEEE3_38%,rgba(255,255,255,0)_95%)]',
+  closed_unfilled: 'bg-[linear-gradient(90deg,#FCECED_0%,#F8E2E3_38%,rgba(255,255,255,0)_95%)]',
   closed: 'bg-[linear-gradient(90deg,#F2F2F2_0%,#EBEBEB_38%,rgba(255,255,255,0)_95%)]',
 }
 
@@ -97,6 +106,8 @@ const EYEBROW_TONE: Record<GroupStatus, string> = {
   quoting: 'text-[#112D7C]',
   confirmed: 'text-[#109A51]',
   booked: 'text-[#109A51]',
+  closed_completed: 'text-[#109A51]',
+  closed_unfilled: 'text-[#D00416]',
   closed: 'text-[#6D6D6D]',
 }
 
@@ -120,12 +131,31 @@ function nextStepCopy(status: GroupStatus, spacesRemaining: number): string {
         : `${spacesRemaining} more members fill the group. Operator quotes get requested automatically.`
     case 'filled':
       return 'The group is full. We are requesting operator quotes now.'
+    // Chuck's wording, via Charles 2026-10-13, verbatim — capitalisation
+    // included. These are the two strings finding 18 was about: the previous
+    // Booked line read "Your booking is confirmed", which is the word Workflow
+    // Spec 4.8 bars before a binding carrier commitment.
     case 'quoting':
-      return 'Operators are quoting. You will be notified as soon as the price is locked.'
+      return 'Your Contribution is ready. Pay your deposit to secure your participation.'
     case 'confirmed':
       return 'The quote is locked. Complete your booking to secure your space.'
+    // Chuck's condition: this appears only once there is a binding commitment
+    // from the operator. That is held by the status itself rather than by this
+    // function — `booked` is only ever set from Zoho, and nothing in the
+    // application can reach it (see `determineGroupStatus`, which returns only
+    // forming, filling or filled). It becomes reachable when
+    // `flight_group.status_changed` is built.
     case 'booked':
-      return 'Your booking is confirmed. Final aircraft and timing follow by email.'
+      return 'The Operator has confirmed the aircraft. Final aircraft details and timing follow by email.'
+    /*
+     * Both terminal states reuse the sentence `closed` already carried, rather
+     * than getting copy of their own. It is true of each and it is already
+     * approved. Wording that distinguishes them is a design decision and
+     * belongs to Faraz and Chuck, not here — raised with the client rather
+     * than invented.
+     */
+    case 'closed_completed':
+    case 'closed_unfilled':
     case 'closed':
       return 'This group is closed. No further changes can be made.'
   }
@@ -134,8 +164,10 @@ function nextStepCopy(status: GroupStatus, spacesRemaining: number): string {
 /* --------------------------------------------------------------- formatting */
 
 
-function travelerSummary(adults: number, pets: number): string {
-  const parts = [`${adults} adult${adults === 1 ? '' : 's'}`]
+function travelerSummary(travelers: number, pets: number): string {
+  // "travelers", not "adults" — see `formatTravelers`. Adult status is
+  // confirmed by the Stage 1 check, not asserted by the screens.
+  const parts = [`${travelers} traveler${travelers === 1 ? '' : 's'}`]
   if (pets > 0) parts.push(`${pets} pet${pets === 1 ? '' : 's'}`)
   return parts.join(' · ')
 }
@@ -238,8 +270,17 @@ function MemberRow({ member }: { member: GroupDetailMember }) {
  * connectors vertical. Every stage stays visible with no sideways scroll. From
  * `sm` up it is the horizontal stepper the frames draw.
  */
+/**
+ * Both terminal states, and the legacy one, land on the timeline's single
+ * `closed` step. Without this `findIndex` returns -1 for a closed group and
+ * the whole timeline renders as though nothing had happened yet.
+ */
+function timelineStatus(status: GroupStatus): GroupStatus {
+  return status === 'closed_completed' || status === 'closed_unfilled' ? 'closed' : status
+}
+
 function TimelineStepper({ current }: { current: GroupStatus }) {
-  const currentIndex = TIMELINE_STEPS.findIndex((s) => s.status === current)
+  const currentIndex = TIMELINE_STEPS.findIndex((s) => s.status === timelineStatus(current))
 
   return (
     <ol className="flex flex-col items-start gap-[3px] px-2 pb-1.5 sm:flex-row">

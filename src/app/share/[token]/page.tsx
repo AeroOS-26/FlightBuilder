@@ -51,9 +51,10 @@ import { cache } from 'react'
 import type { Metadata } from 'next'
 import { notFound, redirect } from 'next/navigation'
 import { PublicFlightPage } from '@/features/public-flight/PublicFlightPage'
+import { PublicPageShell } from '@/features/public-flight/components/PublicPageShell'
 import type { ShareViewer, ShareFlightDetail } from '@/features/public-flight/PublicFlightPage'
 import { resolvePublicFlight } from '@/features/public-flight/data/resolvePublicFlight'
-import { formatDateRange, metroLabel, readableDate } from '@/features/public-flight/format'
+import { formatDateRange, metroLabel } from '@/features/public-flight/format'
 import { currentViewer, getMembership } from '@/features/auth/server/guard'
 import { getProfile } from '@/features/auth/server/profile'
 import { APPROVAL_FLOW_ENABLED, DECLINED_MAY_REQUEST_AGAIN } from '@/config/features'
@@ -171,6 +172,19 @@ export default async function SharePage({
         const view = await getRequesterGroupView(groupId)
         if (view) {
           return (
+            /*
+              Inside `PublicPageShell`, like every other screen on this route.
+              This branch returned the screen bare, so the declined page was the
+              one page on /share with no header, no account menu and no footer
+              (client, 2026-10-12, finding 13) — the disclosure was in the
+              payload and never rendered, which is the part that matters: the
+              broker disclosure has to be on the page, not merely available to
+              it.
+
+              The viewer is signed in here by definition — this is inside the
+              signed-in branch — so the header gets its account menu.
+            */
+            <PublicPageShell viewer={{ id: viewer.id, email: viewer.email }}>
             <RequestNotApprovedScreen
               flight={{
                 // The same treatment frames 42 and 43 give these: the metro
@@ -181,10 +195,11 @@ export default async function SharePage({
                 originCode: view.originCode,
                 destinationCity: metroLabel(view.destinationCity),
                 destinationCode: view.destinationCode,
-                departureDate: view.departureDate ? readableDate(view.departureDate) : '',
+                departureDate: formatDateRange(view.departure),
                 organizerName: view.organizerName ?? undefined,
               }}
             />
+            </PublicPageShell>
           )
         }
       }

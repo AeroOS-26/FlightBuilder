@@ -78,6 +78,16 @@ export function hasRouteErrors(errors: RouteErrors): boolean {
 export interface DateErrors {
   banner?: string
   date?: string
+  /**
+   * Which of the two range fields the message is about.
+   *
+   * The step used to put `invalid` on the end field alone — this function's own
+   * note said "highlight end date only in the UI" — so "Please select a start
+   * date" and "Choose a date that isn't in the past" both reddened the *end*
+   * input (client, 2026-10-12, finding 23). Undefined in specific mode, where
+   * there is only one field to point at.
+   */
+  field?: 'start' | 'end'
 }
 
 export function validateDates(date: DateSelection): DateErrors {
@@ -87,11 +97,14 @@ export function validateDates(date: DateSelection): DateErrors {
     return {}
   }
 
-  // Range mode — highlight end date only in the UI.
-  if (!date.end) return { date: 'Please select an end date.' }
-  if (!date.start) return { date: 'Please select a start date.' }
-  if (isPastDate(date.start)) return { date: 'Choose a date that isn’t in the past.' }
-  if (date.end < date.start) return { date: 'The end date can’t be before the start date.' }
+  // Range mode. Each message names the field it is about, so the input that
+  // highlights is the one that is wrong.
+  if (!date.end) return { date: 'Please select an end date.', field: 'end' }
+  if (!date.start) return { date: 'Please select a start date.', field: 'start' }
+  if (isPastDate(date.start))
+    return { date: 'Choose a date that isn’t in the past.', field: 'start' }
+  if (date.end < date.start)
+    return { date: 'The end date can’t be before the start date.', field: 'end' }
   return {}
 }
 

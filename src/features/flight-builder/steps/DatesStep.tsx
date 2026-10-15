@@ -96,12 +96,16 @@ export function DatesStep() {
             </FormField>
           ) : (
             <>
+              {/* Each field highlights only for its own error. Both used to
+                  hang off `errors.date`, with `invalid` on the end field alone,
+                  so a missing or past *start* date reddened the end input. */}
               <FormField label="Earliest travel date">
                 <TextInput
                   readOnly
                   placeholder="Select a start date"
                   endAdornment={calendarInputIcon}
                   value={date.start ? formatLongDate(date.start) : ''}
+                  invalid={errors.field === 'start'}
                 />
               </FormField>
               <FormField label="Latest travel date">
@@ -110,7 +114,7 @@ export function DatesStep() {
                   placeholder="Select an end date"
                   endAdornment={calendarInputIcon}
                   value={date.end ? formatLongDate(date.end) : ''}
-                  invalid={Boolean(errors.date)}
+                  invalid={errors.field === 'end'}
                 />
               </FormField>
             </>

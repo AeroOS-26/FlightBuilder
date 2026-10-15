@@ -31,6 +31,7 @@ import { MEMBER_AREA_ENABLED } from "@/config/features";
 import { DashedOutline } from "@/components/ui";
 import {
   aircraftRowValue,
+  formatDateRange,
   metroLabel,
   readableDate,
 } from "@/features/public-flight/format";
@@ -123,8 +124,19 @@ export function ApprovedParticipantView({ group }: { group: GroupDetailView }) {
           different colour. */}
       <section className="relative overflow-visible rounded-[16px] bg-[#1FC16B]/10 p-4">
         <DashedOutline dash="8 8" stroke="#109A51" />
-        <p className={SUMMARY_LABEL}>Confirmation</p>
-        <h2 className="mt-2.5 font-heading text-[20px] font-medium text-[#000000]">
+        {/*
+          The CONFIRMATION eyebrow is deleted rather than reworded. Charles
+          opened the frame on 2026-10-13: the box holds an eyebrow, a heading
+          and a paragraph, and "the heading underneath already says the request
+          was approved, so the label adds nothing except the one word every
+          other sentence on this screen is avoiding" — Workflow Spec 4.8 bars
+          it before a binding carrier commitment.
+
+          If Faraz wants the eyebrow back for the visual, YOUR PLACE is the
+          agreed wording. GROUP STATUS is not: it collides with the real status
+          field on the same screen.
+        */}
+        <h2 className="font-heading text-[20px] font-medium text-[#000000]">
           Your join request was approved
         </h2>
         <p className="mt-4 font-sans text-[14px] leading-[1.45] text-[#000000]">
@@ -151,7 +163,7 @@ export function ApprovedParticipantView({ group }: { group: GroupDetailView }) {
 
         <dl className={`flex flex-col gap-[18px] ${CARD}`}>
           <Row label="Departure">
-            {readableDate(group.flight.departure_date)}
+            {formatDateRange(group.flight.estimated_date_range)}
           </Row>
           <Row label="Aircraft class">
             {aircraftRowValue(group.flight.aircraft_category)}

@@ -360,6 +360,7 @@ export function JoinReviewScreen({
                     <input
                       size={1}
                       value={t.name}
+                      aria-invalid={Boolean(errors?.travelers[t.id])}
                       onChange={(e) => {
                         const next = travelers.map((x) =>
                           x.id === t.id ? { ...x, name: e.target.value } : x,
@@ -367,8 +368,22 @@ export function JoinReviewScreen({
                         setTravelers(next)
                         revalidate({ travelers: next })
                       }}
-                      className="h-11 rounded-[12px] border border-[#98C3E1] bg-white px-3 font-sans text-[14px] text-[#000000] focus-ring"
+                      className={cn(
+                        'h-11 rounded-[12px] border bg-white px-3 font-sans text-[14px] text-[#000000] focus-ring',
+                        errors?.travelers[t.id] ? 'border-danger-text' : 'border-[#98C3E1]',
+                      )}
                     />
+                    {/* The banner says "complete the highlighted fields", so a
+                        field that fails has to be the one that highlights. This
+                        message used to render only on the frame-40 card below,
+                        which this screen keeps in the DOM and hides — so the
+                        banner pointed at a field nobody could see (client,
+                        2026-10-12, finding 14). */}
+                    {errors?.travelers[t.id] && (
+                      <span className="font-sans text-[12px] text-danger-text">
+                        {errors.travelers[t.id]}
+                      </span>
+                    )}
                   </label>
                   {/* Only the account holder has one. Everyone else on the party
                       is a name with no account, so there is nothing to show. */}
@@ -401,6 +416,42 @@ export function JoinReviewScreen({
                 </div>
               </div>
             ))}
+
+            {/*
+              Adding a traveller and a pet at join time.
+
+              These were absent, which is the client's finding 4 of
+              2026-10-12. The design has them; leaving them out was our own
+              decision, recorded wrongly in this file as a client confirmation
+              — it was not one. Put back as warranty.
+
+              It is also why requests went out with `readiness_accepted: false`:
+              the readiness confirmation only renders when the request has a
+              pet, and with nothing able to add one, a member whose saved
+              profile held no pets could never produce one.
+
+              The control is the one this screen already uses — the same dashed
+              add surface as the frame 40 block below, not a new treatment. Its
+              exact placement in the current drawing is Faraz's; this matches
+              what the screen already had.
+            */}
+            {travelers.length < MAX_TRAVELERS && (
+              <button
+                type="button"
+                onClick={() => {
+                  const next = [...travelers, { id: nextId(), name: '', isFounder: false }]
+                  setTravelers(next)
+                  revalidate({ travelers: next })
+                }}
+                className={cn(
+                  'flex h-11 w-full items-center justify-center gap-2 font-sans text-[14px] font-medium text-[#112D7C] transition-colors hover:bg-[#CFE3F1]/30 focus-ring',
+                  dashedAddSurfaceClass,
+                )}
+              >
+                <DashedOutline />
+                <span className="relative">+ Add another traveler for this flight</span>
+              </button>
+            )}
 
             {pets.map((pet, i) => (
               <div key={pet.id} className="rounded-[16px] border border-[#A8A8A8]/40 bg-white p-4">
@@ -526,10 +577,30 @@ export function JoinReviewScreen({
                 </div>
               </div>
             ))}
+
+            {/*
+              NO add-pet control here, deliberately, and it is not an oversight.
+
+              `validatePetList` requires four fields on every pet — type, breed,
+              weight and temperament. This screen collects three of them: type,
+              weight and the service-animal answer. Breed and temperament are
+              not drawn on it.
+
+              Pets that arrive from the saved profile pass, because the profile
+              editor collects all four. A pet added here would start with breed
+              and temperament empty, fail validation, and show the banner
+              "complete the highlighted fields" over a card with no field to
+              complete — the same dead end as the client's finding 14.
+
+              So adding a pet at join time needs those two fields on the screen
+              first, and that drawing is Faraz's. Raised with the client rather
+              than solved by putting our own fields on their frame.
+            */}
           </div>
         )}
 
-        <div className={cn('mt-4 flex-col gap-3', APPROVAL_FLOW_ENABLED ? 'hidden' : 'flex')}>
+        {!APPROVAL_FLOW_ENABLED && (
+        <div className="mt-4 flex flex-col gap-3">
           {travelers.map((t, i) => (
             <TravelerCard
               key={t.id}
@@ -555,13 +626,20 @@ export function JoinReviewScreen({
           ))}
 
           {/*
-            Frame 42 draws no add control, confirmed with the client 2026-10-07.
+            **This diverges from the design and the note that used to be here
+            was wrong.** It read "Frame 42 draws no add control, confirmed with
+            the client 2026-10-07" — but frame 42 *does* draw one, and the only
+            client message from that date reports the missing control as a
+            defect. Leaving it out was our own call, not theirs.
+
+            Being put back as warranty work (client finding 4, 2026-10-12). Do
+            not cite a client decision for its absence.
             The party comes from the member's saved profile — "Pulled from your
             profile" — so a request for two places is made by someone whose
             profile holds two travellers, not by adding one here. That is what
             keeps frame 47's "Needs 2 places, 1 open" reachable.
           */}
-          {!APPROVAL_FLOW_ENABLED && travelers.length < MAX_TRAVELERS && (
+          {travelers.length < MAX_TRAVELERS && (
             <button
               type="button"
               onClick={() => setTravelers([...travelers, { id: nextId(), name: '', isFounder: false }])}
@@ -575,6 +653,7 @@ export function JoinReviewScreen({
             </button>
           )}
         </div>
+        )}
       </section>
 
       {/* Frame 40 keeps pets in their own card with an add control. Frame 42

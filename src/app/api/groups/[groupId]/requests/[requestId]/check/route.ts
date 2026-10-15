@@ -20,7 +20,8 @@
  * the same answer.
  *
  * This is the only inbound write path in the application, so it is the only
- * place a shared secret is checked rather than sent.
+ * place a shared secret is checked rather than sent. It arrives in
+ * `X-AeroOS-Key`, matching the inbound spec.
  */
 
 import { timingSafeEqual } from 'node:crypto'
@@ -53,25 +54,45 @@ function secretMatches(presented: string): boolean {
   return timingSafeEqual(a, b)
 }
 
-function bearer(request: Request): string {
-  const header = request.headers.get('authorization') ?? ''
-  return header.toLowerCase().startsWith('bearer ') ? header.slice(7).trim() : ''
+/**
+ * The shared secret, from `X-AeroOS-Key`.
+ *
+ * This read `Authorization: Bearer` until 2026-10-14, and Vivek was told on
+ * 12 October that it had moved there, in those words — so this reverses what he
+ * is holding. Charles is telling him; it must not change again without him.
+ *
+ * The header rather than a query string is deliberate and is the spec's
+ * reasoning: the outbound key was posted in a channel on 22 September because
+ * it sat in a query string, and query strings get copied out of links. A header
+ * does not travel in one.
+ *
+ * The inbound status event uses the same header, so when both events move onto
+ * one endpoint this does not change again.
+ */
+function presentedKey(request: Request): string {
+  return (request.headers.get('x-aeroos-key') ?? '').trim()
 }
 
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ groupId: string; requestId: string }> },
 ) {
-  if (!isCheckCallbackConfigured()) {
-    return NextResponse.json(
-      { success: false, message: 'The check callback is not configured on this deployment.' },
-      { status: 503 },
-    )
-  }
-  if (!secretMatches(bearer(request))) {
+  /*
+   * Unconfigured answers 401, not 503.
+   *
+   * It used to say "not configured on this deployment", which tells an
+   * unauthenticated caller that the route exists and why it is refusing —
+   * and with no secret set there is no request that could ever be authorised,
+   * so unauthorised is the honest answer rather than a temporary one. Agreed
+   * with the client; a 503 also invites a retry of something that cannot
+   * succeed until a human sets a variable.
+   *
+   * It still fails closed. An inbound route that runs when its secret is
+   * missing is worse than one that refuses.
+   */
+  if (!isCheckCallbackConfigured() || !secretMatches(presentedKey(request))) {
     return NextResponse.json({ success: false, message: 'Unauthorized.' }, { status: 401 })
   }
-
   // Zoho holds the request as `jr_14`, because that is the form
   // `join_request_id` takes on every event we send it (`joinRequestId`). The
   // row id is the number inside. Both spellings are accepted so the caller can
@@ -83,8 +104,13 @@ export async function POST(
   }
 
   let outcome: CheckOutcome
+  let reviewedAt: Date | null = null
   try {
-    const body = (await request.json()) as { result?: unknown; check_status?: unknown }
+    const body = (await request.json()) as {
+      result?: unknown
+      check_status?: unknown
+      reviewed_at?: unknown
+    }
     // `result` is what the contract names it; `check_status` is accepted too,
     // because that is the column Chuck's queue is marking and it is the likelier
     // thing for the Zoho function to send.
@@ -96,11 +122,35 @@ export async function POST(
       )
     }
     outcome = value as CheckOutcome
+
+    /*
+     * When the reviewer decided, as opposed to when the callback arrived.
+     *
+     * Optional: a caller that omits it gets our own clock, which is what
+     * happened for every call until now. Rejected rather than silently
+     * ignored when it is present and unparseable — a timestamp that is
+     * quietly dropped is worse than one refused, because the record would
+     * then claim a decision time nobody chose.
+     *
+     * `reviewed_by` and `reason_category` are deliberately not accepted.
+     * Nothing reads them and no screen shows them, and a decline carries no
+     * reason by counsel's ruling.
+     */
+    if (body.reviewed_at !== undefined && body.reviewed_at !== null) {
+      const parsed = new Date(String(body.reviewed_at))
+      if (Number.isNaN(parsed.getTime())) {
+        return NextResponse.json(
+          { success: false, message: 'reviewed_at is not a valid timestamp.' },
+          { status: 400 },
+        )
+      }
+      reviewedAt = parsed
+    }
   } catch {
     return NextResponse.json({ success: false, message: 'Invalid request body.' }, { status: 400 })
   }
 
-  const recorded = await recordPerroCheck(groupId, requestId, outcome)
+  const recorded = await recordPerroCheck(groupId, requestId, outcome, reviewedAt)
   if ('refused' in recorded) {
     return NextResponse.json({ success: false, message: 'Unknown request.' }, { status: 404 })
   }

@@ -18,6 +18,27 @@
  * The catalogue lives in `screens.ts` so the server routes can read it.
  */
 
+import { OrganiserRequestsView } from '@/features/join-approval/components/OrganiserRequestsView'
+import { GroupFullOrganiserView } from '@/features/join-approval/components/GroupFullOrganiserView'
+import {
+  RequestSentScreen,
+  RequestNotApprovedScreen,
+} from '@/features/join-approval/components/RequestOutcomeScreens'
+import { ApprovedParticipantView } from '@/features/join-approval/components/ApprovedParticipantView'
+import { JoinReviewScreen } from '@/features/public-flight/states/JoinReviewScreen'
+import { AcknowledgmentStep } from '@/features/flight-builder/steps'
+import { UnderReviewView } from '@/features/join-approval/components/UnderReviewView'
+import { JoinRequestDetailView } from '@/features/join-approval/components/JoinRequestDetailView'
+import {
+  mockOrganiserGroup,
+  mockParticipantGroup,
+  MOCK_PENDING_REQUESTS,
+  MOCK_SHARED_FLIGHT,
+  MOCK_UNDER_REVIEW,
+  MOCK_REQUEST_DETAIL,
+  MOCK_JOIN_TRAVELERS,
+  MOCK_JOIN_PETS,
+} from '@/features/join-approval/preview/approvalMocks'
 import {
   CompletedState,
   ConfirmedState,
@@ -57,6 +78,61 @@ const SEED_PETS = [
 
 export function PreviewScreen({ slug }: { slug: string }) {
   switch (slug) {
+    case '42':
+      return (
+        <JoinReviewScreen
+          token="SFO-JFK-202606-PREVIEW"
+          flight={getMockFlight('forming')}
+          initialTravelers={MOCK_JOIN_TRAVELERS}
+          initialPets={MOCK_JOIN_PETS}
+          viewerEmail="tomas@example.com"
+          flightDetail={{
+            originCode: 'SFO',
+            destinationCode: 'JFK',
+            organizerName: 'Margot Davies',
+          }}
+          onJoined={() => {}}
+          onRequested={() => {}}
+        />
+      )
+    case '43':
+      return <RequestSentScreen flight={MOCK_SHARED_FLIGHT} email="tomas@example.com" />
+    case '44':
+      return <UnderReviewView {...MOCK_UNDER_REVIEW} />
+    case '45':
+      return <ApprovedParticipantView group={mockParticipantGroup()} />
+    case '46':
+      return <RequestNotApprovedScreen flight={MOCK_SHARED_FLIGHT} />
+    case '48':
+      return (
+        <JoinRequestDetailView
+          request={MOCK_REQUEST_DETAIL}
+          routeLabel="San Francisco → New York"
+          departure={{ earliest_date: '2026-06-18', latest_date: '2026-06-22' }}
+          spacesRemaining={1}
+          waitingCount={2}
+          busy={false}
+          onApprove={() => {}}
+          onDecline={() => {}}
+        />
+      )
+    case '47':
+      return (
+        <OrganiserRequestsView
+          group={mockOrganiserGroup()}
+          requests={MOCK_PENDING_REQUESTS}
+        />
+      )
+    case '09b':
+      return <AcknowledgmentStep />
+    case '49':
+      return (
+        <GroupFullOrganiserView
+          group={mockOrganiserGroup(true)}
+          filledBy="Tomás Iglesias"
+          lapsed={['Priya Raman']}
+        />
+      )
     case '10':
       return (
         <LoggedInFlightDetailPage

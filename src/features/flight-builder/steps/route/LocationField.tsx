@@ -79,6 +79,20 @@ export function LocationField({
   const [open, setOpen] = useState(false)
   const [activeIndex, setActiveIndex] = useState(-1)
   const [searched, setSearched] = useState(false)
+  /**
+   * A search is in flight. Needed because the first one waits on the airports
+   * dataset, and until it resolved `searched` was false and `results` empty —
+   * so `showDropdown` was false and the field showed *nothing at all* while
+   * loading (client, 2026-10-12, finding 1). An empty dropdown reads as "no
+   * such city"; this is what lets it say otherwise.
+   */
+  const [searching, setSearching] = useState(false)
+
+  // Fetch the dataset now rather than on the first keystroke. One request
+  // however many fields mount — see `warmLocations`.
+  useEffect(() => {
+    locationService.warmLocations()
+  }, [])
 
   // Keep the text in sync if the value is set/cleared externally.
   useEffect(() => {
@@ -91,15 +105,23 @@ export function LocationField({
     if (q.length === 0 || q === value?.label) {
       setResults([])
       setSearched(false)
+      setSearching(false)
       return
     }
     let cancelled = false
     const timer = setTimeout(async () => {
-      const found = await locationService.searchLocations(q)
-      if (cancelled) return
-      setResults(found)
-      setSearched(true)
-      setActiveIndex(found.length > 0 ? 0 : -1)
+      setSearching(true)
+      try {
+        const found = await locationService.searchLocations(q)
+        if (cancelled) return
+        setResults(found)
+        setSearched(true)
+        setActiveIndex(found.length > 0 ? 0 : -1)
+      } finally {
+        // Not in the `cancelled` guard: a superseded search must still clear
+        // its own spinner, or a stale one keeps the panel open for ever.
+        if (!cancelled) setSearching(false)
+      }
     }, 120)
     return () => {
       cancelled = true
@@ -166,7 +188,9 @@ export function LocationField({
     }
   }
 
-  const showDropdown = open && (flatOptions.length > 0 || noMatch)
+  // `searching` is in here so the panel can say it is working. Without it the
+  // field rendered nothing until the first result arrived.
+  const showDropdown = open && (flatOptions.length > 0 || noMatch || searching)
 
   return (
     <div ref={containerRef} className="relative flex flex-col">
@@ -204,7 +228,18 @@ export function LocationField({
           onKeyDown={handleKeyDown}
         />
 
-        {showDropdown && !noMatch && (
+        {/* Waiting on the dataset, with nothing to show yet. A dropdown that
+            is absent and a dropdown that is empty both read as "no such city",
+            so this says which it is. */}
+        {showDropdown && !noMatch && flatOptions.length === 0 && searching && (
+          <div className="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-[12px] border border-[#A8A8A8]/20 bg-white px-4 py-3 shadow-pop md:border-0">
+            <span className="font-sans text-[12px] font-medium leading-4 text-[#000000]/70 md:text-[14px]">
+              Searching airports&hellip;
+            </span>
+          </div>
+        )}
+
+        {showDropdown && !noMatch && flatOptions.length > 0 && (
           <div className="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-[12px] border border-[#A8A8A8]/20 bg-white shadow-pop md:border-0">
           <div className="flex flex-col gap-1 border-b border-[#D0CFDB]/30 px-4 py-3 md:flex-row md:items-center md:justify-between md:gap-3 md:py-2.5">
             <span className="font-sans text-[12px] font-medium uppercase leading-4 tracking-[0.06em] text-[#000000] md:text-[14px]">

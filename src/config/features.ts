@@ -69,6 +69,48 @@ export const LEGAL_PAGE_LINKS_ENABLED: boolean = false
 export const APPROVAL_FLOW_ENABLED: boolean = true
 
 /**
+ * Whether the "Browse Shared Flights" control is shown.
+ *
+ * It is drawn on frames 43, 44 and 46 and points at `/`, which is the entry
+ * router — so a verified member following a button labelled *Browse* was
+ * dropped into the Flight Builder's **Create** form (2026-10-12, finding 12).
+ * The href is not the fault: `/` resolves correctly, and there is simply no
+ * browse surface for it to resolve to. A list of shared flights is the Member
+ * Dashboard, Milestone 3, which the client has already recorded as unreleased
+ * rather than broken.
+ *
+ * Hidden on the same reasoning as `MEMBER_AREA_ENABLED`, which is the client's
+ * own (2026-09, and repeated on 8 October): a control that looks active and
+ * does nothing costs more trust than a control that is not there. Where hiding
+ * it would leave an empty button row, the row goes too — a centred gap reads as
+ * a rendering fault.
+ *
+ * Flip this when the listing exists, and give it that route at the same time.
+ */
+export const BROWSE_FLIGHTS_ENABLED: boolean = false
+
+/**
+ * Whether the organiser's "Edit Trip Details" control is shown.
+ *
+ * It is drawn on frame 47 and there is nothing behind it. The link went to
+ * `/build/review`, which is the **creation** flow's review step and carries no
+ * group id, so it could not have edited this group: the builder reads its draft
+ * from sessionStorage, and in the client's run it opened a different group's
+ * share page entirely (2026-10-12, finding 5). Next also prefetches that href,
+ * which is the background request to `/build/review` reported as finding 21 —
+ * one cause, both symptoms.
+ *
+ * Editing a group that already has participants is a product decision, not a
+ * missing href: what stays editable once people hold places, and whether a
+ * change re-emits to Zoho, are both unanswered. So the control is hidden the
+ * same way the member area is, rather than pointed somewhere plausible.
+ *
+ * Flip this on the day an edit flow exists, and give the control its real
+ * destination at the same time.
+ */
+export const GROUP_EDIT_ENABLED: boolean = false
+
+/**
  * Whether someone the organiser declined may ask to join again.
  *
  * Open with the client. The Figma gives frame 46 ("Request not approved") no

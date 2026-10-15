@@ -32,6 +32,11 @@ const ROSTER_FOR_STATUS: Record<GroupStatus, RosterSize> = {
   quoting: 'filled',
   confirmed: 'filled',
   booked: 'filled',
+  closed_completed: 'filled',
+  // A group that closed without filling never had a full roster, so it renders
+  // with a partial one. This is the one terminal state where "everything past
+  // filled is a full group" is not true.
+  closed_unfilled: 'filling',
   closed: 'filled',
 }
 

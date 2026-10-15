@@ -35,6 +35,7 @@ import 'server-only'
  */
 
 import { serverEnv, isEmailDeliverySuppressed } from '@/config/serverEnv'
+import { appUrl } from '@/config/appUrl'
 import {
   MAGIC_LINK_TTL_MINUTES,
   EMAIL_VERIFICATION_TTL_MINUTES,
@@ -74,6 +75,21 @@ export type TemplateAlias = AccountAlias | ApprovalAlias
 interface TemplateModel {
   product_name: string
   action_url: string
+  /**
+   * The "get in touch" link in the client's templates.
+   *
+   * It was never sent, so Postmark rendered the link as `https://null/` — a
+   * dead link in the live sign-up flow (client finding 11, 2026-10-12). Charles
+   * read the Email verification template end to end on the 13th and confirmed
+   * the variable is `support_url`, that the phrase is in the template rather
+   * than the shared Basic layout, and that `action_url` is the only other
+   * variable in that email.
+   *
+   * Sent on all three account templates rather than only the one it was found
+   * in: they share a layout, the other two were not opened, and an unused key
+   * is ignored by Postmark. Cheaper than a second round of this.
+   */
+  support_url: string
   /** "15 minutes", "24 hours", "60 minutes" — see `expiresIn`. */
   expires_in: string
   name?: string
@@ -92,6 +108,9 @@ interface TemplateModel {
  */
 export interface ApprovalTemplateModel {
   product_name: string
+  /** As above. The four approval templates were not opened, so this is
+   *  pre-emptive — an unused key costs nothing. */
+  support_url?: string
   requester_name?: string
   organizer_name?: string
   route?: string
@@ -170,6 +189,9 @@ function buildModel(
   return {
     product_name: PRODUCT_NAME,
     action_url: actionUrl,
+    // Our own support page, which exists and is a public route. Absolute,
+    // because it is read from an inbox.
+    support_url: `${appUrl()}/support`,
     // Requested by the client 25 Aug. The templates render it when present and
     // fall back to their own wording when absent, so this cannot break a send —
     // it stops the lifetime in the copy drifting from the one we enforce. It is

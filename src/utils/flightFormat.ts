@@ -56,10 +56,20 @@ export function formatDateSelection(date: DateSelection): string {
   return `${start} – ${end}`
 }
 
-/** "2 adults" / "1 adult". */
+/**
+ * "2 travelers" / "1 traveler".
+ *
+ * Was "adults". Chuck, via Charles 2026-10-13: the screens stop asserting
+ * adult status, because it is confirmed through the Stage 1 eligibility check
+ * at the Join Request instead — the product has never asked anyone their age,
+ * so the word was a claim nothing behind it supported.
+ *
+ * American spelling, matching "traveler" everywhere else in this codebase and
+ * on the frames.
+ */
 export function formatTravelers(travelers: Traveler[]): string {
   const n = travelers.length
-  return `${n} ${n === 1 ? 'adult' : 'adults'}`
+  return `${n} ${n === 1 ? 'traveler' : 'travelers'}`
 }
 
 const PET_PLURALS: Record<string, string> = {

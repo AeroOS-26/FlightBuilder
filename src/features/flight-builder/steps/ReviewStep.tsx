@@ -172,7 +172,12 @@ export function ReviewStep() {
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <p className={reviewLabelClass}>Your trip so far</p>
+            {/* The label was "Your trip so far" — the side panel's title,
+                pasted into the wrong slot, so the cell read as if an advisor
+                were the trip (client, 2026-10-12, finding 23). The pair
+                summarises the handoff this card describes: who picks it up,
+                and what it costs. */}
+            <p className={reviewLabelClass}>Reviewed by</p>
             <p className={cn('mt-1', reviewValueClass)}>A Perro Air advisor</p>
           </div>
           <div>

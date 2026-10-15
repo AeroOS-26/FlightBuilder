@@ -28,9 +28,11 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Button } from '@/components/ui'
+import { Button, Dialog } from '@/components/ui'
 import { Icon } from '@/components/common'
 import { cn } from '@/utils/cn'
+import { GROUP_EDIT_ENABLED } from '@/config/features'
+import { TAP_TARGET } from '@/utils/tapTarget'
 import {
   FOOTER_ITEM,
   FOOTER_PRIMARY,
@@ -38,8 +40,10 @@ import {
   FOOTER_SECONDARY,
   TAG_ALERT,
   TAG_WAITING,
+  DIALOG_ITEM,
 } from './approvalChrome'
-import { metroLabel, readableDate } from '@/features/public-flight/format'
+import { decisionCopy } from './decisionCopy'
+import { formatDateRange, metroLabel, readableDate } from '@/features/public-flight/format'
 import Image from 'next/image'
 import {
   AVATAR,
@@ -91,7 +95,10 @@ function Dot() {
   return <span aria-hidden="true" className="size-1 shrink-0 rounded-full bg-[#000000]/60" />
 }
 
-/** A 40px square icon control. `tone` picks the red wash or the blue one. */
+/**
+ * A 40px square icon control — the frame's size, with a 44px hit area over it.
+ * `tone` picks the red wash or the blue one.
+ */
 function IconButton({
   label,
   icon,
@@ -119,6 +126,7 @@ function IconButton({
 
   const classes = cn(
     'flex size-10 shrink-0 items-center justify-center rounded-[12px] border transition-colors focus-ring',
+    TAP_TARGET,
     tint,
     disabled && 'cursor-not-allowed opacity-40 hover:bg-transparent',
   )
@@ -140,11 +148,39 @@ function IconButton({
 export function OrganiserRequestsView({ group, requests }: OrganiserRequestsViewProps) {
   const [busyId, setBusyId] = useState<number | null>(null)
   const [failure, setFailure] = useState<string | null>(null)
+  /**
+   * The decision waiting on a confirmation. Both buttons used to call `decide`
+   * directly, so a misclick on a 40px target was final — and a decline carries
+   * no reason by counsel's ruling, so it could not be undone or explained
+   * (client, 2026-10-12, finding 2). Nothing is sent until the dialog's second
+   * button.
+   */
+  const [confirming, setConfirming] = useState<{
+    id: number
+    decision: 'approve' | 'decline'
+  } | null>(null)
 
   const total = group.flight.spaces_total
   const remaining = Math.max(0, group.flight.spaces_remaining)
   const occupied = Math.max(0, total - remaining)
   const waiting = requests.length
+
+  // The request the dialog is about, resolved from the list rather than copied
+  // into state — so the places and the name shown in the confirmation are the
+  // ones the server will act on, not a snapshot taken when the button was hit.
+  const held = confirming ? requests.find((r) => r.id === confirming.id) ?? null : null
+  const confirmation =
+    confirming && held
+      ? {
+          ...confirming,
+          copy: decisionCopy(
+            confirming.decision,
+            held.requesterName ?? 'this member',
+            held.placesRequested,
+            remaining,
+          ),
+        }
+      : null
 
   async function decide(id: number, decision: 'approve' | 'decline') {
     setBusyId(id)
@@ -155,13 +191,20 @@ export function OrganiserRequestsView({ group, requests }: OrganiserRequestsView
       })
       if (!res.ok) {
         const body = (await res.json().catch(() => null)) as { message?: string } | null
+        // Close the confirmation first. The banner renders in the page body,
+        // and a native `showModal()` dialog makes that body inert — so leaving
+        // it open would show the organiser nothing at all and invite a second
+        // press of a button that had just failed.
+        setConfirming(null)
         setFailure(body?.message ?? 'That did not go through. Please try again.')
         return
       }
       // The roster, the counts and the remaining requests all move together, so
       // the page is re-read rather than patched in three places.
+      setConfirming(null)
       window.location.reload()
     } catch {
+      setConfirming(null)
       setFailure('Could not reach the server. Please try again.')
     } finally {
       setBusyId(null)
@@ -194,7 +237,7 @@ export function OrganiserRequestsView({ group, requests }: OrganiserRequestsView
           )}
         </div>
         <p className="font-sans text-[14px] font-medium leading-[1.5] text-[#000000]">
-          {readableDate(group.flight.departure_date)}
+          {formatDateRange(group.flight.estimated_date_range)}
           {group.flight.aircraft_category ? ` · ${group.flight.aircraft_category}` : ''} · You are
           the Group Organizer.{' '}
           {waiting > 0
@@ -304,7 +347,7 @@ export function OrganiserRequestsView({ group, requests }: OrganiserRequestsView
                       icon="close"
                       tone="danger"
                       disabled={busy}
-                      onClick={() => decide(request.id, 'decline')}
+                      onClick={() => setConfirming({ id: request.id, decision: 'decline' })}
                     />
                     <IconButton
                       label={
@@ -315,7 +358,7 @@ export function OrganiserRequestsView({ group, requests }: OrganiserRequestsView
                       icon="check"
                       tone="neutral"
                       disabled={oversized || busy}
-                      onClick={() => decide(request.id, 'approve')}
+                      onClick={() => setConfirming({ id: request.id, decision: 'approve' })}
                     />
                     <IconButton
                       label="Review request"
@@ -410,14 +453,55 @@ export function OrganiserRequestsView({ group, requests }: OrganiserRequestsView
         >
           Share The Group Link
         </button>
-        <Link
-          href="/build/review"
-          className={`${FOOTER_PRIMARY} ${FOOTER_ITEM}`}
-        >
-          Edit Trip Details
-          <Icon name="arrow-right" className="size-[18px]" />
-        </Link>
+        {/* Hidden rather than pointed at the creation flow — see
+            `GROUP_EDIT_ENABLED`. Keeping the `<Link>` also meant Next
+            prefetched `/build/review` on every load of this page. */}
+        {GROUP_EDIT_ENABLED && (
+          <Link href="/build/review" className={`${FOOTER_PRIMARY} ${FOOTER_ITEM}`}>
+            Edit Trip Details
+            <Icon name="arrow-right" className="size-[18px]" />
+          </Link>
+        )}
       </div>
+
+      {/*
+        One dialog for both decisions, mounted once rather than per row — the
+        request being decided is held in state, so eighteen waiting requests
+        still render one dialog.
+
+        The same component and the same sentences as frame 48B, from
+        `decisionCopy`: this screen and the detail screen must not describe the
+        same decision two ways.
+      */}
+      {confirmation && (
+        <Dialog
+          open
+          onClose={() => setConfirming(null)}
+          title={confirmation.copy.title}
+          actions={
+            <>
+              <button
+                type="button"
+                onClick={() => setConfirming(null)}
+                disabled={busyId !== null}
+                className={`${FOOTER_SECONDARY} ${DIALOG_ITEM}`}
+              >
+                {confirmation.copy.cancelLabel}
+              </button>
+              <button
+                type="button"
+                onClick={() => void decide(confirmation.id, confirmation.decision)}
+                disabled={busyId !== null}
+                className={`${FOOTER_PRIMARY} ${DIALOG_ITEM}`}
+              >
+                {confirmation.copy.confirmLabel}
+              </button>
+            </>
+          }
+        >
+          {confirmation.copy.body}
+        </Dialog>
+      )}
     </div>
   )
 }

@@ -16,9 +16,10 @@ import 'server-only'
  * against a request still showing as pending.
  */
 
-import { metroLabel } from '@/features/public-flight/format'
+import { formatDateRange, metroLabel } from '@/features/public-flight/format'
+import { appUrl } from '@/config/appUrl'
 import { pool } from '@/features/auth/server/db'
-import type { FlightGroupPet, Traveler } from '@/types'
+import type { EstimatedDateRange, FlightGroupPet, Traveler } from '@/types'
 import type { JoinRequestStatus, PerroCheckStatus } from '../requestState'
 
 export interface SubmitRequestInput {
@@ -519,6 +520,25 @@ export async function getRequestById(
 }
 
 /**
+ * The travel window as the formatters want it.
+ *
+ * `date_mode` is not read: a 'specific' group has `travel_date` and no range, a
+ * 'range' group has `earliest_date` and usually `latest_date`, and migration
+ * 0005's CHECK guarantees one of the two paths holds a value. Collapsing both
+ * ends onto the same day is what makes a specific date render as one date —
+ * `formatDateRange` prints a single day when the ends match.
+ */
+function dateWindow(row: {
+  travel_date: string | null
+  earliest_date: string | null
+  latest_date: string | null
+}): EstimatedDateRange {
+  const single = row.travel_date
+  if (single) return { earliest_date: single, latest_date: single }
+  return { earliest_date: row.earliest_date, latest_date: row.latest_date ?? row.earliest_date }
+}
+
+/**
  * What a pending requester may see of a group (frame 44).
  *
  * Counts and the flight's own facts, never the roster. Someone whose request is
@@ -532,7 +552,13 @@ export interface RequesterGroupView {
   originCode: string | null
   destinationCity: string
   destinationCode: string | null
-  departureDate: string | null
+  /**
+   * The travel window. A group created on a range held both ends all along —
+   * this read only ever selected `earliest_date`, so a 16–19 October group
+   * showed as the 16th on frames 44 and 46 while the join form showed the
+   * range correctly (client, 2026-10-12, finding 15).
+   */
+  departure: EstimatedDateRange
   aircraftCategory: string | null
   organizerName: string | null
   spacesTotal: number
@@ -549,6 +575,7 @@ export async function getRequesterGroupView(
     destination_airport_code: string | null
     travel_date: string | null
     earliest_date: string | null
+    latest_date: string | null
     aircraft_category: string | null
     spaces_total: number
     organizer_name: string | null
@@ -557,6 +584,7 @@ export async function getRequesterGroupView(
     `SELECT fg.origin_city, fg.origin_airport_code,
             fg.destination_city, fg.destination_airport_code,
             fg.travel_date::text AS travel_date, fg.earliest_date::text AS earliest_date,
+            fg.latest_date::text AS latest_date,
             fg.aircraft_category, fg.spaces_total,
             u.name AS organizer_name,
             COALESCE((SELECT SUM(m.seats_committed) FROM flight_group_member m
@@ -578,7 +606,7 @@ export async function getRequesterGroupView(
     originCode: row.origin_airport_code,
     destinationCity: row.destination_city,
     destinationCode: row.destination_airport_code,
-    departureDate: row.travel_date ?? row.earliest_date,
+    departure: dateWindow(row),
     aircraftCategory: row.aircraft_category,
     organizerName: row.organizer_name,
     spacesTotal: row.spaces_total,
@@ -592,6 +620,18 @@ export interface GroupEmailContext {
   departureDate: string
   organizerName: string | null
   organizerEmail: string | null
+  /**
+   * Where the two emails that carry a link send people: the group page.
+   *
+   * This was `flight_group.share_link`, the public join page — which carries no
+   * approve or decline controls, so the organiser's "Review the request"
+   * notification could not be acted on from its own link (client, 2026-10-12,
+   * finding 10). The requester's approved mail wants the same route, because
+   * that is where their participant view lives.
+   *
+   * Absolute, because it goes in an email. `/group/[groupId]` sends a signed-out
+   * reader through sign-in and back.
+   */
   groupLink: string
 }
 
@@ -610,13 +650,14 @@ export async function getGroupEmailContext(
     destination_city: string
     travel_date: string | null
     earliest_date: string | null
-    share_link: string
+    latest_date: string | null
     organizer_name: string | null
     organizer_email: string | null
   }>(
     `SELECT fg.origin_city, fg.destination_city,
             fg.travel_date::text AS travel_date, fg.earliest_date::text AS earliest_date,
-            fg.share_link, u.name AS organizer_name, u.email AS organizer_email
+            fg.latest_date::text AS latest_date,
+            u.name AS organizer_name, u.email AS organizer_email
        FROM flight_group fg
        LEFT JOIN users u ON u.id = fg.organizer_user_id
       WHERE fg.flight_group_id = $1`,
@@ -633,21 +674,16 @@ export async function getGroupEmailContext(
    * same label every screen shows. The raw stored date would render as
    * "on 2026-10-24" mid-sentence.
    */
-  const date = row.travel_date ?? row.earliest_date ?? ''
-  const parsed = date ? new Date(date) : null
   return {
     route: `${metroLabel(row.origin_city)} to ${metroLabel(row.destination_city)}`,
-    departureDate:
-      parsed && !Number.isNaN(parsed.getTime())
-        ? parsed.toLocaleDateString('en-US', {
-            month: 'long',
-            day: 'numeric',
-            year: 'numeric',
-          })
-        : date,
+    // `formatDateRange` rather than this function's own `toLocaleDateString`:
+    // one wording for the window across the screens and the four templates,
+    // and it parses the date as local rather than UTC — `new Date('2026-10-16')`
+    // is UTC midnight, which renders as the 15th anywhere behind it.
+    departureDate: formatDateRange(dateWindow(row)),
     organizerName: row.organizer_name,
     organizerEmail: row.organizer_email,
-    groupLink: row.share_link,
+    groupLink: `${appUrl()}/group/${encodeURIComponent(groupId)}`,
   }
 }
 
@@ -705,6 +741,20 @@ export async function recordPerroCheck(
   groupId: string,
   requestId: number,
   outcome: CheckOutcome,
+  /**
+   * When the reviewer actually decided, from the caller.
+   *
+   * Stored in `check_decided_at`, which until now was written with our own
+   * `NOW()` — the moment the callback reached us, not the moment Chuck or
+   * Sarah marked the queue. Those differ by however long the CRM took to send
+   * it, and the retention rules care about the decision. Agreed with the
+   * client: take this one, and leave `reviewed_by` and `reason_category` out —
+   * nothing reads them and no screen shows them.
+   *
+   * Null falls back to `NOW()`, so a caller that sends nothing behaves as
+   * before.
+   */
+  reviewedAt: Date | null = null,
 ): Promise<CheckRecorded | CheckRefusal> {
   const client = await pool.connect()
   try {
@@ -740,9 +790,9 @@ export async function recordPerroCheck(
 
     await client.query(
       `UPDATE join_request
-          SET check_status = $3, check_decided_at = NOW(), updated_at = NOW()
+          SET check_status = $3, check_decided_at = COALESCE($4, NOW()), updated_at = NOW()
         WHERE id = $1 AND flight_group_id = $2`,
-      [requestId, groupId, outcome],
+      [requestId, groupId, outcome, reviewedAt],
     )
 
     // Nothing to take back unless the organiser approved and the seat is still

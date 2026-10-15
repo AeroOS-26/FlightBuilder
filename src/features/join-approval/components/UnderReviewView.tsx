@@ -27,9 +27,14 @@
 
 import Link from 'next/link'
 import { Icon } from '@/components/common'
-import { MEMBER_AREA_ENABLED } from '@/config/features'
+import { BROWSE_FLIGHTS_ENABLED, MEMBER_AREA_ENABLED } from '@/config/features'
 import { DashedOutline } from '@/components/ui'
-import { aircraftRowValue, metroLabel, readableDate } from '@/features/public-flight/format'
+import {
+  aircraftRowValue,
+  formatDateRange,
+  metroLabel,
+  readableDate,
+} from '@/features/public-flight/format'
 import {
   FOOTER_ITEM,
   FOOTER_PRIMARY,
@@ -40,6 +45,7 @@ import {
   TAG_WAITING,
 } from './approvalChrome'
 import { RouteBand } from './RouteBand'
+import type { EstimatedDateRange } from '@/types'
 import type { ReactNode } from 'react'
 
 const SHELL = 'mx-auto flex w-full max-w-[804px] flex-col gap-[30px] px-4 py-8 sm:px-6'
@@ -57,7 +63,8 @@ export interface UnderReviewProps {
   originCode: string | null
   destinationCity: string
   destinationCode: string | null
-  departureDate: string | null
+  /** The travel window. A group created on a range shows both of its ends. */
+  departure: EstimatedDateRange
   aircraftCategory: string | null
   organizerName: string | null
   spacesTotal: number
@@ -104,7 +111,7 @@ export function UnderReviewView({
   originCode,
   destinationCity,
   destinationCode,
-  departureDate,
+  departure,
   aircraftCategory,
   organizerName,
   spacesTotal,
@@ -151,9 +158,11 @@ export function UnderReviewView({
         />
 
         <dl className={INNER}>
-          {departureDate && <Row label="Departure">{readableDate(departureDate)}</Row>}
+          {departure.earliest_date && (
+            <Row label="Departure">{formatDateRange(departure)}</Row>
+          )}
           {/* `aircraftRowValue` rather than a sentence of this screen's own:
-              "Confirmed at quote" is the locked label everywhere else the
+              "Pending operator quote" is the locked label everywhere else the
               aircraft is still unknown, and two wordings on adjacent screens
               read as two different facts. */}
           <Row label="Aircraft class">{aircraftRowValue(aircraftCategory)}</Row>
@@ -206,21 +215,28 @@ export function UnderReviewView({
       </section>
 
       <div className="flex flex-col items-center gap-5">
-        <div className={FOOTER_ROW}>
-          <Link href="/" className={`${FOOTER_SECONDARY} ${FOOTER_ITEM}`}>
-            Browse Shared Flights
-          </Link>
-          {/* Hidden again. There is no `/dashboard` route and no travellers
-              page, so both of these 404. They were shown on 2026-10-08 at the
-              client's request; put back behind `MEMBER_AREA_ENABLED` on 10-09
-              once that was seen live. One flag the day the pages exist. */}
-          {MEMBER_AREA_ENABLED && (
-            <Link href="/dashboard" className={`${FOOTER_PRIMARY} ${FOOTER_ITEM}`}>
-              Go To My Dashboard
-              <Icon name="arrow-right" className="size-[18px]" />
-            </Link>
-          )}
-        </div>
+          {/* The row itself is conditional: with both controls hidden an
+              empty centred gap reads as a rendering fault. */}
+        {(BROWSE_FLIGHTS_ENABLED || MEMBER_AREA_ENABLED) && (
+          <div className={FOOTER_ROW}>
+            {/* No browse surface exists yet — see `BROWSE_FLIGHTS_ENABLED`. */}
+            {BROWSE_FLIGHTS_ENABLED && (
+              <Link href="/" className={`${FOOTER_SECONDARY} ${FOOTER_ITEM}`}>
+                Browse Shared Flights
+              </Link>
+            )}
+            {/* Hidden again. There is no `/dashboard` route and no travellers
+                page, so both of these 404. They were shown on 2026-10-08 at the
+                client's request; put back behind `MEMBER_AREA_ENABLED` on 10-09
+                once that was seen live. One flag the day the pages exist. */}
+            {MEMBER_AREA_ENABLED && (
+              <Link href="/dashboard" className={`${FOOTER_PRIMARY} ${FOOTER_ITEM}`}>
+                Go To My Dashboard
+                <Icon name="arrow-right" className="size-[18px]" />
+              </Link>
+            )}
+          </div>
+        )}
         <p className="font-sans text-[14px] text-[#000000]">
           The Group Organizer reviews every request.
         </p>

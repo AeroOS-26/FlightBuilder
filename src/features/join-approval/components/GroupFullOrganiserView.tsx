@@ -20,7 +20,7 @@
 
 import Link from 'next/link'
 import { cn } from '@/utils/cn'
-import { metroLabel, readableDate } from '@/features/public-flight/format'
+import { formatDateRange, metroLabel } from '@/features/public-flight/format'
 import {
   AVATAR,
   ORGANISER_BADGE,
@@ -85,7 +85,7 @@ export function GroupFullOrganiserView({ group, filledBy, lapsed }: GroupFullOrg
           </span>
         </div>
         <p className="font-sans text-[14px] leading-[1.5] text-[#000000]/70">
-          {route} · {readableDate(group.flight.departure_date)}.{' '}
+          {route} · {formatDateRange(group.flight.estimated_date_range)}.{' '}
           {filledBy
             ? 'You approved the request that took the last place, so the group is closed to new requests.'
             : 'Every place is taken, so the group is closed to new requests.'}

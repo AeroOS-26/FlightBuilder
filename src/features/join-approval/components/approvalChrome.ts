@@ -17,6 +17,8 @@
  *    (`4031:39235`, `4034:39534`) on 2026-10-08.
  */
 
+import { TAP_TARGET } from '@/utils/tapTarget'
+
 /**
  * "Browse shared flights", "Share The Group Link".
  *
@@ -85,7 +87,8 @@ export const TAG_INFO =
  * mark before the label.
  */
 const ACTION_BASE =
-  'inline-flex min-h-10 items-center justify-center gap-2 rounded-[12px] px-3.5 py-2 text-center font-sans text-[14px] font-medium text-white transition-opacity hover:opacity-90 focus-ring disabled:cursor-not-allowed disabled:opacity-40'
+  'inline-flex min-h-10 items-center justify-center gap-2 rounded-[12px] px-3.5 py-2 text-center font-sans text-[14px] font-medium text-white transition-opacity hover:opacity-90 focus-ring disabled:cursor-not-allowed disabled:opacity-40 ' +
+  TAP_TARGET
 export const ACTION_DECLINE = `${ACTION_BASE} bg-[#D00416]`
 export const ACTION_APPROVE = `${ACTION_BASE} bg-[#109A51]`
 

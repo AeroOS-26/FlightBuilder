@@ -1,5 +1,5 @@
 import { cache } from 'react'
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import type { Metadata } from 'next'
 import { GroupDetailView } from '@/features/group/components/GroupDetailView'
 import { RefreshOnFocus } from '@/components/common'
@@ -80,8 +80,22 @@ export default async function GroupPage({ params }: GroupPageProps) {
   const { groupId } = await params
   const session = await auth()
 
+  /*
+   * Signed out goes to sign-in and comes back, rather than to the 404.
+   *
+   * The 404-not-403 rule below is about not telling a *signed-in* stranger
+   * whether a group exists. It never applied here: nobody has been identified
+   * yet, and sign-in leaks nothing — an organiser who signs in and is a member
+   * lands on their group, and anyone else falls through to the same 404 they
+   * would have had.
+   *
+   * The organiser's "Review the request" notification now points at this route
+   * (client, 2026-10-12, finding 10). Mail is read signed out as often as not,
+   * so without this the link whose whole purpose is to prompt a decision would
+   * answer "We couldn't find that page".
+   */
   if (!session?.user?.id) {
-    notFound()
+    redirect(`/signin?callbackUrl=${encodeURIComponent(`/group/${groupId}`)}`)
   }
 
   // A non-member gets 404, never 403 — the route must not confirm that a group

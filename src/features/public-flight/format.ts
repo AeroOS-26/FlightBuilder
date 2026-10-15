@@ -6,7 +6,7 @@
  * in one place.
  */
 
-import { formatLongDate } from '@/utils/date'
+import { formatLongDate, fromISODate } from '@/utils/date'
 import type { EstimatedDateRange } from '@/types'
 
 /** "San Francisco, California, United States" → "San Francisco". */
@@ -56,10 +56,21 @@ export function aircraftExample(category: string): string {
 /**
  * What a labelled AIRCRAFT row shows before an operator has quoted.
  *
- * Matches the register of the neighbouring COST row ("Estimate Pending"), and
- * says the same thing the public card's subline already says underneath.
+ * Sits beside the COST row's "Estimate Pending" and says the same thing: that
+ * nothing is settled.
+ *
+ * Was "Confirmed at quote" from 2026-09-10 until 2026-10-14. That string was
+ * ours rather than the design's — written for a labelled AIRCRAFT row that
+ * would otherwise render blank — and nobody approved the word, which is why
+ * counsel caught it: Workflow Spec 4.8 bars "confirmed" before a binding
+ * carrier commitment. The client searched the Flight Club page in Figma and
+ * confirmed the old string is not drawn anywhere, so no frame needed changing.
+ *
+ * Replacement supplied by the client, 2026-10-14. One constant, so it changes
+ * the join, under-review and approved screens, the group page and the public
+ * card together.
  */
-export const AIRCRAFT_PENDING_LABEL = 'Confirmed at quote'
+export const AIRCRAFT_PENDING_LABEL = 'Pending operator quote'
 
 /**
  * "2026-06-18" -> "June 18, 2026", the form every approval frame writes dates in.
@@ -68,9 +79,25 @@ export const AIRCRAFT_PENDING_LABEL = 'Confirmed at quote'
  * 49 read "18 June 2026" where its neighbours read "June 18, 2026". A value
  * that is not a date is returned untouched rather than rendered as
  * "Invalid Date".
+ *
+ * **A date-only string is read as a local date, not a UTC instant.** `new
+ * Date('2026-06-18')` is midnight *UTC* by specification, so formatting it in a
+ * zone behind UTC gave the 17th — and these callers are client components, so
+ * the zone is the reader's, not the server's. Every US viewer was one day out
+ * on "Asked", "Joined" and the departure rows. `fromISODate` reads the parts
+ * instead, which is what `formatLongDate` beside it has always done; the two
+ * now agree, where before a range row and an "Asked" row on the same screen
+ * could disagree by a day.
+ *
+ * Callers pass both shapes — `join_request.requested_at` arrives sliced to ten
+ * characters, `flight_group_member.joined_at` as a full ISO timestamp — so the
+ * form is detected rather than assumed. A timestamp names its own instant and
+ * is left to `Date`.
  */
+const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/
+
 export function readableDate(value: string): string {
-  const d = new Date(value)
+  const d = DATE_ONLY.test(value.trim()) ? fromISODate(value.trim()) : new Date(value)
   return Number.isNaN(d.getTime())
     ? value
     : d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
