@@ -141,6 +141,8 @@ export interface PetsErrors {
  * is what lets onboarding share these rules instead of restating them.
  */
 export interface TravelerPetInput {
+  /** Passed through to `validatePetList` — see `PetListInput.surface`. */
+  surface?: PetListInput['surface']
   travelers: Traveler[]
   pets: Pet[]
   petsEnabled: boolean
@@ -159,6 +161,31 @@ export interface PetListInput {
   readinessAccepted: boolean
   /** The pet cap is per traveller, so it needs the party size. */
   travelerCount: number
+  /**
+   * Which surface is asking, because a join request blocks on less than the
+   * Flight Builder does.
+   *
+   * Settled with the client 2026-10-16, and it is our call rather than theirs —
+   * nothing has ever been written about validation. A **request** validates on
+   * three things: type, weight and the service-animal answer.
+   *
+   *  - **Temperament** leaves the blocking set entirely. It has no home: the
+   *    client's Pets module has no field for it, and Chuck's Stage 1 collection
+   *    list names only type, weight and service animal. Those are the two
+   *    places it would live and it is in neither.
+   *  - **Breed** stays collected but stops blocking, because the module does
+   *    have somewhere to put it.
+   *
+   * Neither change touches the payload: `mapPet` already sends `null` for an
+   * unchosen temperament and `nullIfBlank` for breed, so an absent value
+   * travels as null exactly as the contract requires.
+   *
+   * Defaults to the stricter set, so the Flight Builder and the profile are
+   * unaffected until someone decides they should be. That question is open —
+   * the same argument applies to them — but it was not asked and is not
+   * assumed here.
+   */
+  surface?: 'request' | 'builder'
 }
 
 export type PetListErrors = Pick<PetsErrors, 'pets' | 'readiness' | 'petCount'>
@@ -181,6 +208,7 @@ export function validateTravelersAndPets(input: TravelerPetInput): PetsErrors {
     petsEnabled: input.petsEnabled,
     readinessAccepted: input.readinessAccepted,
     travelerCount: input.travelers.length,
+    surface: input.surface,
   })
 
   const hasAny =
@@ -208,9 +236,14 @@ export function validatePetList(input: PetListInput): PetListErrors {
       // — a cat needs a carrier, a dog a blanket — and weight can change the
       // aircraft or the price. Client, 2026-09-09.
       if (p.type.trim().length === 0) fieldErrors.type = 'Pet type is required.'
-      if (p.breed.trim().length === 0) fieldErrors.breed = 'Breed is required.'
       if (p.weight.trim().length === 0) fieldErrors.weight = 'Weight is required.'
-      if (p.temperament.length === 0) fieldErrors.temperament = 'Temperament is required.'
+      // Breed and temperament block on the builder and the profile, not on a
+      // request — see `surface` above. A request cannot be held up by a field
+      // the client's own record has nowhere to put.
+      if (input.surface !== 'request') {
+        if (p.breed.trim().length === 0) fieldErrors.breed = 'Breed is required.'
+        if (p.temperament.length === 0) fieldErrors.temperament = 'Temperament is required.'
+      }
       if (Object.keys(fieldErrors).length > 0) pets[p.id] = fieldErrors
     }
   }

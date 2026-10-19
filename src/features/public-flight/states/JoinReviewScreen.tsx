@@ -213,6 +213,9 @@ export function JoinReviewScreen({
       pets,
       petsEnabled,
       readinessAccepted: readiness,
+      // This screen is a join request, so it blocks on type, weight and the
+      // service-animal answer only — breed and temperament do not hold it up.
+      surface: 'request',
       ...over,
     })
 
@@ -418,41 +421,24 @@ export function JoinReviewScreen({
             ))}
 
             {/*
-              Adding a traveller and a pet at join time.
+              No add control here, for travellers or pets, and that is the
+              design rather than a decision of ours.
 
-              These were absent, which is the client's finding 4 of
-              2026-10-12. The design has them; leaving them out was our own
-              decision, recorded wrongly in this file as a client confirmation
-              — it was not one. Put back as warranty.
+              The client checked both frames of this screen on 2026-10-15,
+              desktop and mobile, and neither draws one — so there is nothing
+              to restore and nothing has regressed. It goes to the design side
+              if it is wanted. Do not build one to a guess.
 
-              It is also why requests went out with `readiness_accepted: false`:
-              the readiness confirmation only renders when the request has a
-              pet, and with nothing able to add one, a member whose saved
-              profile held no pets could never produce one.
-
-              The control is the one this screen already uses — the same dashed
-              add surface as the frame 40 block below, not a new treatment. Its
-              exact placement in the current drawing is Faraz's; this matches
-              what the screen already had.
+              One constraint for whoever does draw it, so it is not
+              rediscovered: `validatePetList` requires four fields on every pet
+              — type, breed, weight and temperament. This screen collects three
+              of them: type, weight and the service-animal answer. Pets from the
+              saved profile pass because the profile editor collects all four,
+              but a pet added here would start with breed and temperament empty,
+              fail validation, and show "complete the highlighted fields" over a
+              card with no field to complete. So an add-pet control needs those
+              two fields drawn with it.
             */}
-            {travelers.length < MAX_TRAVELERS && (
-              <button
-                type="button"
-                onClick={() => {
-                  const next = [...travelers, { id: nextId(), name: '', isFounder: false }]
-                  setTravelers(next)
-                  revalidate({ travelers: next })
-                }}
-                className={cn(
-                  'flex h-11 w-full items-center justify-center gap-2 font-sans text-[14px] font-medium text-[#112D7C] transition-colors hover:bg-[#CFE3F1]/30 focus-ring',
-                  dashedAddSurfaceClass,
-                )}
-              >
-                <DashedOutline />
-                <span className="relative">+ Add another traveler for this flight</span>
-              </button>
-            )}
-
             {pets.map((pet, i) => (
               <div key={pet.id} className="rounded-[16px] border border-[#A8A8A8]/40 bg-white p-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
@@ -577,25 +563,6 @@ export function JoinReviewScreen({
                 </div>
               </div>
             ))}
-
-            {/*
-              NO add-pet control here, deliberately, and it is not an oversight.
-
-              `validatePetList` requires four fields on every pet — type, breed,
-              weight and temperament. This screen collects three of them: type,
-              weight and the service-animal answer. Breed and temperament are
-              not drawn on it.
-
-              Pets that arrive from the saved profile pass, because the profile
-              editor collects all four. A pet added here would start with breed
-              and temperament empty, fail validation, and show the banner
-              "complete the highlighted fields" over a card with no field to
-              complete — the same dead end as the client's finding 14.
-
-              So adding a pet at join time needs those two fields on the screen
-              first, and that drawing is Faraz's. Raised with the client rather
-              than solved by putting our own fields on their frame.
-            */}
           </div>
         )}
 

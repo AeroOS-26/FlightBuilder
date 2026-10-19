@@ -131,20 +131,43 @@ function nextStepCopy(status: GroupStatus, spacesRemaining: number): string {
         : `${spacesRemaining} more members fill the group. Operator quotes get requested automatically.`
     case 'filled':
       return 'The group is full. We are requesting operator quotes now.'
-    // Chuck's wording, via Charles 2026-10-13, verbatim — capitalisation
-    // included. These are the two strings finding 18 was about: the previous
-    // Booked line read "Your booking is confirmed", which is the word Workflow
-    // Spec 4.8 bars before a binding carrier commitment.
+    /*
+     * Chuck's wording, verbatim, capitalisation included. Approved 2026-10-16
+     * after he checked it against counsel's own and kept it deliberately, so
+     * it is not loose phrasing to be tidied.
+     *
+     * PAGE ONLY. There is a separate rule on email, set by Chuck the same day:
+     * no automated email may say a charter, flight or aircraft is confirmed or
+     * booked, or that the Operator has confirmed anything. Only Chuck or Sarah
+     * send that, by hand, once his procedure's conditions are met.
+     *
+     * So his instruction of 13 October — that both sentences go on the page
+     * AND in the matching emails — is half withdrawn. The page half stands.
+     * The email half does not.
+     *
+     * When the deposit email is built, counsel's sentence goes underneath the
+     * deposit line, word for word, and in THAT EMAIL ONLY — Chuck was explicit
+     * it does not go on every customer email:
+     *
+     *   "Paying your deposit does not confirm that the flight is booked. Perro
+     *    Air will confirm the charter separately once the Charter Group is
+     *    fully funded and a binding commitment with the Direct Air Carrier is
+     *    in place."
+     */
     case 'quoting':
       return 'Your Contribution is ready. Pay your deposit to secure your participation.'
     case 'confirmed':
       return 'The quote is locked. Complete your booking to secure your space.'
-    // Chuck's condition: this appears only once there is a binding commitment
-    // from the operator. That is held by the status itself rather than by this
-    // function — `booked` is only ever set from Zoho, and nothing in the
-    // application can reach it (see `determineGroupStatus`, which returns only
-    // forming, filling or filled). It becomes reachable when
-    // `flight_group.status_changed` is built.
+    /*
+     * Appears only once the operator's binding commitment is recorded. That is
+     * held by the status rather than by this function — `booked` is only ever
+     * set from the CRM, and nothing in the application reaches it today (see
+     * `determineGroupStatus`, which returns only forming, filling or filled).
+     *
+     * BUILD NO EMAIL BEHIND THIS. Chuck, 2026-10-16: there is no automated
+     * email at this stage at all. The message telling a customer their charter
+     * is confirmed is sent by him or Sarah by hand.
+     */
     case 'booked':
       return 'The Operator has confirmed the aircraft. Final aircraft details and timing follow by email.'
     /*

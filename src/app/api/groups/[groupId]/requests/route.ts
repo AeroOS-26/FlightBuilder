@@ -78,6 +78,7 @@ export async function POST(
     petsEnabled: pets.length > 0,
     readinessAccepted,
     travelerCount: places,
+    surface: 'request',
   })
   if (hasPetListErrors(petErrors)) {
     return NextResponse.json(
