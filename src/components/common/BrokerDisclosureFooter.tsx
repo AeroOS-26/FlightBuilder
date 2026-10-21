@@ -17,9 +17,29 @@ const BROKER_DISCLOSURE =
   'Perro Air, LLC is an air charter broker arranging this charter under 14 CFR Part 295. ' +
   'The flight will be operated by a third-party direct air carrier, not by Perro Air, LLC.'
 
+/**
+ * Counsel's replacement, settled 2026-10-21.
+ *
+ * The sentence it replaces promised that every operator is certificated under
+ * FAA Part 135, 121 or 129. Perro Air will fly foreign carriers to Panama and
+ * Costa Rica, so the promise was wrong on a live page and counsel asked for it
+ * removed:
+ *
+ *   "Flights arranged by Perro Air, LLC and operated by direct air carriers
+ *    certified under FAA Part 135, 121 or 129. The operating carrier maintains
+ *    full operational control."
+ *
+ * `BROKER_DISCLOSURE` above is deliberately untouched. Counsel's position has
+ * two halves: use this operator sentence consistently across the general broker
+ * materials, and separately, trip-specific material must still identify Perro
+ * Air's particular role. This footer names the charter being arranged, so it is
+ * trip-specific and the role line stays.
+ *
+ * Copy is legal text. It is not to be reworded, shortened or reflowed.
+ */
 const OPERATOR_DISCLOSURE =
-  'Flights arranged by Perro Air, LLC and operated by direct air carriers certified under ' +
-  'FAA Part 135, 121 or 129. The operating carrier maintains full operational control.'
+  'Flights arranged by Perro Air, LLC are operated by properly licensed U.S. or foreign ' +
+  'direct air carriers that retain operational control of the aircraft.'
 
 export function BrokerDisclosureFooter() {
   return (
