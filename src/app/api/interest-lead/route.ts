@@ -24,7 +24,7 @@ import { NextResponse } from 'next/server'
 import { isPublicViewConfigured } from '@/config/serverEnv'
 import { forwardInterestLead } from '@/features/public-flight/data/leadWrite'
 import { fetchGroupPublicView } from '@/features/public-flight/data/fetchPublicView'
-import { isDelinked } from '@/features/public-flight/data/delinkedGroups'
+import { isClearedForPublic } from '@/features/public-flight/data/publicationControl'
 import { resolveGroupById } from '@/features/public-flight/data/sampleGroups'
 import { checkRateLimit } from '@/features/public-flight/data/rateLimit'
 import { clientKeyFrom } from '@/utils/clientKey'
@@ -43,12 +43,12 @@ interface ResolvedGroup {
  * The form sends the real group_id, but we also derive it from a slug for safety.
  */
 async function resolveGroup(groupId: string): Promise<ResolvedGroup | null> {
-  // The second public read path, and the one the share page's own interest form
-  // posts to. A de-linked group has to be unknown here too, or the page would
-  // be gone while the form behind it still accepted submissions against it —
-  // and the form is the part Chuck objected to. Same answer as an unknown
-  // group: null, which the caller turns into its existing rejection.
-  if (isDelinked(groupId)) return null
+  // Counsel's requirement covers submissions as well as pages: "the
+  // application must enforce the restriction on direct access and submissions,
+  // not merely hide a link or button." Without this the page would be closed
+  // while the form behind it still accepted posts against the group, and the
+  // form is the part Chuck objected to.
+  if (!isClearedForPublic(groupId)) return null
 
   if (isPublicViewConfigured()) {
     const id = groupIdFromSlug(groupId)

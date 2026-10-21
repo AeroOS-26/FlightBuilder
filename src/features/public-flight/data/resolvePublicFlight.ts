@@ -14,7 +14,7 @@
  */
 
 import { isPublicViewConfigured } from '@/config/serverEnv'
-import { isDelinked } from './delinkedGroups'
+import { isClearedForPublic } from './publicationControl'
 import { fetchGroupPublicView } from './fetchPublicView'
 import { resolveGroupByToken } from './sampleGroups'
 import { toPublicView } from './toPublicView'
@@ -31,21 +31,18 @@ export async function resolvePublicFlight(
   token: string,
 ): Promise<ResolvedPublicFlight> {
   /*
-   * Test groups taken off their public links, before any read.
+   * Closed unless this group has been cleared for public use.
    *
-   * Answered as not-found rather than with a status of its own: the caller
-   * already turns that into the "This flight link isn't available" page with a
-   * real 404, which is exactly what Chuck asked these to return, and a new
-   * status would be a third branch on every caller for no visible difference.
+   * This was a denylist of seventeen known test groups until 2026-10-15.
+   * Counsel: blocking only what we know about "does not address a test page
+   * still accessible through a direct URL." So the test is inverted — unlisted,
+   * unknown and newly created groups are all refused.
    *
-   * Ahead of the fetch deliberately, so a de-linked group is not read from Zoho
-   * at all — the point is that nothing about it reaches the public, including
-   * the tab title and the link preview, which resolve through this same
-   * function.
-   *
-   * Nothing is deleted and nothing in Zoho is touched. See `delinkedGroups`.
+   * Before the read, so a group that may not be served is never fetched from
+   * Zoho at all, including for the tab title and the link preview, which
+   * resolve through this same function. Nothing is deleted.
    */
-  if (isDelinked(token)) return { status: 'not_found' }
+  if (!isClearedForPublic(token)) return { status: 'not_found' }
 
   // Live read when the endpoint is configured. The URL carries the share slug;
   // the endpoint keys on group_id, so we derive one from the other here.
