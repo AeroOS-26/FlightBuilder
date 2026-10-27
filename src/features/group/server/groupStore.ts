@@ -15,6 +15,7 @@ import 'server-only'
 
 import { pool, queryOne } from '@/features/auth/server/db'
 import { getProfile } from '@/features/auth/server/profile'
+import { acknowledgmentWording } from './acknowledgmentWording'
 import type {
   FlightGroupCreatedEvent,
   FlightGroupPet,
@@ -33,6 +34,10 @@ type FlightGroupPayload = FlightGroupCreatedEvent['flight_group']
  * `accountId` is the `acct_` string rather than a key, and is stored as a
  * literal — see migration 0011 and §18. Null when the member has no account id
  * yet, which the route refuses rather than storing empty.
+ *
+ * The wording accepted is deliberately **not** a field here. It is resolved
+ * from `textVersion` inside the transaction below, so no caller — and
+ * therefore no request body — is in a position to supply it.
  */
 export interface OrganizerAcknowledgmentInput {
   accountId: string
@@ -161,16 +166,39 @@ export async function createFlightGroup({
     // read as a second acceptance, and the unique constraint would otherwise
     // roll the whole thing back.
     if (acknowledgment) {
+      /*
+       * The words themselves, resolved here rather than accepted from above.
+       *
+       * Counsel wants the accepted text frozen on the row instead of inferred
+       * later from code that has moved on (§37, migration 0013). Resolving it
+       * in the same function that writes the row is what makes that structural:
+       * the only input is the version the browser already sends, so nothing
+       * upstream can store wording that was never on a screen.
+       *
+       * Null when the version is not one this build ships — stored as null
+       * rather than replaced with the current text, which would be evidence of
+       * words nobody saw. See acknowledgmentWording and 0013's column comment.
+       */
+      const wording = acknowledgmentWording(acknowledgment.textVersion)
+      if (!wording) {
+        console.warn(
+          `Acknowledgment wording unresolved for ${flightGroup.group_id}: ` +
+            `text_version ${acknowledgment.textVersion} is not a wording this build ` +
+            'ships. The acceptance is recorded, with a null wording.',
+        )
+      }
+
       await client.query(
         `INSERT INTO organizer_acknowledgment
-           (flight_group_id, user_id, account_id, text_version)
-         VALUES ($1, $2, $3, $4)
+           (flight_group_id, user_id, account_id, text_version, wording)
+         VALUES ($1, $2, $3, $4, $5)
          ON CONFLICT (flight_group_id) DO NOTHING`,
         [
           flightGroup.group_id,
           Number(organizerUserId),
           acknowledgment.accountId,
           acknowledgment.textVersion,
+          wording,
         ],
       )
     }

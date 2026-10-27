@@ -126,6 +126,37 @@ export const GROUP_EDIT_ENABLED: boolean = false
 export const DECLINED_MAY_REQUEST_AGAIN: boolean = false
 
 /**
+ * Whether search engines may index this application.
+ *
+ * Chuck, 2026-10-23: *"keep the Flight Builder out of search engines until we
+ * open."* Off is that instruction. Flipping it to `true` on the day they open
+ * removes the robots.txt block and the noindex together — see
+ * `src/app/robots.ts` and the root layout's metadata.
+ *
+ * What was actually live when this was decided (§36, checked on the page rather
+ * than inferred): no `robots.txt` at all, no robots directive on any page, and
+ * no `X-Robots-Tag` — `next.config.ts` has no `headers()` and there is no
+ * middleware. The only noindex anywhere was Next's own on `notFound()`, so the
+ * pages carrying an instruction were exactly the ones that already 404.
+ *
+ * **Two mechanisms, deliberately, because crawlers divide into two kinds.** A
+ * crawler that reads robots.txt never fetches the page; one that ignores it
+ * fetches and finds the noindex. Neither alone covers both: robots.txt governs
+ * crawling and not indexing, and a noindex only works on a page a crawler was
+ * allowed to fetch.
+ *
+ * The known gap in that pairing: a URL discovered through an external link can
+ * be listed without its content while crawling is disallowed, because the
+ * noindex is never read. Nothing links here today — production carries no
+ * legal routes, every share page answers not-found while the cleared list is
+ * empty (§36), and preview addresses are noindexed by Vercel — so the pairing
+ * is the right way round for now. If the application is ever linked publicly
+ * while still closed, allow the crawl and keep the noindex, which is the
+ * ordering that removes a page already listed.
+ */
+export const SEARCH_INDEXING_ENABLED: boolean = false
+
+/**
  * Frame 09B — the Group Organizer acknowledgment between Review and the create.
  *
  * On: the Review CTA opens the acknowledgment, and the group is written only

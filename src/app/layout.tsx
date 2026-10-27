@@ -14,9 +14,23 @@ import type { Metadata } from 'next'
 import './globals.css'
 import { Providers } from './providers'
 import { defaultBrand } from '@/theme/brand'
+import { SEARCH_INDEXING_ENABLED } from '@/config/features'
 
 export const metadata: Metadata = {
   title: 'Perro Air · Create a Shared Flight',
+  /*
+   * Set here so it reaches every page without being remembered per route.
+   * Next merges metadata field by field down the tree, and no segment sets
+   * `robots` — the other exports carry a title and nothing else — so this is
+   * the directive on all of them, including the not-found pages that already
+   * carry Next's own.
+   *
+   * See SEARCH_INDEXING_ENABLED for why there is a noindex as well as a
+   * robots.txt. Undefined rather than `index: true` when indexing is on: the
+   * absence of a directive is what the default is, and asserting it would be a
+   * claim about intent on every page.
+   */
+  robots: SEARCH_INDEXING_ENABLED ? undefined : { index: false, follow: false },
 }
 
 export default function RootLayout({

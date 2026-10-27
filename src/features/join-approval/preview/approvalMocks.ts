@@ -17,6 +17,7 @@
 import { mockGroupFilling } from '@/services/mockData'
 import type { GroupDetailView, GroupDetailMember } from '@/types'
 import type { PendingRequest } from '../components/OrganiserRequestsView'
+import { organiserPetBits } from '../organiserPetView'
 
 function member(
   id: string,
@@ -102,6 +103,16 @@ export function mockParticipantGroup(): GroupDetailView {
   }
 }
 
+/**
+ * The pets on frame 47, as the frame draws them — Nube, a cat of 9lbs.
+ *
+ * Kept as the pet the frame shows rather than swapped for a dog to make the
+ * rule visible: the fixture's job is to reproduce the frame. What it does show
+ * is the rule applying — the weight is gone from the row, because the
+ * organiser only sees a weight for a dog (Chuck, §34).
+ */
+const MOCK_REQUEST_PETS = [{ name: 'Nube', type: 'Cat', weight_lbs: 9 }]
+
 /** The two requests on frame 47. Priya's is the oversized one. */
 export const MOCK_PENDING_REQUESTS: PendingRequest[] = [
   {
@@ -109,8 +120,10 @@ export const MOCK_PENDING_REQUESTS: PendingRequest[] = [
     requesterName: 'Tomás Iglesias',
     placesRequested: 1,
     travellerCount: 1,
-    petCount: 1,
-    petBits: ['Nube', 'Cat', '9lbs'],
+    petCount: MOCK_REQUEST_PETS.length,
+    // Through the same function the real screen uses, so the preview cannot
+    // show something production would not.
+    petBits: organiserPetBits(MOCK_REQUEST_PETS),
     requestedAt: '2026-06-09',
   },
   {
@@ -118,8 +131,8 @@ export const MOCK_PENDING_REQUESTS: PendingRequest[] = [
     requesterName: 'Priya Raman',
     placesRequested: 2,
     travellerCount: 1,
-    petCount: 1,
-    petBits: ['Nube', 'Cat', '9lbs'],
+    petCount: MOCK_REQUEST_PETS.length,
+    petBits: organiserPetBits(MOCK_REQUEST_PETS),
     requestedAt: '2026-06-09',
   },
 ]

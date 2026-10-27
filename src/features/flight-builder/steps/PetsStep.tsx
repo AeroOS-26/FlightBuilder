@@ -73,7 +73,7 @@ export function PetsStep() {
 
   const errors = submitted
     ? validatePets(draft)
-    : { travelers: {}, pets: {}, readiness: undefined, banner: undefined }
+    : { travelers: {}, travelerFields: {}, pets: {}, readiness: undefined, banner: undefined }
 
   const petsOnFlight = draft.petsEnabled && draft.pets.length > 0
 

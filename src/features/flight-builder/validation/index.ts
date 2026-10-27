@@ -10,6 +10,7 @@
 
 import { isPastDate } from '@/utils/date'
 import { MAX_PETS_PER_TRAVELER } from '../config/capacity'
+import { isPetType } from '../config/petOptions'
 import type { DateSelection, FlightDraft, Pet, RouteSelection, StepId, Traveler } from '@/types'
 
 /* ------------------------------------------------------------------ Route */
@@ -120,11 +121,40 @@ export interface PetFieldErrors {
   breed?: string
   weight?: string
   temperament?: string
+  /**
+   * This pet's own readiness confirmation. Request surface only.
+   *
+   * Separate from `PetListErrors.readiness`, which stays as it is: that one
+   * message belongs to the Flight Builder and Complete Profile, where a single
+   * confirmation covers the whole draft. On a join request each pet is asked
+   * its own question, so each pet needs its own answer back.
+   */
+  readiness?: string
+}
+
+/**
+ * Per-field errors for a traveller's Stage 1 answers.
+ *
+ * Separate from `PetsErrors.travelers`, which stays a single string per
+ * traveller for the name. Three screens read that string today — the builder's
+ * Pets step, Complete Profile and the Join Review name field — and reshaping it
+ * into an object to describe fields only one surface collects would break all
+ * three for no gain. The surface decides, as it already does for pets.
+ */
+export interface TravelerFieldErrors {
+  email?: string
+  nationality?: string
+  dateOfBirth?: string
+  /** One message for the pair: neither box ticked. */
+  age?: string
+  passportValidSixMonths?: string
 }
 
 export interface PetsErrors {
   banner?: string
   travelers: Record<string, string>
+  /** Stage 1 answers. Populated on the request surface only. */
+  travelerFields: Record<string, TravelerFieldErrors>
   pets: Record<string, PetFieldErrors>
   readiness?: string
   /** Breach of the three-pets-per-traveller cap. */
@@ -199,8 +229,68 @@ export function hasPetListErrors(errors: PetListErrors): boolean {
 /** The shared rules. `validatePets` is this, applied to a flight draft. */
 export function validateTravelersAndPets(input: TravelerPetInput): PetsErrors {
   const travelers: Record<string, string> = {}
+  const travelerFields: Record<string, TravelerFieldErrors> = {}
+
   for (const t of input.travelers) {
     if (t.name.trim().length === 0) travelers[t.id] = 'Full name required.'
+    if (input.surface !== 'request') continue
+
+    /*
+     * Stage 1, and only on the request. These fields exist on no other screen
+     * — the builder, the profile and the preview mocks all construct a
+     * traveller without them — so requiring them anywhere else would refuse a
+     * flight for an answer nobody was asked.
+     *
+     * Nothing below decides anything. The review is by hand, by Chuck or
+     * Sarah, and §21 is explicit that the product carries no eligibility logic
+     * and no automatic refusal. These are completeness checks: they say a box
+     * is empty, never that the answer in it is wrong.
+     */
+    const fieldErrors: TravelerFieldErrors = {}
+
+    if (!t.nationality?.trim()) fieldErrors.nationality = 'Nationality is required.'
+    if (!t.dateOfBirth?.trim()) fieldErrors.dateOfBirth = 'Date of birth is required.'
+
+    /*
+     * One of the two age boxes, not both and not neither.
+     *
+     * Requiring one is a completeness check rather than a judgment about
+     * anyone's eligibility, which is why it stays inside Chuck's rule that
+     * nothing in the product decides anything — Murtaza settled it on
+     * 2026-10-21 as form validation and therefore ours. The screen clears
+     * whichever box was not just ticked, so "both" is unreachable through the
+     * UI; this still refuses it, because a payload assembled another way
+     * should not be able to assert a contradiction into a manual review.
+     */
+    if (t.isAdult && t.guardianBookingForMinor) {
+      fieldErrors.age = 'Choose one: either the traveller is 18 or above, or a parent or guardian is booking for a minor.'
+    } else if (!t.isAdult && !t.guardianBookingForMinor) {
+      fieldErrors.age = 'Confirm the traveller is 18 or above, or that a parent or guardian is booking for them.'
+    }
+
+    if (!t.passportValidSixMonths) {
+      fieldErrors.passportValidSixMonths = 'Please confirm the passport validity.'
+    }
+
+    /*
+     * Email is checked for shape but NOT required, deliberately.
+     *
+     * It is on the screen because frame 42 draws it, not because Stage 1 asks
+     * for it — §21's list is five items and an email is not among them, and
+     * the join request shape Vivek sent has no email field at all. Whether it
+     * belongs in Stage 1 is with Chuck as of 2026-10-22. Until that comes
+     * back, refusing a request over a field nobody has required would be us
+     * deciding it.
+     *
+     * Traveller 1's address is validated separately on the screen, because it
+     * becomes the request's `contact_email` and has its own rules.
+     */
+    const email = t.email?.trim()
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      fieldErrors.email = 'Enter a valid email address.'
+    }
+
+    if (Object.keys(fieldErrors).length > 0) travelerFields[t.id] = fieldErrors
   }
 
   const { pets, readiness, petCount } = validatePetList({
@@ -213,6 +303,7 @@ export function validateTravelersAndPets(input: TravelerPetInput): PetsErrors {
 
   const hasAny =
     Object.keys(travelers).length > 0 ||
+    Object.keys(travelerFields).length > 0 ||
     Object.keys(pets).length > 0 ||
     Boolean(readiness) ||
     Boolean(petCount)
@@ -220,6 +311,7 @@ export function validateTravelersAndPets(input: TravelerPetInput): PetsErrors {
   return {
     banner: hasAny ? 'Please complete the highlighted fields before continuing.' : undefined,
     travelers,
+    travelerFields,
     pets,
     readiness,
     petCount,
@@ -236,6 +328,23 @@ export function validatePetList(input: PetListInput): PetListErrors {
       // — a cat needs a carrier, a dog a blanket — and weight can change the
       // aircraft or the price. Client, 2026-09-09.
       if (p.type.trim().length === 0) fieldErrors.type = 'Pet type is required.'
+      /*
+       * And it has to be one of the five.
+       *
+       * Unreachable through either screen — both pick from `PET_TYPES` — and
+       * that is the point: this is the rule for a request that did not come
+       * from the screen. Vivek's CDC dog requirement is created for dogs only,
+       * so a type outside the list is a pet whose compliance requirement
+       * silently never gets raised. Refusing it is the only honest answer,
+       * because nobody sees an absence.
+       *
+       * Every surface, not just the request. The Flight Builder has picked from
+       * this list since M1, so nothing it sends can fail here, and a stored pet
+       * is never re-validated. Checked rather than assumed before shipping it:
+       * read-only query on 2026-10-26 over every stored pet — join requests and
+       * members both — returns Dog, Cat, Bird, Rabbit, Other and nothing else.
+       */
+      else if (!isPetType(p.type.trim())) fieldErrors.type = 'Choose a pet type from the list.'
       if (p.weight.trim().length === 0) fieldErrors.weight = 'Weight is required.'
       // Breed and temperament block on the builder and the profile, not on a
       // request — see `surface` above. A request cannot be held up by a field
@@ -270,8 +379,32 @@ export function validatePetList(input: PetListInput): PetListErrors {
    */
   const needsReadiness =
     input.petsEnabled && input.pets.some((pet) => !pet.serviceAnimal)
+
+  /*
+   * On a join request the confirmation is per pet, so it is checked per pet.
+   *
+   * The three-pet frame settles that each card carries its own "I agree", and
+   * a service animal is never asked at all — so it is skipped here rather than
+   * defaulted to false. Skipping and failing are different facts, and this is
+   * the rule that keeps the blank in the payload honest.
+   *
+   * Everywhere else keeps the single message below. The builder and Complete
+   * Profile ask once for a whole draft and have no per-pet question, so a
+   * per-pet rule there would fail on an answer nobody was offered.
+   */
+  if (input.surface === 'request' && input.petsEnabled) {
+    for (const pet of input.pets) {
+      if (pet.serviceAnimal) continue
+      if (pet.readinessAccepted) continue
+      pets[pet.id] = {
+        ...(pets[pet.id] ?? {}),
+        readiness: 'Please confirm travel readiness for this pet.',
+      }
+    }
+  }
+
   const readiness =
-    needsReadiness && !input.readinessAccepted
+    input.surface !== 'request' && needsReadiness && !input.readinessAccepted
       ? 'Please confirm Travel Readiness before continuing.'
       : undefined
 

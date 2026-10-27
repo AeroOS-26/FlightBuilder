@@ -90,7 +90,25 @@ export interface JoinRequestResponse {
 export async function requestToJoin(
   groupId: string,
   { travelers, pets, readinessAccepted, email }: {
-    travelers: { id: string; name: string }[]
+    /**
+     * The travellers as the request carries them, Stage 1 answers included.
+     *
+     * This used to be `{ id, name }` and nothing else, which silently dropped
+     * every Stage 1 field between the screen and the endpoint — the person
+     * filled them in and they went no further than the browser. Typed
+     * explicitly rather than as `Traveler[]` so that what crosses the wire is
+     * a decision rather than whatever the type happens to grow next.
+     */
+    travelers: {
+      id: string
+      name: string
+      email?: string
+      nationality?: string
+      dateOfBirth?: string
+      isAdult?: boolean
+      guardianBookingForMinor?: boolean
+      passportValidSixMonths?: boolean
+    }[]
     pets: unknown[]
     /** Frame 42's contact address, when the requester changed it. */
     email?: string

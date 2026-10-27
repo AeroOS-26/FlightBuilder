@@ -197,8 +197,28 @@ function parsePets(raw: unknown): Pet[] | null {
     // Zoho side (client, 2026-09-29), so `mapPet` does not carry it yet.
     // Anything other than an explicit true is false — an absent flag is
     // not a claim.
-    const serviceAnimal = fields.service_animal === true
-    pets.push({ id: `pet-${index}`, name, type, breed, weight, temperament, serviceAnimal })
+    // Both spellings, for the reason the requests route gives at length: the
+    // client posts the `Pet` object straight through and its key is
+    // `serviceAnimal`, so reading only the snake-cased one turned every yes
+    // into a no. This path is behind APPROVAL_FLOW_ENABLED and is not the one
+    // running today, but it reads the same bodies and should not be left
+    // carrying the same fault.
+    const serviceAnimal = fields.serviceAnimal === true || fields.service_animal === true
+    // Per-pet readiness, carried through for the same reason as above. This
+    // path still passes a single flag into `mapPet`, which is the fallback —
+    // a pet that brought its own answer wins over it.
+    const readinessAccepted =
+      fields.readinessAccepted === true || fields.readiness_accepted === true ? true : undefined
+    pets.push({
+      id: `pet-${index}`,
+      name,
+      type,
+      breed,
+      weight,
+      temperament,
+      serviceAnimal,
+      readinessAccepted,
+    })
   }
   return pets
 }

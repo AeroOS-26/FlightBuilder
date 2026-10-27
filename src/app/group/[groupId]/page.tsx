@@ -16,6 +16,7 @@ import {
 } from '@/features/join-approval/server/joinRequestStore'
 import { UnderReviewView } from '@/features/join-approval/components/UnderReviewView'
 import { ApprovedParticipantView } from '@/features/join-approval/components/ApprovedParticipantView'
+import { organiserPetBits } from '@/features/join-approval/organiserPetView'
 import { OrganiserRequestsView } from '@/features/join-approval/components/OrganiserRequestsView'
 import { GroupFullOrganiserView } from '@/features/join-approval/components/GroupFullOrganiserView'
 import { metroLabel } from '@/features/public-flight/format'
@@ -184,11 +185,12 @@ export default async function GroupPage({ params }: GroupPageProps) {
             // Flattened, because frame 47 separates every descriptor with its
             // own dot — "1 pet · Nube · Cat · 9lbs" — rather than joining each
             // animal into a single label.
-            petBits: request.pets.flatMap((pet) =>
-              [pet.name, pet.type, pet.weight_lbs ? `${pet.weight_lbs}lbs` : null].filter(
-                (bit): bit is string => Boolean(bit),
-              ),
-            ),
+            //
+            // The weight now appears for dogs only (Chuck, §34). It was shown
+            // for every pet, so this screen was putting a cat's weight in front
+            // of the organiser — see `organiserPetBits`, which holds the rule
+            // for all three places that show a pet to one.
+            petBits: organiserPetBits(request.pets),
             requestedAt: request.requestedAt.toISOString().slice(0, 10),
           }))}
         />

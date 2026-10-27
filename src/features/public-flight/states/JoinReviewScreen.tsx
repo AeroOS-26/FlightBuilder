@@ -30,15 +30,22 @@ import {
   dashedAddSurfaceClass,
 } from '@/components/ui'
 import { Icon, PawPrints, RouteHeading } from '@/components/common'
+import { InfoTooltip } from '@/components/ui/InfoTooltip'
 import { APPROVAL_FLOW_ENABLED } from '@/config/features'
+import { NATIONALITY_OPTIONS } from '@/features/flight-builder/config/nationalities'
+import {
+  STAGE1_HELP,
+  STAGE1_CONFIRMATIONS,
+  PASSPORT_NAME_LABEL,
+} from '@/features/flight-builder/config/stage1Help'
 import { requestToJoin } from '@/services/groupDataService'
 import { PetCard } from '@/features/flight-builder/steps/pets/PetCard'
-import { WEIGHT_OPTIONS } from '@/features/flight-builder/config/petOptions'
+import { PET_TYPES, WEIGHT_OPTIONS } from '@/features/flight-builder/config/petOptions'
 import { TravelerCard } from '@/features/flight-builder/steps/pets/TravelerCard'
 import { validateTravelersAndPets } from '@/features/flight-builder/validation'
 import { validateEmail } from '@/features/auth/validation'
 import type { PetsErrors } from '@/features/flight-builder/validation'
-import { MAX_TRAVELERS } from '@/features/flight-builder/config/capacity'
+import { MAX_TRAVELERS, MAX_PETS_PER_TRAVELER } from '@/features/flight-builder/config/capacity'
 import { joinGroup } from '@/services/groupDataService'
 import { metroLabel, formatDateRange, aircraftRowValue } from '../format'
 import { cn } from '@/utils/cn'
@@ -49,6 +56,133 @@ const CARD = 'rounded-[20px] border border-[#A8A8A8]/20 bg-white/60 p-5'
 const HEADING = 'font-heading text-[20px] font-semibold leading-[1.21] text-[#000000]'
 const MUTED = 'font-sans text-[14px] font-medium leading-[1.3] text-[#000000]/70'
 const LABEL = 'font-sans text-[12px] font-medium leading-[1.21] text-[#080B2B]/60'
+
+/**
+ * A field label, with the help icon only where there are words for it.
+ *
+ * The frames draw the icon on all six text fields; three have copy and three
+ * do not. Rendering it on the other three would put a control on the page that
+ * opens nothing, which is the thing `config/features.ts` already refuses
+ * elsewhere. So `help` is optional and its absence removes the icon rather
+ * than showing an empty one.
+ */
+function FieldLabel({ children, help }: { children: ReactNode; help?: string }) {
+  return (
+    <span className="flex items-center gap-1.5">
+      <span className={LABEL}>{children}</span>
+      {help && <InfoTooltip>{help}</InfoTooltip>}
+    </span>
+  )
+}
+
+/**
+ * The "nothing here yet" block, shared by the two that need it.
+ *
+ * Both empty states — the pets list and travel readiness — are drawn
+ * identically, so they are rendered from one place rather than two that can
+ * drift. Measured off 4836:50923 rather than eyeballed:
+ *
+ *   icon      44 × 44, centred
+ *   gap       24 between the icon and the text
+ *   text      20px heading, 14px line beneath it, 8 between them
+ *   colour    #000000 at FULL opacity on both lines, not the 70% used for
+ *             muted copy elsewhere on this screen
+ *   padding   20 top and bottom, 16 either side
+ */
+function EmptyState({ heading, line }: { heading: string; line: string }) {
+  return (
+    <div className="flex flex-col items-center gap-6 rounded-[16px] border border-dashed border-[#98C3E1] bg-[#CFE3F1]/10 px-4 py-5 text-center">
+      <Image
+        src="/images/routes/popup%20icon.png"
+        alt=""
+        aria-hidden="true"
+        width={44}
+        height={44}
+        className="size-[44px] shrink-0"
+      />
+      <div className="flex flex-col gap-2">
+        <p className="font-heading text-[20px] font-medium leading-[1.2] text-[#000000]">
+          {heading}
+        </p>
+        <p className="font-sans text-[14px] font-medium leading-[1.2] text-[#000000]">{line}</p>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Remove Traveler / Remove Pet.
+ *
+ * One component for both, because the frames draw them identically apart from
+ * the word. Measured off 4031:37870 rather than approximated:
+ *
+ *   height    40, corner 12
+ *   padding   12 left, 14 right, 8 between icon and label
+ *   fill      #E96A6F at 10%
+ *   border    #E96A6F, 1px
+ *   label     14px, #D00416 — the project's danger text
+ *   icon      18 × 18, a bin rather than a cross
+ *
+ * The bin matters. A cross reads as "close this"; these delete a traveller or
+ * a pet from the request, and the design says so.
+ */
+function RemoveButton({ label, onClick }: { label: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'inline-flex h-10 shrink-0 items-center gap-2 rounded-[12px] pl-3 pr-[14px]',
+        'border border-[#E96A6F] bg-[#E96A6F]/10',
+        'font-sans text-[14px] font-medium text-danger-text',
+        'transition-colors hover:bg-[#E96A6F]/20 focus-ring',
+      )}
+    >
+      <Icon name="trash" className="size-[18px] shrink-0" />
+      {label}
+    </button>
+  )
+}
+
+/**
+ * The field box, so the six inputs cannot drift apart.
+ *
+ * Same 40px and 14px as `FIELD_SHELL` below, and for the same reason: this is
+ * the date of birth, one of the six, and it sat 4px taller than the
+ * nationality list beside it.
+ */
+const FIELD_BASE =
+  'h-10 w-full rounded-[12px] border bg-white px-[14px] font-sans text-[14px] text-[#000000] focus-ring'
+/**
+ * A field that carries a trailing icon, as the frames draw the passport name
+ * and email. The border moves to the wrapper so the icon sits inside it, and
+ * the focus ring follows the same `focus-within` treatment the pet
+ * name-and-type field already uses.
+ *
+ * The glyphs are stroked #112D7C on the frame — the navy, not a grey.
+ *
+ * **40px tall and 14px in**, which is both the frame and the house primitives.
+ * It was `h-11 px-3` — 44 and 12 — and that was wrong twice over: the frame's
+ * Input is 40 tall with 14px of left padding on every field of this card
+ * (`4835:50402`, Figma's own auto-layout numbers), and `TextInput` and
+ * `Select` have carried `min-h-[40px] pl-[14px]` since they were written.
+ *
+ * It showed the moment the pet row became three fields — the Name input is
+ * this shell and Type and Weight are the shared `Select`, so one row held a
+ * 44px box beside two 40px ones.
+ *
+ * 40 is not a tap-target problem. `utils/tapTarget.ts` settled that: "forty
+ * square *is* the frame", and the extra hit area is carried by an invisible
+ * pseudo-element rather than by growing a painted box.
+ */
+const FIELD_SHELL =
+  'flex h-10 w-full items-center gap-2 rounded-[12px] border bg-white px-[14px] focus-within:ring-2 focus-within:ring-[#112D7C]/20'
+const FIELD_INPUT =
+  'h-full min-w-0 flex-1 bg-transparent font-sans text-[14px] text-[#000000] outline-none'
+const FIELD_ICON = 'size-4 shrink-0 text-[#112D7C]'
+
+const FIELD_BORDER = (invalid: boolean) =>
+  invalid ? 'border-danger-text' : 'border-[#98C3E1]'
 
 let seq = 0
 const nextId = () => `local-${++seq}`
@@ -95,49 +229,6 @@ function SummaryRow({ label, children }: { label: string; children: React.ReactN
         {children}
       </span>
     </div>
-  )
-}
-
-/**
- * An input exactly as wide as the text it holds.
- *
- * The pet field reads as one line — "Molly · Dog" — so the name has to end
- * where the dot begins, instead of taking half the field and stranding the pair
- * in the middle. `field-sizing: content` would do this in one declaration but is
- * not in every browser a member may arrive with, so this is the mirror instead:
- * an invisible span holding the same text sizes the box, and the input is laid
- * over it.
- *
- * Two details are load-bearing. The span must carry the input's exact font and
- * size or the two drift apart, and the input must be **absolutely positioned**
- * — an in-flow input contributes its own intrinsic width, which Chrome floors at
- * roughly 47px however small `size` is, so the box would never narrow past that.
- * Out of flow, only the mirror sizes it.
- */
-function AutoWidthInput({
-  value,
-  placeholder,
-  label,
-  onChange,
-}: {
-  value: string
-  placeholder: string
-  label: string
-  onChange: (value: string) => void
-}) {
-  return (
-    <span className="relative inline-flex min-w-0 shrink items-center self-stretch">
-      <span aria-hidden="true" className="invisible whitespace-pre font-sans text-[14px]">
-        {value || placeholder}
-      </span>
-      <input
-        value={value}
-        placeholder={placeholder}
-        aria-label={label}
-        onChange={(e) => onChange(e.target.value)}
-        className="absolute inset-0 w-full min-w-0 bg-transparent font-sans text-[14px] text-[#000000] outline-none"
-      />
-    </span>
   )
 }
 
@@ -246,7 +337,20 @@ export function JoinReviewScreen({
       // for the pre-approval path, which is still what runs today.
       if (APPROVAL_FLOW_ENABLED) {
         const sent = await requestToJoin(flight.group_id, {
-          travelers: travelers.map((t) => ({ id: t.id, name: t.name })),
+          // Named one by one rather than spread, so adding a field to
+          // `Traveler` never puts something on the wire by accident. This
+          // carried only the id and the name until now, which dropped every
+          // Stage 1 answer between here and the endpoint.
+          travelers: travelers.map((t) => ({
+            id: t.id,
+            name: t.name,
+            email: t.email,
+            nationality: t.nationality,
+            dateOfBirth: t.dateOfBirth,
+            isAdult: t.isAdult,
+            guardianBookingForMinor: t.guardianBookingForMinor,
+            passportValidSixMonths: t.passportValidSixMonths,
+          })),
           pets: petsEnabled ? pets : [],
           readinessAccepted: readiness,
           // What they typed on frame 42 becomes `requester.email` on the
@@ -347,35 +451,70 @@ export function JoinReviewScreen({
                     Traveler {i + 1}
                     {t.isFounder && <span className="text-[#000000]/60"> (You)</span>}
                   </p>
-                  {t.isFounder && (
+                  {t.isFounder ? (
                     <span className="inline-flex shrink-0 items-center rounded-[8px] border border-[#98C3E1] bg-[#CFE3F1]/40 px-2.5 py-1.5 font-sans text-[11px] font-medium uppercase tracking-[0.5px] text-[#112D7C]">
                       Primary
                     </span>
+                  ) : (
+                    /*
+                      Removal is immediate, with no confirmation, because that
+                      is what the frames draw. They show the control and no
+                      dialog behind it, and this is an unsent form rather than
+                      a decision that fires anything — the opposite of frame
+                      48B, where the confirmation exists because approving
+                      seats someone and cannot be undone.
+
+                      What it does cost is any Stage 1 detail already typed for
+                      this person, which goes silently. If that should be
+                      guarded it is a screen to draw rather than a dialog for
+                      me to invent.
+
+                      Traveller 1 has no remove at all: they are the person
+                      making the request.
+                    */
+                    <RemoveButton
+                      label="Remove Traveler"
+                      onClick={() => {
+                        const next = travelers.filter((x) => x.id !== t.id)
+                        setTravelers(next)
+                        revalidate({ travelers: next })
+                      }}
+                    />
                   )}
                 </div>
-                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                {/* 16px between fields and between rows, and 16px from the
+                    header above — the card's auto-layout gap on the frame is
+                    16 throughout, and this was 12. */}
+                <div className="mt-4 grid gap-4 sm:grid-cols-2">
                   <label className="flex min-w-0 flex-col gap-1.5">
-                    <span className={LABEL}>Full name</span>
+                    <FieldLabel help={STAGE1_HELP.passportName}>
+                      {PASSPORT_NAME_LABEL}
+                    </FieldLabel>
                     {/* `size={1}` for the same reason as the pet type below:
                         an input's default 20-character intrinsic width is what
                         the grid column takes as its minimum, which pushed this
                         pair past the card edge on a 320px phone. */}
-                    <input
-                      size={1}
-                      value={t.name}
-                      aria-invalid={Boolean(errors?.travelers[t.id])}
-                      onChange={(e) => {
-                        const next = travelers.map((x) =>
-                          x.id === t.id ? { ...x, name: e.target.value } : x,
-                        )
-                        setTravelers(next)
-                        revalidate({ travelers: next })
-                      }}
+                    <span
                       className={cn(
-                        'h-11 rounded-[12px] border bg-white px-3 font-sans text-[14px] text-[#000000] focus-ring',
-                        errors?.travelers[t.id] ? 'border-danger-text' : 'border-[#98C3E1]',
+                        FIELD_SHELL,
+                        FIELD_BORDER(Boolean(errors?.travelers[t.id])),
                       )}
-                    />
+                    >
+                      <input
+                        size={1}
+                        value={t.name}
+                        aria-invalid={Boolean(errors?.travelers[t.id])}
+                        onChange={(e) => {
+                          const next = travelers.map((x) =>
+                            x.id === t.id ? { ...x, name: e.target.value } : x,
+                          )
+                          setTravelers(next)
+                          revalidate({ travelers: next })
+                        }}
+                        className={FIELD_INPUT}
+                      />
+                      <Icon name="user" className={FIELD_ICON} />
+                    </span>
                     {/* The banner says "complete the highlighted fields", so a
                         field that fails has to be the one that highlights. This
                         message used to render only on the frame-40 card below,
@@ -388,134 +527,392 @@ export function JoinReviewScreen({
                       </span>
                     )}
                   </label>
-                  {/* Only the account holder has one. Everyone else on the party
-                      is a name with no account, so there is nothing to show. */}
-                  {t.isFounder && (
-                    <label className="flex min-w-0 flex-col gap-1.5">
-                      <span className={LABEL}>Email</span>
+                  {/*
+                    Email, now on every traveller rather than the account
+                    holder alone — frame 42 draws it on each card.
+
+                    Traveller 1 stays bound to the existing `email` state
+                    deliberately. That value is what becomes the request's
+                    `contact_email`, the address the decision is sent to, and
+                    migration 0010 exists precisely so an edit here does not
+                    silently change the address someone signs in with. Moving
+                    it onto the traveller object would have re-routed that for
+                    no gain. Everyone else carries their own on the record.
+                  */}
+                  <label className="flex min-w-0 flex-col gap-1.5">
+                    <FieldLabel>Email</FieldLabel>
+                    <span
+                      className={cn(
+                        FIELD_SHELL,
+                        FIELD_BORDER(
+                          t.isFounder
+                            ? Boolean(emailError)
+                            : Boolean(errors?.travelerFields[t.id]?.email),
+                        ),
+                      )}
+                    >
                       <input
                         size={1}
                         type="email"
-                        value={email}
-                        aria-invalid={Boolean(emailError)}
+                        value={t.isFounder ? email : (t.email ?? '')}
+                        aria-label={`Email for traveller ${i + 1}`}
+                        aria-invalid={t.isFounder ? Boolean(emailError) : undefined}
                         onChange={(e) => {
-                          setEmail(e.target.value)
-                          // Clear as soon as it is valid, so the message does
-                          // not sit there while someone is fixing it.
-                          if (emailError) setEmailError(validateEmail(e.target.value))
+                          if (t.isFounder) {
+                            setEmail(e.target.value)
+                            // Clear as soon as it is valid, so the message does
+                            // not sit there while someone is fixing it.
+                            if (emailError) setEmailError(validateEmail(e.target.value))
+                            return
+                          }
+                          const next = travelers.map((x) =>
+                            x.id === t.id ? { ...x, email: e.target.value } : x,
+                          )
+                          setTravelers(next)
+                          revalidate({ travelers: next })
                         }}
-                        className={cn(
-                          'h-11 rounded-[12px] border bg-white px-3 font-sans text-[14px] text-[#000000] focus-ring',
-                          emailError ? 'border-danger-text' : 'border-[#98C3E1]',
-                        )}
+                        className={FIELD_INPUT}
                       />
-                      {emailError && (
-                        <span className="font-sans text-[12px] text-danger-text">
-                          {emailError}
-                        </span>
+                      <Icon name="mail" className={FIELD_ICON} />
+                    </span>
+                    {t.isFounder && emailError && (
+                      <span className="font-sans text-[12px] text-danger-text">
+                        {emailError}
+                      </span>
+                    )}
+                    {!t.isFounder && errors?.travelerFields[t.id]?.email && (
+                      <span className="font-sans text-[12px] text-danger-text">
+                        {errors.travelerFields[t.id].email}
+                      </span>
+                    )}
+                  </label>
+
+                  {/*
+                    Nationality. A list rather than a typed field, because it
+                    feeds the manual review and typed entries would give four
+                    spellings of one country (Murtaza, 2026-10-20). The stored
+                    value is the ISO alpha-2 code, which is the form the join
+                    request shape asks for; the label is only what is read.
+                  */}
+                  <label className="flex min-w-0 flex-col gap-1.5">
+                    <FieldLabel help={STAGE1_HELP.nationality}>Nationality</FieldLabel>
+                    <Select
+                      options={[...NATIONALITY_OPTIONS]}
+                      placeholder="Select nationality"
+                      value={t.nationality ?? ''}
+                      aria-label={`Nationality for traveller ${i + 1}`}
+                      invalid={Boolean(errors?.travelerFields[t.id]?.nationality)}
+                      onChange={(e) => {
+                        const next = travelers.map((x) =>
+                          x.id === t.id ? { ...x, nationality: e.target.value } : x,
+                        )
+                        setTravelers(next)
+                        revalidate({ travelers: next })
+                      }}
+                    />
+                    {errors?.travelerFields[t.id]?.nationality && (
+                      <span className="font-sans text-[12px] text-danger-text">
+                        {errors.travelerFields[t.id].nationality}
+                      </span>
+                    )}
+                  </label>
+
+                  {/*
+                    Date of birth as a native date input, and that is the point
+                    rather than a shortcut.
+
+                    The frames write the dates day-first — 24/10/1992,
+                    14/03/1988 — and Murtaza raised on 2026-10-20 that on a US
+                    booking form someone entering 3 November types 11/03 and we
+                    read 11 March. A native date field removes the ambiguity at
+                    both ends: the browser renders it in the reader's own
+                    locale, and the value it hands back is always YYYY-MM-DD,
+                    which is the form that is stored and sent.
+
+                    The shared `Calendar` is not usable here. It disables past
+                    days outright and will not page back beyond the current
+                    month, because it was built to pick a flight date. Teaching
+                    it to go back decades means changing a component the
+                    signed-off Dates step depends on, which is a larger change
+                    than this field deserves.
+                  */}
+                  <label className="flex min-w-0 flex-col gap-1.5">
+                    <FieldLabel help={STAGE1_HELP.dateOfBirth}>Date of birth</FieldLabel>
+                    <input
+                      size={1}
+                      type="date"
+                      value={t.dateOfBirth ?? ''}
+                      aria-label={`Date of birth for traveller ${i + 1}`}
+                      // Nobody travelling is older than this or born tomorrow.
+                      // A bound the browser enforces costs nothing and catches
+                      // the slipped keystroke before validation has to.
+                      min="1900-01-01"
+                      max={new Date().toISOString().slice(0, 10)}
+                      onChange={(e) => {
+                        const next = travelers.map((x) =>
+                          x.id === t.id ? { ...x, dateOfBirth: e.target.value } : x,
+                        )
+                        setTravelers(next)
+                        revalidate({ travelers: next })
+                      }}
+                      className={cn(
+                        FIELD_BASE,
+                        FIELD_BORDER(Boolean(errors?.travelerFields[t.id]?.dateOfBirth)),
                       )}
-                    </label>
+                    />
+                    {errors?.travelerFields[t.id]?.dateOfBirth && (
+                      <span className="font-sans text-[12px] text-danger-text">
+                        {errors.travelerFields[t.id].dateOfBirth}
+                      </span>
+                    )}
+                  </label>
+                </div>
+
+                {/*
+                  The three confirmations.
+
+                  Counsel's eligibility wording, so the sentences are not ours
+                  to adjust and they carry no help icon: a tooltip sitting on a
+                  legal line is a second gloss on it that nobody approved.
+
+                  The first two are separate checkboxes rather than a choice,
+                  as drawn. Ticking either clears the other, because a person
+                  is not both over 18 and a guardian booking for a minor, and
+                  letting both stand would send a contradiction into a review
+                  done by hand. That is tidying the answer rather than judging
+                  it — nothing here decides whether anyone may travel.
+                */}
+                {/* 12px apart, measured: three 20px rows at a 32px pitch on
+                    the frame. This was 10. */}
+                <div className="mt-4 flex flex-col gap-3">
+                  <Checkbox
+                    checked={Boolean(t.isAdult)}
+                    onChange={(next) => {
+                      const updated = travelers.map((x) =>
+                        x.id === t.id
+                          ? { ...x, isAdult: next, guardianBookingForMinor: next ? false : x.guardianBookingForMinor }
+                          : x,
+                      )
+                      setTravelers(updated)
+                      revalidate({ travelers: updated })
+                    }}
+                  >
+                    <span className="font-sans text-[14px] leading-[1.4] text-[#000000]">
+                      {STAGE1_CONFIRMATIONS.isAdult}
+                    </span>
+                  </Checkbox>
+                  <Checkbox
+                    checked={Boolean(t.guardianBookingForMinor)}
+                    onChange={(next) => {
+                      const updated = travelers.map((x) =>
+                        x.id === t.id
+                          ? { ...x, guardianBookingForMinor: next, isAdult: next ? false : x.isAdult }
+                          : x,
+                      )
+                      setTravelers(updated)
+                      revalidate({ travelers: updated })
+                    }}
+                  >
+                    <span className="font-sans text-[14px] leading-[1.4] text-[#000000]">
+                      {STAGE1_CONFIRMATIONS.guardianBookingForMinor}
+                    </span>
+                  </Checkbox>
+                  {/* One message for the pair rather than one on each box: the
+                      rule is about the two together, and a message under both
+                      reads as two separate faults. */}
+                  {errors?.travelerFields[t.id]?.age && (
+                    <span className="font-sans text-[12px] text-danger-text">
+                      {errors.travelerFields[t.id].age}
+                    </span>
+                  )}
+                  <Checkbox
+                    checked={Boolean(t.passportValidSixMonths)}
+                    onChange={(next) => {
+                      const updated = travelers.map((x) =>
+                        x.id === t.id ? { ...x, passportValidSixMonths: next } : x,
+                      )
+                      setTravelers(updated)
+                      revalidate({ travelers: updated })
+                    }}
+                  >
+                    <span className="font-sans text-[14px] leading-[1.4] text-[#000000]">
+                      {STAGE1_CONFIRMATIONS.passportValidSixMonths}
+                    </span>
+                  </Checkbox>
+                  {errors?.travelerFields[t.id]?.passportValidSixMonths && (
+                    <span className="font-sans text-[12px] text-danger-text">
+                      {errors.travelerFields[t.id].passportValidSixMonths}
+                    </span>
                   )}
                 </div>
               </div>
             ))}
 
             {/*
-              No add control here, for travellers or pets, and that is the
-              design rather than a decision of ours.
+              Add another traveller. This is drawn, and the history matters
+              enough to keep.
 
-              The client checked both frames of this screen on 2026-10-15,
-              desktop and mobile, and neither draws one — so there is nothing
-              to restore and nothing has regressed. It goes to the design side
-              if it is wanted. Do not build one to a guess.
+              It was built on 2026-10-14 from a second-hand description, with a
+              commit message claiming "the design has one" that nobody had
+              checked. The client then opened both frames of the then-current
+              screen and neither drew it, so it was reverted on the 16th. The
+              frames that replaced them on the 19th — the three carrying a
+              state on the end of their name — do draw it. So this is the
+              design asking for it rather than the earlier guess returning.
 
-              One constraint for whoever does draw it, so it is not
-              rediscovered: `validatePetList` requires four fields on every pet
-              — type, breed, weight and temperament. This screen collects three
-              of them: type, weight and the service-animal answer. Pets from the
-              saved profile pass because the profile editor collects all four,
-              but a pet added here would start with breed and temperament empty,
-              fail validation, and show "complete the highlighted fields" over a
-              card with no field to complete. So an add-pet control needs those
-              two fields drawn with it.
+              Capped at MAX_TRAVELERS. It is deliberately NOT capped at the
+              group's remaining places: a request for more places than are open
+              is a real thing the organiser is shown and can decline, and frame
+              47's "Needs 2 places, 1 open" exists precisely for it. Stopping
+              it here would make that screen unreachable.
+            */}
+            {travelers.length < MAX_TRAVELERS && (
+              <button
+                type="button"
+                onClick={() => {
+                  const next: Traveler[] = [
+                    ...travelers,
+                    { id: nextId(), name: '', isFounder: false },
+                  ]
+                  setTravelers(next)
+                  revalidate({ travelers: next })
+                }}
+                className={cn(
+                  'flex h-11 w-full items-center justify-center gap-2 font-sans text-[14px] font-medium text-[#112D7C] transition-colors hover:bg-[#CFE3F1]/30 focus-ring',
+                  dashedAddSurfaceClass,
+                )}
+              >
+                <DashedOutline />
+                <span className="relative">+ Add another Traveler</span>
+              </button>
+            )}
+            {/*
+              30px between the traveller block and the pet block, where this
+              column's gap gives 12 — so the first pet card carries the other
+              18. It is a structural gap on the frame rather than a one-off
+              position: `Frame 2147232890` lays the two blocks out with
+              `itemSpacing` 30, while everything inside either block sits at
+              12. Nothing separates them otherwise — frame 42 gives the pets
+              no heading of their own.
+
+              On the first card only, and only when there is one, so the No
+              Pets state is untouched: its spacing is on a frame that did not
+              change today and I have not measured it.
             */}
             {pets.map((pet, i) => (
-              <div key={pet.id} className="rounded-[16px] border border-[#A8A8A8]/40 bg-white p-4">
+              <div
+                key={pet.id}
+                className={cn(
+                  'rounded-[16px] border border-[#A8A8A8]/40 bg-white p-4',
+                  i === 0 && 'mt-[18px]',
+                )}
+              >
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="font-heading text-[16px] font-medium text-[#000000]">Pet {i + 1}</p>
-                  <span className="inline-flex shrink-0 items-center rounded-[8px] border border-[#98C3E1] bg-[#CFE3F1]/40 px-2.5 py-1.5 font-sans text-[11px] font-medium uppercase tracking-[0.5px] text-[#112D7C]">
-                    Cabin
-                  </span>
-                </div>
-                <div className="mt-3 grid gap-3 sm:grid-cols-2">
                   {/*
-                    One field, two inputs, the pair sitting at the left edge
-                    with the dot between them.
+                    "Remove Pet" stands where a "Cabin" badge used to.
 
-                    Both sides are free text: the name is typed, and so is the
-                    type. That differs from the Flight Builder, which picks the
-                    type from five fixed values — see the note below on what
-                    that means for the CRM.
+                    That badge is not in any of the six frames — I checked all
+                    of them rather than the one I remembered. It said nothing
+                    the person had entered and nothing they could act on, and
+                    the frames put a control in that position instead. Noted
+                    here rather than removed quietly, because it is the one
+                    thing in this commit that takes something off the screen.
+
+                    Removal is immediate, as with a traveller and for the same
+                    reason: the frames draw the control and no dialog, and
+                    nothing has been sent yet.
                   */}
-                  <div className="flex flex-col gap-1.5">
-                    <span className={LABEL}>Name and type</span>
-                    <div
-                      className={cn(
-                        'flex h-11 items-center rounded-[12px] border bg-white px-3 focus-within:ring-2 focus-within:ring-[#112D7C]/20',
-                        errors?.pets[pet.id]?.type ? 'border-danger-text' : 'border-[#98C3E1]',
-                      )}
-                    >
-                      <AutoWidthInput
-                        value={pet.name}
-                        placeholder="Name"
-                        label="Pet name"
-                        onChange={(value) => {
-                          const next = pets.map((x) =>
-                            x.id === pet.id ? { ...x, name: value } : x,
-                          )
-                          setPets(next)
-                          revalidate({ pets: next })
-                        }}
-                      />
-                      <span aria-hidden="true" className="shrink-0 px-3 text-[#000000]/40">
-                        ·
-                      </span>
-                      {/*
-                        The type is not mirrored: it runs to the end of the
-                        field, so the empty space to its right is still a click
-                        target rather than dead area.
+                  <RemoveButton
+                    label="Remove Pet"
+                    onClick={() => {
+                      const next = pets.filter((x) => x.id !== pet.id)
+                      setPets(next)
+                      revalidate({ pets: next })
+                    }}
+                  />
+                </div>
+                {/*
+                  Three fields, as Faraz's frames of 2026-10-26 now draw them:
+                  Name, Type, Weight. This was one box — "Molly · Dog" — with
+                  both halves typed free.
 
-                        `size={1}` is what keeps it inside the card on a narrow
-                        phone. An input's intrinsic width comes from `size`,
-                        which defaults to 20 characters — about 208px here — and
-                        that is the width the field reports as its minimum when
-                        the grid column asks, whatever `min-w-0` says. At 360px
-                        the column is 252px, so the field used to push 43px past
-                        the card's right edge.
-                      */}
+                  The type is a list of five because a typed one cannot be
+                  matched to a species. Vivek, 10-23: the CDC dog import
+                  requirement is created only for dogs, so a pet entered as
+                  "lab" never raises it, and normalising words into a
+                  regulatory category was refused — a list in our code that
+                  misses a breed means nothing is raised and nobody sees the
+                  absence. Murtaza took the decision on 10-23 and the frames
+                  landed on the 26th.
+
+                  `PET_TYPES` is the Flight Builder's own list, not a second
+                  copy: the five values Zoho already receives from the builder,
+                  in the order and capitalisation the open dropdown on the
+                  desktop One Pet frame draws.
+
+                  Stacked on a phone and three columns from `sm`, which is what
+                  the mobile frames draw, at the frame's 16px gap — applied to
+                  the whole card in the same pass rather than to this row
+                  alone.
+                */}
+                <div className="mt-4 grid gap-4 sm:grid-cols-3">
+                  {/* No trailing glyph: the frame draws one in Type and Weight
+                      and none here. No help icon either — there are no words
+                      for it (§33) and an icon with nothing behind it costs
+                      more than its absence. */}
+                  <label className="flex min-w-0 flex-col gap-1.5">
+                    <span className={LABEL}>Name</span>
+                    {/* `FIELD_BORDER(false)` always: a pet name is not
+                        required, so this field has no failing state to show.
+                        See `validatePetList`. */}
+                    <span className={cn(FIELD_SHELL, FIELD_BORDER(false))}>
                       <input
                         size={1}
-                        value={pet.type}
-                        placeholder="Type"
-                        aria-label="Pet type"
-                        aria-invalid={Boolean(errors?.pets[pet.id]?.type) || undefined}
+                        value={pet.name}
+                        placeholder="Name"
+                        aria-label="Pet name"
                         onChange={(e) => {
                           const next = pets.map((x) =>
-                            x.id === pet.id ? { ...x, type: e.target.value } : x,
+                            x.id === pet.id ? { ...x, name: e.target.value } : x,
                           )
                           setPets(next)
                           revalidate({ pets: next })
                         }}
-                        className="h-full min-w-0 flex-1 bg-transparent font-sans text-[14px] text-[#000000] outline-none"
+                        className={FIELD_INPUT}
                       />
-                    </div>
+                    </span>
+                  </label>
+                  {/* A div rather than a label, like Weight beside it: the
+                      Select is a button with its own listbox, and a label
+                      wrapping it would compete for the click. */}
+                  <div className="flex min-w-0 flex-col gap-1.5">
+                    <span className={LABEL}>Type</span>
+                    <Select
+                      aria-label="Pet type"
+                      placeholder="Select type"
+                      options={PET_TYPES}
+                      value={pet.type}
+                      invalid={Boolean(errors?.pets[pet.id]?.type)}
+                      onChange={(e) => {
+                        const next = pets.map((x) =>
+                          x.id === pet.id ? { ...x, type: e.target.value } : x,
+                        )
+                        setPets(next)
+                        revalidate({ pets: next })
+                      }}
+                    />
+                    {/* Kept from the composite. The frames draw no empty-type
+                        state, and the banner tells the member to complete the
+                        highlighted fields — so the field that fails says what
+                        it wants rather than only turning red. */}
                     {errors?.pets[pet.id]?.type && (
                       <span className="font-sans text-[12px] text-danger-text">
                         {errors.pets[pet.id]!.type}
                       </span>
                     )}
                   </div>
-                  <div className="flex flex-col gap-1.5">
+                  <div className="flex min-w-0 flex-col gap-1.5">
                     <span className={LABEL}>Weight</span>
                     <Select
                       aria-label="Pet weight"
@@ -533,7 +930,8 @@ export function JoinReviewScreen({
                     />
                   </div>
                 </div>
-                <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+                {/* 16px under the fields, as on the frame. */}
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
                   <p className="font-sans text-[14px] text-[#000000]">
                     Is {pet.name || 'this pet'} a service animal?
                   </p>
@@ -563,6 +961,57 @@ export function JoinReviewScreen({
                 </div>
               </div>
             ))}
+
+            {/*
+              Nothing added yet. The No Pets frame draws this rather than an
+              empty gap, and its wording is the client's — "request" rather
+              than "project", corrected on the frame on 2026-10-22.
+
+              The add control carries a different label here: "Add a Pet" with
+              nothing in the list, "Add another Pet" once there is. Both are as
+              drawn, so the two are rendered from one place rather than two
+              that can drift.
+            */}
+            {pets.length === 0 && (
+              <EmptyState
+                heading="No Pets added yet!"
+                line="Add a pet to include them in this request"
+              />
+            )}
+
+            {/*
+              Capped the same way the Flight Builder caps it, and for the same
+              reason: `validatePetList` refuses more than MAX_PETS_PER_TRAVELER
+              per traveller, so a control that could exceed it would offer
+              something the form then rejects.
+            */}
+            {pets.length < Math.max(1, travelers.length) * MAX_PETS_PER_TRAVELER && (
+              <button
+                type="button"
+                onClick={() => {
+                  const next = [...pets, emptyPet()]
+                  setPets(next)
+                  // Adding one has to turn the section on, or the first pet is
+                  // added into a list the payload then drops.
+                  setPetsEnabled(true)
+                  revalidate({ pets: next, petsEnabled: true })
+                }}
+                className={cn(
+                  'flex h-11 w-full items-center justify-center gap-2 font-sans text-[14px] font-medium text-[#112D7C] transition-colors hover:bg-[#CFE3F1]/30 focus-ring',
+                  dashedAddSurfaceClass,
+                )}
+              >
+                <DashedOutline />
+                <span className="relative">
+                  {pets.length === 0 ? '+ Add a Pet' : '+ Add another Pet'}
+                </span>
+              </button>
+            )}
+
+            {/* The cap, said once, where the control that hits it is. */}
+            {errors?.petCount && (
+              <span className="font-sans text-[12px] text-danger-text">{errors.petCount}</span>
+            )}
           </div>
         )}
 
@@ -783,15 +1232,30 @@ export function JoinReviewScreen({
       )}
 
       {/*
-        Travel readiness. Two states per pet, both drawn on the frame: a pet
-        that is not a service animal carries the confirmation and its
-        checkbox; a qualified service animal is not subject to it and gets the
-        carrier's wording instead.
+        Travel readiness, and it renders with no pets as well as with them.
+
+        This was guarded on `pets.length > 0`, which took the whole section off
+        the screen when the last pet was removed. The No Pets frame draws it
+        either way: the heading, the line under it, and an empty state in place
+        of the cards. Caught on the preview, not by me.
+
+        The frame also carries a "Helper text goes here" line under the
+        heading. That is placeholder text in the design rather than copy, so it
+        is deliberately not built.
       */}
-      {APPROVAL_FLOW_ENABLED && pets.length > 0 && (
+      {APPROVAL_FLOW_ENABLED && (
         <section className="rounded-[20px] border border-dashed border-[#112D7C] bg-[#CFE3F1]/10 p-4">
           <h2 className={HEADING}>Travel readiness</h2>
           <p className={cn(MUTED, 'mt-1')}>Confirmed for each pet on this request.</p>
+          {pets.length === 0 && (
+            <div className="mt-4">
+              <EmptyState
+                heading="No Pets on this request yet."
+                line="Add a pet above to confirm travel readiness."
+              />
+            </div>
+          )}
+          {pets.length > 0 && (
           <div className="mt-4 flex flex-col gap-3">
             {/*
               Service animals are left out: they are not subject to the
@@ -816,25 +1280,32 @@ export function JoinReviewScreen({
                   other passengers or crew, and I accept responsibility for their behaviour.
                 </p>
                   {/*
-                    The frame puts the confirmation inside the pet's card. It is
-                    bound to one value for the request — "confirmed for each pet
-                    on this request" — so with several pets every box moves
-                    together. Only one pet is drawn, so whether it should be per
-                    pet is not settled; the single flag matches what the payload
-                    carries today.
+                    One confirmation per pet, which is what the three-pet frame
+                    settles.
+
+                    It was bound to a single value for the whole request,
+                    because only one pet was ever drawn — so with three pets
+                    every box moved together and one tick answered for animals
+                    nobody had considered separately. Each card now carries its
+                    own answer, and the error sits with the pet it belongs to.
                   */}
                   <div
                     className={cn(
                       'mt-3 rounded-[12px] border bg-white p-3',
-                      errors?.readiness ? 'border-danger-text' : 'border-[#A8A8A8]/40',
+                      errors?.pets[pet.id]?.readiness
+                        ? 'border-danger-text'
+                        : 'border-[#A8A8A8]/40',
                     )}
                   >
                     <Checkbox
-                      checked={readiness}
-                      invalid={Boolean(errors?.readiness)}
+                      checked={Boolean(pet.readinessAccepted)}
+                      invalid={Boolean(errors?.pets[pet.id]?.readiness)}
                       onChange={(next) => {
-                        setReadiness(next)
-                        revalidate({ readinessAccepted: next })
+                        const updated = pets.map((x) =>
+                          x.id === pet.id ? { ...x, readinessAccepted: next } : x,
+                        )
+                        setPets(updated)
+                        revalidate({ pets: updated })
                       }}
                     >
                       <span className="font-sans text-[14px] leading-[1.4] text-[#000000]">
@@ -844,9 +1315,9 @@ export function JoinReviewScreen({
                     </Checkbox>
                     {/* The rule lives in `validatePetList`; without this the
                         send was simply refused with nothing said. */}
-                    {errors?.readiness && (
+                    {errors?.pets[pet.id]?.readiness && (
                       <p className="mt-2 font-sans text-[12px] font-medium text-danger-text">
-                        {errors.readiness}
+                        {errors.pets[pet.id]!.readiness}
                       </p>
                     )}
                   </div>
@@ -854,30 +1325,24 @@ export function JoinReviewScreen({
             ))}
 
             {/*
-              A standing note, not an alternative state. Its heading is written
-              conditionally — "If a pet is set to service animal" — so it
-              explains what changes in that case and belongs alongside the
-              confirmations rather than replacing one.
+              The standing service-animal note used to sit here — "If a pet is
+              set to service animal", the Yes selected badge, and the paragraph
+              about the carrier's permitted inquiries.
+
+              Removed 2026-10-26 on Murtaza's instruction. It came off all six
+              frames deliberately as part of the readiness change Chuck approved
+              on 2026-10-23, and the build follows the frames.
+
+              Recorded rather than deleted silently, because it leaves the
+              exemption unexplained on screen: a service animal now simply has
+              no confirmation and nothing says why. That was raised before it
+              was taken out and the answer was to take it out, so it is their
+              call and not an oversight. The carrier wording is preserved in
+              CLIENT-DECISIONS §43 if it is ever wanted back.
             */}
-            <div className="rounded-[16px] border border-[#A8A8A8]/40 bg-white p-4">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="font-heading text-[16px] font-medium text-[#000000]">
-                  If a pet is set to service animal
-                </p>
-                <span className="inline-flex shrink-0 items-center rounded-[8px] border border-[#98C3E1] bg-[#CFE3F1]/40 px-2.5 py-1.5 font-sans text-[11px] font-medium uppercase tracking-[0.5px] text-[#112D7C]">
-                  Yes selected
-                </span>
-              </div>
-              <p className="mt-2 font-sans text-[14px] leading-[1.5] text-[#000000]/70">
-                A qualified service animal is not subject to the travel readiness confirmation.
-                The operating carrier may still make the inquiries permitted by law, request the
-                documentation authorised by law, and assess the animal&rsquo;s behaviour. For a
-                large service animal, carriage depends on an accommodation and safety assessment
-                by the carrier.
-              </p>
-            </div>
 
           </div>
+          )}
         </section>
       )}
 
@@ -1110,16 +1575,39 @@ function SharedFlightCard({
       <h2 className={HEADING}>The shared flight</h2>
       <dl className="mt-4 flex flex-col gap-[18px] rounded-[20px] border border-[#A8A8A8]/40 bg-white p-4">
         <Detail label="Route">
-          <span className="inline-flex flex-wrap items-center gap-2">
-            {place(flight.route_origin_city, detail?.originCode)}
-            <Image
-              src="/images/routes/Flighticons.png"
-              alt="to"
-              width={34}
-              height={34}
-              className="size-[22px] shrink-0 object-contain"
-            />
-            {place(flight.route_destination_city, detail?.destinationCode)}
+          {/*
+            Two fixed lines on a phone, one on desktop.
+
+            Faraz's call of 2026-10-23, over the recommendation to let the row
+            wrap: origin with its code on line one, the plane mark and the
+            destination with its code on line two, so every route sits
+            identically whatever the city names are. A wrapping row put the
+            mark at the end of line one for some pairs of names and not
+            others, which is the part he was deciding against.
+
+            Right-aligned, because the two lines end together on the frame —
+            both at x=52315.5 on `4881:43415`, where the value column ends.
+
+            Measured on `4835:50402` and `4881:43415`: 8px between the two
+            lines, 14px from the mark to the destination on mobile and 18px
+            between every part on desktop, with the mark 22px and 24px. It was
+            8px throughout and the mark 22px on both.
+
+            `lg`, not `sm`, because that is where this card already changes —
+            `Detail` carries the type scale at the same breakpoint.
+          */}
+          <span className="inline-flex flex-col items-end gap-2 lg:flex-row lg:items-center lg:gap-[18px]">
+            <span>{place(flight.route_origin_city, detail?.originCode)}</span>
+            <span className="inline-flex items-center gap-[14px] lg:gap-[18px]">
+              <Image
+                src="/images/routes/Flighticons.png"
+                alt="to"
+                width={34}
+                height={34}
+                className="size-[22px] shrink-0 object-contain lg:size-[24px]"
+              />
+              <span>{place(flight.route_destination_city, detail?.destinationCode)}</span>
+            </span>
           </span>
         </Detail>
         <Detail label="Departure">{formatDateRange(flight.estimated_date_range)}</Detail>

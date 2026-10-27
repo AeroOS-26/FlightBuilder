@@ -21,7 +21,9 @@ import type {
   FlightGroupPet,
   JoinRequestClosedEvent,
   JoinRequestCreatedEvent,
+  JoinRequestTraveler,
   MemberRemovedEvent,
+  Traveler,
 } from '@/types'
 
 /** `jr_<row id>`, mirroring the `fgm_` convention the other events use. */
@@ -142,6 +144,8 @@ interface CreatedArgs {
   requestedAt: string
   placesNeeded: number
   travelersCount: number
+  /** The party as the request stored it, for the Stage 1 block. */
+  travelers: Traveler[]
   requester: {
     accountId: string | null
     name: string | null
@@ -152,6 +156,30 @@ interface CreatedArgs {
   sentAt: string
 }
 
+/**
+ * One traveller, in the shape the contract carries.
+ *
+ * Only the person making the request necessarily holds an account, so everyone
+ * else sends `account_id: null` rather than a placeholder. Blank optional
+ * fields go as null and never as "", which is the rule the rest of this
+ * contract already follows.
+ *
+ * The three confirmations are booleans with no third state: the screen refuses
+ * to send until each has been answered, so an absent one cannot reach here.
+ */
+function mapTraveler(traveler: Traveler, requesterAccountId: string | null): JoinRequestTraveler {
+  return {
+    account_id: traveler.isFounder ? nullIfBlank(requesterAccountId) : null,
+    full_legal_name: traveler.name,
+    email: nullIfBlank(traveler.email ?? null),
+    nationality: nullIfBlank(traveler.nationality ?? null),
+    date_of_birth: nullIfBlank(traveler.dateOfBirth ?? null),
+    is_adult: traveler.isAdult === true,
+    guardian_booking_for_minor: traveler.guardianBookingForMinor === true,
+    passport_valid_6_months_after_arrival: traveler.passportValidSixMonths === true,
+  }
+}
+
 export function buildJoinRequestCreated({
   groupId,
   zohoRecordId,
@@ -159,6 +187,7 @@ export function buildJoinRequestCreated({
   requestedAt,
   placesNeeded,
   travelersCount,
+  travelers,
   requester,
   pets,
   sentAt,
@@ -174,6 +203,7 @@ export function buildJoinRequestCreated({
       requested_at: requestedAt,
       places_needed: placesNeeded,
       travelers_count: travelersCount,
+      travelers: travelers.map((t) => mapTraveler(t, requester.accountId)),
       requester: {
         // Always null. See the note at the top of this file.
         flight_group_member_id: null,

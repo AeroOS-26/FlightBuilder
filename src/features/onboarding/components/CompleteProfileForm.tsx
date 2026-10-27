@@ -144,7 +144,7 @@ export function CompleteProfileForm({
    * there cannot be optional here. Errors appear only after a submit attempt,
    * matching every other form in the app, and clear as the field is edited.
    */
-  const [errors, setErrors] = useState<PetsErrors>({ travelers: {}, pets: {} })
+  const [errors, setErrors] = useState<PetsErrors>({ travelers: {}, travelerFields: {}, pets: {} })
   const [submitted, setSubmitted] = useState(false)
 
   /** Re-run the rules while the user fixes things, but only once they've tried. */

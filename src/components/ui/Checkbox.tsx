@@ -43,7 +43,16 @@ export function Checkbox({
     <label
       htmlFor={inputId}
       className={cn(
-        'inline-flex items-center gap-2 font-sans text-[14px] font-normal leading-[140%] text-[#000000]',
+        // `items-center` is the design's own alignment, not a default: on the
+        // mobile frame the passport confirmation wraps to three lines and the
+        // box sits at the centre of the block, not against the first line.
+        // Measured on 4881:43104 before leaving it alone.
+        //
+        // `text-pretty` is the fix for what actually looked wrong — the label
+        // breaking so that a single short word ("it.") sat alone on the last
+        // line, which reads as a misaligned row rather than a bad wrap. It is
+        // inherited, so a caller passing its own span gets it too.
+        'inline-flex items-center gap-2 text-pretty font-sans text-[14px] font-normal leading-[140%] text-[#000000]',
         disabled ? 'cursor-not-allowed' : 'cursor-pointer',
         className,
       )}

@@ -123,10 +123,35 @@ export interface FlightGroupPet {
   /** Optional on the form, so null when not given — client, 2026-09-29. */
   breed: string | null
   weight_lbs: number | null
-  crate_size: string | null
   /** Null when not chosen — client, 2026-09-29. See `nullIfBlank`. */
   temperament: string | null
-  travel_readiness_accepted: boolean
+  /**
+   * Whether this animal is a qualified service animal.
+   *
+   * Held but not forwarded since 2026-09-29, waiting for confirmation that the
+   * field existed on the Zoho side. Vivek confirmed it on 2026-10-22, so it now
+   * travels.
+   *
+   * **Open with counsel:** whether a Yes means a *qualified* service animal or
+   * only the person's own answer. Until that returns through Chuck, a Yes is
+   * treated as a service animal — which is what exempts the pet from the
+   * readiness confirmation above. If it comes back narrower, this and that
+   * exemption move together.
+   */
+  service_animal: boolean
+  /**
+   * Readiness, and it has three states rather than two.
+   *
+   * `null` means the question was never put, because the pet is a qualified
+   * service animal and those are not subject to readiness screening (Chuck,
+   * 2026-10-22). It is deliberately not `false`: a person reading this record
+   * has to be able to tell "not asked" from "said no", and Vivek holds it as a
+   * pick list on the Zoho side for exactly that reason.
+   *
+   * This object is shared by `flight_group.created`, `member.joined` and
+   * `join_request.created`, so the null travels on all three.
+   */
+  travel_readiness_accepted: boolean | null
 }
 
 // Commented out 2026-10-12, not deleted: Chuck has moved trip records to
@@ -460,6 +485,34 @@ export interface GroupDetailMember {
  * it. Zoho creates a Join Request record holding the pets in a subform; no
  * Contact, no Flight Group Member, no Pet records, and capacity untouched.
  */
+/**
+ * One traveller's Stage 1 answers, as `join_request.created` carries them.
+ *
+ * `null` for a traveller with no FlightBuilder account of their own — only the
+ * person making the request necessarily has one.
+ *
+ * `date_of_birth` is a date and never a display string: the screens render it
+ * in the reader's own locale, but what travels is always YYYY-MM-DD, so a
+ * day-first screen and a month-first reader cannot disagree about it.
+ *
+ * `nationality` is an ISO 3166-1 alpha-2 code chosen from a list, never typed.
+ *
+ * The confirmation is `after_arrival`, not after return: the product has never
+ * held a return date and the Flight Builder is one way only (Chuck,
+ * 2026-10-14). rev. 5 of the build instructions still carries the older
+ * wording; the decision is the one to follow.
+ */
+export interface JoinRequestTraveler {
+  account_id: string | null
+  full_legal_name: string
+  email: string | null
+  nationality: string | null
+  date_of_birth: string | null
+  is_adult: boolean
+  guardian_booking_for_minor: boolean
+  passport_valid_6_months_after_arrival: boolean
+}
+
 export interface JoinRequestCreatedEvent {
   event: 'join_request.created'
   sent_at: string
@@ -473,6 +526,23 @@ export interface JoinRequestCreatedEvent {
     /** People, not accounts. Pets do not take a place. */
     places_needed: number
     travelers_count: number
+    /**
+     * The Stage 1 answers, one entry per traveller.
+     *
+     * Sits beside `travelers_count` rather than at the top level because Vivek
+     * takes the names and positions the payload already uses (2026-10-24), so
+     * nothing that reads the count today has to move. The two always agree:
+     * `travelers.length` is what `travelers_count` reports.
+     *
+     * Key names are his own, from the shape he proposed on 2026-10-23. Pets
+     * are deliberately NOT in here — they stay under `requester`, which he
+     * confirmed, and they belong to the request as a whole rather than to a
+     * named traveller (Chuck, 2026-10-22).
+     *
+     * Collected at the join request and nowhere else. Reviewed by hand; nothing
+     * in the product decides anything from it.
+     */
+    travelers: JoinRequestTraveler[]
     requester: {
       /**
        * OPEN with Vivek, 2026-10-01: the sample carries an `fgm_` id here, but

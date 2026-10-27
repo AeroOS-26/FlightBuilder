@@ -9,10 +9,15 @@
  * Validation is the join route's, unchanged: the same `validatePetList` the
  * Flight Builder and frame 31 use, so a pet is judged the same way wherever it
  * is entered.
+ *
+ * Gated on the group being servable to the public — see the check below. A
+ * request posted at a group whose page answers not-found is refused here as
+ * well, which is counsel's requirement rather than a tidy-up.
  */
 
 import { NextResponse } from 'next/server'
 import { requireViewerOrUnauthorized } from '@/features/auth/server/guard'
+import { resolvePublicFlight } from '@/features/public-flight/data/resolvePublicFlight'
 import {
   submitJoinRequest,
   groupZohoRecordId,
@@ -41,6 +46,45 @@ export async function POST(
   if (viewer instanceof Response) return viewer
 
   const { groupId } = await params
+
+  /*
+   * The Published check, before anything is read off the body or stored.
+   *
+   * Counsel, 2026-10-13: "the application must enforce the restriction on
+   * direct access and submissions, not merely hide a link or button." The share
+   * page has enforced it since 10-15 and this endpoint had not, so a request
+   * could be posted straight at a group whose own page answers not-found.
+   *
+   * Deliberately the *same* resolver the public page and the read relay use,
+   * rather than a second rule of its own: whether a group may be served and
+   * whether a request may be stored against it are then one answer and cannot
+   * drift apart. It is closed-by-default on the cleared list and then reads
+   * Zoho — which is where the Published condition goes, on Vivek's own plan of
+   * a field on Flight Groups plus a condition in the public read function (§26,
+   * §38). So an unpublished group starts being refused here the day that ships,
+   * with no further change on this side.
+   *
+   * The resolver takes a share slug, and `groupIdFromSlug` leaves a string
+   * already in group-id order alone — so passing the group id resolves the same
+   * group rather than needing the token the requester arrived by.
+   *
+   * An upstream failure refuses the request. Counsel: a missing setting or a
+   * failed lookup must not expose the page; Chuck accepted the consequence in
+   * those terms — "I accept that an unreachable Zoho stops a join request, that
+   * matches rev. 5" (§38). 503 rather than 404 because they are different
+   * facts: the group may be perfectly real and the requester can try again.
+   */
+  const servable = await resolvePublicFlight(groupId)
+  if (servable.status === 'not_found') {
+    return NextResponse.json({ message: 'Not found' }, { status: 404 })
+  }
+  if (servable.status === 'error') {
+    return NextResponse.json(
+      { message: 'We could not check this flight just now. Please try again.' },
+      { status: 503 },
+    )
+  }
+
   const body = (await request.json().catch(() => null)) as Record<string, unknown> | null
   if (!body) {
     return NextResponse.json({ message: 'Invalid request body.' }, { status: 400 })
@@ -157,10 +201,32 @@ function parseTravelers(raw: unknown): Traveler[] | null {
     const fields = entry as Record<string, unknown>
     const name = text(fields.name)
     if (name === null) return null
+
+    /*
+     * Stage 1, read back off the request.
+     *
+     * Every field is optional here and stays optional: the screen's own
+     * validation is what requires them, and this parser has to keep accepting
+     * a request sent before they existed. A body that carries none of them is
+     * the pre-Stage-1 shape and is still valid.
+     *
+     * Nothing is inferred. An absent boolean is false rather than a guess,
+     * for the same reason the service-animal flag is: an absent flag is not a
+     * claim, and this record is read by a person deciding something.
+     */
+    const optionalText = (value: unknown): string | undefined =>
+      typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined
+
     travelers.push({
       id: typeof fields.id === 'string' ? fields.id : `traveler-${index}`,
       name,
       isFounder: false,
+      email: optionalText(fields.email),
+      nationality: optionalText(fields.nationality),
+      dateOfBirth: optionalText(fields.dateOfBirth),
+      isAdult: fields.isAdult === true,
+      guardianBookingForMinor: fields.guardianBookingForMinor === true,
+      passportValidSixMonths: fields.passportValidSixMonths === true,
     })
   }
   return travelers
@@ -186,9 +252,22 @@ function parsePets(raw: unknown): Pet[] | null {
       return null
     }
 
-    // Stored, deliberately not forwarded: the pet object's service-animal field
-    // is held until it exists on the Zoho side. Anything but an explicit true
-    // is false — an absent flag is not a claim.
+    /*
+     * The service-animal answer, and both spellings are accepted deliberately.
+     *
+     * This read `service_animal` only. The client posts the `Pet` object
+     * straight through, and that object's key is `serviceAnimal` — so the
+     * answer someone gave on frame 42 arrived under a name nothing was
+     * looking for and was stored as false, every time. The toggle worked and
+     * the value went nowhere.
+     *
+     * Reading both rather than swapping one for the other: this endpoint has
+     * one caller today, but a stored request sent earlier, or a replay of
+     * one, may carry either, and a parser that silently turns a yes into a no
+     * is the failure that just happened.
+     *
+     * Anything but an explicit true is false — an absent flag is not a claim.
+     */
     pets.push({
       id: `pet-${index}`,
       name,
@@ -196,7 +275,19 @@ function parsePets(raw: unknown): Pet[] | null {
       breed,
       weight,
       temperament,
-      serviceAnimal: fields.service_animal === true,
+      serviceAnimal: fields.serviceAnimal === true || fields.service_animal === true,
+      /*
+       * This pet's own readiness answer.
+       *
+       * Left `undefined` when absent rather than defaulted to false, because
+       * absent and refused are different facts and `mapPet` turns a service
+       * animal's into the null that keeps them apart on the wire. A body sent
+       * before this field existed carries none, and must stay valid.
+       */
+      readinessAccepted:
+        fields.readinessAccepted === true || fields.readiness_accepted === true
+          ? true
+          : undefined,
     })
   }
   return pets
@@ -216,7 +307,7 @@ async function emitRequestCreated(
   request: {
     id: number
     placesRequested: number
-    travelers: unknown[]
+    travelers: Traveler[]
     requestedAt: Date
     contactEmail: string | null
   },
@@ -234,6 +325,9 @@ async function emitRequestCreated(
       requestedAt: request.requestedAt.toISOString(),
       placesNeeded: request.placesRequested,
       travelersCount: Math.max(1, request.travelers.length),
+      // The party itself, for the Stage 1 block. `travelers_count` above is
+      // derived from the same array, so the two cannot disagree.
+      travelers: request.travelers,
       // What they typed on frame 42 wins over the account's address. The
       // contract's `requester.email` is where the decision is sent from.
       requester: { ...requester, email: request.contactEmail ?? requester.email },

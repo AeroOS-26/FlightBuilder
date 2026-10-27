@@ -30,6 +30,7 @@ export type IconName =
   | 'edit'
   | 'check'
   | 'close'
+  | 'trash'
   | 'plus'
   | 'search'
   | 'copy'
@@ -111,6 +112,23 @@ const paths: Record<IconName, ReactElement> = {
   ),
   check: <path d="M5 12.5 10 17.5 19.5 7" />,
   close: <path d="M6 6l12 12M18 6 6 18" />,
+  /**
+   * Bin. Drawn for the Remove Traveler and Remove Pet controls on frame 42,
+   * which the design gives a bin rather than a cross — a cross reads as
+   * "close this" and these delete a record from the request.
+   *
+   * Lid, body and two strokes inside it, all on the set's own 1.75 weight.
+   * No separate handle rectangle: at 18px it closed up into a smudge, so the
+   * handle is the lid line stepping over it.
+   */
+  trash: (
+    <>
+      <path d="M4 7h16" />
+      <path d="M9.5 7V5.5a1.5 1.5 0 0 1 1.5-1.5h2a1.5 1.5 0 0 1 1.5 1.5V7" />
+      <path d="M6.5 7.5 7.4 19a1.5 1.5 0 0 0 1.5 1.4h6.2a1.5 1.5 0 0 0 1.5-1.4l.9-11.5" />
+      <path d="M10.5 11v5.5M13.5 11v5.5" />
+    </>
+  ),
   plus: <path d="M12 5v14M5 12h14" />,
   search: (
     <>

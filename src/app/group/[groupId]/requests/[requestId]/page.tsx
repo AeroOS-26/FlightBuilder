@@ -10,6 +10,7 @@ import {
   listPendingRequests,
 } from '@/features/join-approval/server/joinRequestStore'
 import { RequestDecisionPanel } from '@/features/join-approval/components/RequestDecisionPanel'
+import { weightVisibleToOrganiser } from '@/features/join-approval/organiserPetView'
 
 interface PageProps {
   params: Promise<{ groupId: string; requestId: string }>
@@ -61,8 +62,17 @@ export default async function JoinRequestPage({ params }: PageProps) {
           ? `Member since ${request.memberSince.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}`
           : null,
         travellerCount: Math.max(1, request.travelers.length),
+        // Weight for dogs only, as on frame 47 — this screen is the same
+        // organiser looking at the same request (Chuck, §34). The line's own
+        // format is kept: "9 lbs" here, "9lbs" on the rows, both as drawn.
         petLines: request.pets.map((pet) =>
-          [pet.name, pet.type, pet.weight_lbs ? `${pet.weight_lbs} lbs` : null]
+          [
+            pet.name,
+            pet.type,
+            weightVisibleToOrganiser(pet.type) && pet.weight_lbs
+              ? `${pet.weight_lbs} lbs`
+              : null,
+          ]
             .filter(Boolean)
             .join(', '),
         ),

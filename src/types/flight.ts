@@ -90,10 +90,58 @@ export interface DateSelection {
 /** A single traveler on the flight. Traveler 1 is always the Founder. */
 export interface Traveler {
   id: string
-  /** Full name. For the Founder this is their real member identity. */
+  /**
+   * Full name. For the Founder this is their real member identity.
+   *
+   * Frame 42 labels this "Full legal name as shown on the passport" and seeds
+   * it from the profile. It is deliberately the same field rather than a
+   * second one: two name fields that can disagree is a worse record than one
+   * the person was asked to check, and the Stage 1 review reads whichever
+   * name the request carried.
+   */
   name: string
   /** True only for Traveler 1 (the Founder), who cannot be removed. */
   isFounder: boolean
+
+  /* ── Stage 1 eligibility (frame 42 only) ─────────────────────────────────
+   *
+   * Every field below is optional on the type and required by validation on
+   * the join-request surface alone. `Traveler` is constructed in seven places
+   * — the builder's store, Complete Profile, the preview mocks and the
+   * request route among them — and none of those screens collects any of
+   * this. Making them required would break all of them to describe one
+   * screen, so the surface decides, the same way `surface: 'request'` already
+   * scopes the pet rules in `validateTravelersAndPets`.
+   *
+   * Collected at the join request and nowhere else, reviewed by hand by Chuck
+   * or Sarah. Nothing here decides anything: no eligibility logic, no
+   * automatic refusal, and no documents — there is no upload anywhere in the
+   * product and none is wanted (§21).
+   */
+
+  /** Per-flight contact address. Seeded from the account, editable for this
+   *  request only, exactly as the per-request `contact_email` already is. */
+  email?: string
+  /** ISO 3166-1 alpha-2, from `NATIONALITY_OPTIONS`. Never free text. */
+  nationality?: string
+  /** `YYYY-MM-DD`. Stored and sent as a date, never as a display string, so
+   *  that a day-first screen and a month-first reader cannot disagree. */
+  dateOfBirth?: string
+
+  /* The three confirmations. Two separate checkboxes rather than a choice,
+   * as the frames draw them. One of the first two must be ticked before the
+   * request sends — a completeness check rather than a judgment about
+   * anyone's eligibility, which is why it stays inside Chuck's rule that
+   * nothing in the product decides anything (Murtaza, 2026-10-21). */
+
+  /** "I confirm I am 18 or above." */
+  isAdult?: boolean
+  /** "I am a parent or guardian booking for a minor." */
+  guardianBookingForMinor?: boolean
+  /** "…passport is valid for at least six months after my arrival date." The
+   *  product has never held a return date and the builder is one way only,
+   *  so this is arrival rather than return (Chuck, 2026-10-14). */
+  passportValidSixMonths?: boolean
 }
 
 export type PetTemperament = 'Calm' | 'Excitable' | 'Anxious' | 'Experienced Traveler'
@@ -122,6 +170,30 @@ export interface Pet {
    * this is the capture.
    */
   serviceAnimal: boolean
+
+  /**
+   * This pet's own travel readiness confirmation. **Join request only.**
+   *
+   * The screen held one flag for the whole request until now, because only one
+   * pet was ever drawn. The three-pet frame settles it: each card carries its
+   * own "I agree", so two pets no longer move together.
+   *
+   * Three states rather than two, and the third is the point:
+   *
+   *   true   confirmed
+   *   false  not yet confirmed — the request cannot be sent
+   *   blank  not asked, because this pet is a qualified service animal
+   *
+   * A service animal is not subject to readiness screening at all (Chuck,
+   * 2026-10-22), so it is never asked and must not be recorded as a refusal.
+   * `undefined` here becomes `null` on the wire, which is what keeps "not
+   * asked" distinct from "said no" in a record a person reads.
+   *
+   * Optional on the type, like the Stage 1 traveller fields: the Flight
+   * Builder and Complete Profile hold one readiness flag for a whole draft and
+   * neither collects this, so requiring it would break screens that never ask.
+   */
+  readinessAccepted?: boolean
 }
 
 /**
