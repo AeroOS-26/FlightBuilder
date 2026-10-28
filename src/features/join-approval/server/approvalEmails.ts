@@ -14,6 +14,7 @@
  * template needs no pluralisation, per the client's instruction.
  */
 
+import { firstNameOnly } from '@/features/join-approval/organiserPetView'
 import { sendApprovalEmail } from '@/features/auth/server/email'
 
 export interface ApprovalEmailFlight {
@@ -39,7 +40,14 @@ async function attempt(
   }
 }
 
-/** Someone has asked to join — to the Group Organizer. */
+/**
+ * Someone has asked to join — to the Group Organizer.
+ *
+ * The only one of the four that carries a **first name**: Chuck asked for it
+ * on 2026-10-24, and counsel's boundary names notifications as well as the
+ * screen. The three requester-facing sends keep the full name — they are
+ * telling someone about their own request.
+ */
 export async function emailOrganiserNewRequest(args: {
   to: string
   organizerName: string | null
@@ -50,7 +58,7 @@ export async function emailOrganiserNewRequest(args: {
 }): Promise<void> {
   await attempt(`join-request-received -> ${args.to}`, () =>
     sendApprovalEmail(args.to, 'join-request-received', {
-      requester_name: args.requesterName ?? 'A Flight Club member',
+      requester_name: firstNameOnly(args.requesterName) ?? 'A Flight Club member',
       organizer_name: args.organizerName ?? 'there',
       route: args.flight.route,
       departure_date: args.flight.departureDate,

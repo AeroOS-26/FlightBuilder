@@ -264,14 +264,34 @@ async function main() {
   // Build Command override has quietly replaced vercel.json's buildCommand.
   console.log('── aeroos migrations ─────────────────────────────────────────')
 
-  const connectionString = process.env.DATABASE_URL
+  /*
+   * MIGRATION_DATABASE_URL first, DATABASE_URL otherwise.
+   *
+   * Migrations are the only thing in the product that needs CREATE, ALTER and
+   * DROP. The running application needs none of them: it inserts, selects and
+   * updates. Keeping both on one connection string means the runtime role can
+   * drop any table it reads, which is the privilege the least-privilege role
+   * approved on 2026-10-27 exists to remove (§47).
+   *
+   * So the schema owner goes here and the restricted runtime role goes in
+   * DATABASE_URL. Unset, this falls back to DATABASE_URL and behaves exactly as
+   * it did — nothing breaks before the roles exist, and nothing has to be
+   * deployed in a particular order.
+   *
+   * `scripts/sql/least-privilege.sql` creates the roles and is run by hand.
+   */
+  const connectionString = process.env.MIGRATION_DATABASE_URL || process.env.DATABASE_URL
   if (!connectionString) {
     throw new Error(
-      'DATABASE_URL is not set. Locally: npm run migrate (loads .env.local). ' +
-        'On Vercel: set it per environment in Project → Settings → Environment Variables.',
+      'Neither MIGRATION_DATABASE_URL nor DATABASE_URL is set. Locally: npm run migrate ' +
+        '(loads .env.local). On Vercel: set it per environment in Project → Settings → ' +
+        'Environment Variables.',
     )
   }
-  console.log(`  target       ${describeTarget(connectionString)}`)
+  console.log(
+    `  target       ${describeTarget(connectionString)}` +
+      (process.env.MIGRATION_DATABASE_URL ? '  (via MIGRATION_DATABASE_URL)' : ''),
+  )
 
   const pool = new Pool({
     connectionString,

@@ -19,6 +19,7 @@ import 'server-only'
 import { formatDateRange, metroLabel } from '@/features/public-flight/format'
 import { appUrl } from '@/config/appUrl'
 import { pool } from '@/features/auth/server/db'
+import { openTravelerIdentities, sealTravelerIdentities } from './identityCrypto'
 import type { EstimatedDateRange, FlightGroupPet, Traveler } from '@/types'
 import type { JoinRequestStatus, PerroCheckStatus } from '../requestState'
 
@@ -93,7 +94,11 @@ function toRequest(row: Row): JoinRequestRow {
     checkStatus: row.check_status,
     requestedAt: row.requested_at,
     decidedAt: row.decided_at ?? null,
-    travelers: row.travelers ?? [],
+    // Opened here because this is the only mapper any read of this table goes
+    // through — `getRequestById` builds its own SELECT and still returns
+    // through it. One decrypt point, which is what makes the encryption
+    // reviewable; see `identityCrypto`.
+    travelers: openTravelerIdentities(row.travelers ?? []),
     pets: row.pets ?? [],
     contactEmail: row.contact_email ?? null,
   }
@@ -169,7 +174,13 @@ export async function submitJoinRequest(
         groupId,
         Number(userId),
         Math.max(1, Math.trunc(input.places)),
-        JSON.stringify(input.travelers),
+        // Sealed on the way in: the passport name, email, nationality and
+        // date of birth are encrypted at rest, so SELECT on this table — or
+        // the read-only role approved alongside it — returns envelopes rather
+        // than identities (Chuck, 2026-10-27, §47). The caller's own array is
+        // untouched, because the same travellers go on to the outbound event
+        // in the clear.
+        JSON.stringify(sealTravelerIdentities(input.travelers)),
         JSON.stringify(input.pets),
         input.contactEmail?.trim() || null,
       ],

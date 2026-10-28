@@ -16,7 +16,7 @@ import {
 } from '@/features/join-approval/server/joinRequestStore'
 import { UnderReviewView } from '@/features/join-approval/components/UnderReviewView'
 import { ApprovedParticipantView } from '@/features/join-approval/components/ApprovedParticipantView'
-import { organiserPetBits } from '@/features/join-approval/organiserPetView'
+import { firstNameOnly, organiserPetBits } from '@/features/join-approval/organiserPetView'
 import { OrganiserRequestsView } from '@/features/join-approval/components/OrganiserRequestsView'
 import { GroupFullOrganiserView } from '@/features/join-approval/components/GroupFullOrganiserView'
 import { metroLabel } from '@/features/public-flight/format'
@@ -161,8 +161,10 @@ export default async function GroupPage({ params }: GroupPageProps) {
           <RefreshOnFocus />
           <GroupFullOrganiserView
             group={groupDetail}
-            filledBy={filled?.requesterName ?? null}
-            lapsed={lapsed.map((request) => request.requesterName ?? 'A Flight Club member')}
+            filledBy={firstNameOnly(filled?.requesterName)}
+            lapsed={lapsed.map(
+              (request) => firstNameOnly(request.requesterName) ?? 'A Flight Club member',
+            )}
           />
         </>
       )
@@ -176,15 +178,15 @@ export default async function GroupPage({ params }: GroupPageProps) {
           group={groupDetail}
           requests={pending.map((request) => ({
             id: request.id,
-            requesterName: request.requesterName,
+            requesterName: firstNameOnly(request.requesterName),
             placesRequested: request.placesRequested,
             // Counted from what the request carried, not from the profile —
             // travellers are editable per flight (frame 42).
             travellerCount: Math.max(1, request.travelers.length),
             petCount: request.pets.length,
             // Flattened, because frame 47 separates every descriptor with its
-            // own dot — "1 pet · Nube · Cat · 9lbs" — rather than joining each
-            // animal into a single label.
+            // own dot — "1 pet · Cat · 9lbs" — rather than joining each animal
+            // into a single label.
             //
             // The weight now appears for dogs only (Chuck, §34). It was shown
             // for every pet, so this screen was putting a cat's weight in front

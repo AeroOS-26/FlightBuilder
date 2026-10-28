@@ -70,11 +70,15 @@ export function Checkbox({
           className={cn(
             'flex h-[18px] w-[18px] items-center justify-center rounded-[6px] border transition-colors',
             'peer-focus-visible:shadow-focus',
+            // Unchecked is a 1.5px navy outline on white, not a black hairline:
+            // measured on `4836:50923`, where the box renders #112D7C, and
+            // confirmed against the component's own stroke in Figma
+            // (Colors/Primary-Blue/500 at 1.5). Black read as disabled.
             checked
               ? 'border-[#112D7C] bg-[#112D7C] text-white'
               : invalid
                 ? 'border-danger-text border-[1.5px] bg-[#ffffff]'
-                : 'border-[#000000] bg-white',
+                : 'border-[1.5px] border-[#112D7C] bg-white',
           )}
         >
           {checked && <Icon name="check" size={13} strokeWidth={2.5} />}

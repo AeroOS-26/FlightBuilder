@@ -89,11 +89,44 @@ function FieldLabel({ children, help }: { children: ReactNode; help?: string }) 
  *             muted copy elsewhere on this screen
  *   padding   20 top and bottom, 16 either side
  */
-function EmptyState({ heading, line }: { heading: string; line: string }) {
+/**
+ * The empty state both blocks draw, measured on `4836:50923`.
+ *
+ * 44px icon, 24px under it, heading 20px and line 14px with 8px between, the
+ * card padded 20. Two things differ between the two blocks and they are the
+ * two props: the **icon** — a paw above the pets block, a note above the
+ * readiness one — and the **radius**, 16 on the pets card and 20 on the
+ * readiness card.
+ *
+ * Both glyphs are exported from the frame itself rather than drawn here: each
+ * is the 44px white rounded container with its shadow baked in, which is what
+ * the frame's `popup icon` instance is.
+ */
+const EMPTY_STATE_ICON = {
+  paw: '/images/routes/popup-icon-paw.png',
+  note: '/images/routes/popup-icon-note.png',
+} as const
+
+function EmptyState({
+  heading,
+  line,
+  icon,
+  radiusClass,
+}: {
+  heading: string
+  line: string
+  icon: keyof typeof EMPTY_STATE_ICON
+  radiusClass: string
+}) {
   return (
-    <div className="flex flex-col items-center gap-6 rounded-[16px] border border-dashed border-[#98C3E1] bg-[#CFE3F1]/10 px-4 py-5 text-center">
+    <div
+      className={cn(
+        'flex flex-col items-center gap-6 border border-dashed border-[#98C3E1] bg-[#CFE3F1]/10 px-4 py-5 text-center',
+        radiusClass,
+      )}
+    >
       <Image
-        src="/images/routes/popup%20icon.png"
+        src={EMPTY_STATE_ICON[icon]}
         alt=""
         aria-hidden="true"
         width={44}
@@ -974,6 +1007,8 @@ export function JoinReviewScreen({
             */}
             {pets.length === 0 && (
               <EmptyState
+                icon="paw"
+                radiusClass="rounded-[16px]"
                 heading="No Pets added yet!"
                 line="Add a pet to include them in this request"
               />
@@ -1250,6 +1285,8 @@ export function JoinReviewScreen({
           {pets.length === 0 && (
             <div className="mt-4">
               <EmptyState
+                icon="note"
+                radiusClass="rounded-[20px]"
                 heading="No Pets on this request yet."
                 line="Add a pet above to confirm travel readiness."
               />

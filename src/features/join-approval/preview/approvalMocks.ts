@@ -17,7 +17,7 @@
 import { mockGroupFilling } from '@/services/mockData'
 import type { GroupDetailView, GroupDetailMember } from '@/types'
 import type { PendingRequest } from '../components/OrganiserRequestsView'
-import { organiserPetBits } from '../organiserPetView'
+import { firstNameOnly, organiserPetBits, organiserPetLine } from '../organiserPetView'
 
 function member(
   id: string,
@@ -28,10 +28,14 @@ function member(
   petSummary: string | null,
   isSelf = false,
 ): GroupDetailMember {
+  // The fixtures carry full names because that is what the database holds;
+  // `display_name` narrows here exactly as the store does, so the previews
+  // show what an organiser and a participant actually see (Chuck, 10-27).
+  const shown = firstNameOnly(name) ?? name
   return {
     user_id: id,
-    display_name: name,
-    first_initial: name.charAt(0).toUpperCase(),
+    display_name: shown,
+    first_initial: shown.charAt(0).toUpperCase(),
     role,
     joined_at: '2026-06-05T10:00:00.000Z',
     member_status: 'confirmed',
@@ -97,8 +101,11 @@ export function mockParticipantGroup(): GroupDetailView {
     ...base,
     members: base.members.map((m) => ({
       ...m,
-      is_self: m.display_name === 'Tomás Iglesias',
-      joined_at: m.display_name === 'Tomás Iglesias' ? '2026-06-10T10:00:00.000Z' : m.joined_at,
+      // Keyed on the id, not the shown name: `display_name` is a first name
+      // now, so a full-name comparison here would quietly match nobody and
+      // move `is_self` off every row.
+      is_self: m.user_id === '5',
+      joined_at: m.user_id === '5' ? '2026-06-10T10:00:00.000Z' : m.joined_at,
     })),
   }
 }
@@ -108,8 +115,9 @@ export function mockParticipantGroup(): GroupDetailView {
  *
  * Kept as the pet the frame shows rather than swapped for a dog to make the
  * rule visible: the fixture's job is to reproduce the frame. What it does show
- * is the rule applying — the weight is gone from the row, because the
- * organiser only sees a weight for a dog (Chuck, §34).
+ * is the rule applying twice over — the weight is gone because the organiser
+ * sees one only for a dog, and from 2026-10-27 the **name** is gone too, so
+ * the row reads "1 pet · Cat" where the frame itself still draws "Nube".
  */
 const MOCK_REQUEST_PETS = [{ name: 'Nube', type: 'Cat', weight_lbs: 9 }]
 
@@ -117,7 +125,9 @@ const MOCK_REQUEST_PETS = [{ name: 'Nube', type: 'Cat', weight_lbs: 9 }]
 export const MOCK_PENDING_REQUESTS: PendingRequest[] = [
   {
     id: 1,
-    requesterName: 'Tomás Iglesias',
+    // Narrowed exactly as the real page narrows it, so the preview shows the
+    // first name the organiser actually sees (Chuck, 10-27).
+    requesterName: firstNameOnly('Tomás Iglesias'),
     placesRequested: 1,
     travellerCount: 1,
     petCount: MOCK_REQUEST_PETS.length,
@@ -128,7 +138,7 @@ export const MOCK_PENDING_REQUESTS: PendingRequest[] = [
   },
   {
     id: 2,
-    requesterName: 'Priya Raman',
+    requesterName: firstNameOnly('Priya Raman'),
     placesRequested: 2,
     travellerCount: 1,
     petCount: MOCK_REQUEST_PETS.length,
@@ -176,10 +186,15 @@ export const MOCK_UNDER_REVIEW = {
 /** Frame 48's full request. */
 export const MOCK_REQUEST_DETAIL = {
   id: 1,
-  requesterName: 'Tomás Iglesias',
+  requesterName: firstNameOnly('Tomás Iglesias'),
   memberSince: 'Member since March 2026',
   travellerCount: 1,
-  petLines: ['Nube, cat, 9 lbs, cabin'],
+  // Built through the same function the real screen uses. Hand-written, this
+  // line read "Nube, cat, 9 lbs, cabin" — a name that is now out, a cat's
+  // weight that the dogs-only rule removed, and a cabin field the payload
+  // dropped with crate size. Three revisions stale in one string, which is the
+  // argument against writing fixtures by hand at all.
+  petLines: MOCK_REQUEST_PETS.map(organiserPetLine),
   placesRequested: 1,
   requestedAt: '2026-06-09',
 }

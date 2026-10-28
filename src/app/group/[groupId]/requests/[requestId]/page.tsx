@@ -10,7 +10,7 @@ import {
   listPendingRequests,
 } from '@/features/join-approval/server/joinRequestStore'
 import { RequestDecisionPanel } from '@/features/join-approval/components/RequestDecisionPanel'
-import { weightVisibleToOrganiser } from '@/features/join-approval/organiserPetView'
+import { firstNameOnly, organiserPetLine } from '@/features/join-approval/organiserPetView'
 
 interface PageProps {
   params: Promise<{ groupId: string; requestId: string }>
@@ -57,25 +57,17 @@ export default async function JoinRequestPage({ params }: PageProps) {
       groupId={groupId}
       request={{
         id: request.id,
-        requesterName: request.requesterName,
+        requesterName: firstNameOnly(request.requesterName),
         memberSince: request.memberSince
           ? `Member since ${request.memberSince.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}`
           : null,
         travellerCount: Math.max(1, request.travelers.length),
-        // Weight for dogs only, as on frame 47 — this screen is the same
-        // organiser looking at the same request (Chuck, §34). The line's own
-        // format is kept: "9 lbs" here, "9lbs" on the rows, both as drawn.
-        petLines: request.pets.map((pet) =>
-          [
-            pet.name,
-            pet.type,
-            weightVisibleToOrganiser(pet.type) && pet.weight_lbs
-              ? `${pet.weight_lbs} lbs`
-              : null,
-          ]
-            .filter(Boolean)
-            .join(', '),
-        ),
+        // Type, and weight for dogs only — the same closed list as frame 47,
+        // because this is the same organiser looking at the same request. The
+        // rule lives in `organiserPetLine`; it was written out here as well
+        // until the pet's name came out on 2026-10-27 and had to be removed in
+        // two places at once.
+        petLines: request.pets.map(organiserPetLine),
         placesRequested: request.placesRequested,
         requestedAt: request.requestedAt.toISOString().slice(0, 10),
       }}

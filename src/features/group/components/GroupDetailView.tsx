@@ -145,17 +145,28 @@ function nextStepCopy(status: GroupStatus, spacesRemaining: number): string {
      * AND in the matching emails — is half withdrawn. The page half stands.
      * The email half does not.
      *
-     * When the deposit email is built, counsel's sentence goes underneath the
-     * deposit line, word for word, and in THAT EMAIL ONLY — Chuck was explicit
-     * it does not go on every customer email:
+     * When that email is built, counsel's sentence goes underneath the payment
+     * line, word for word, and in THAT EMAIL ONLY — Chuck was explicit it does
+     * not go on every customer email:
      *
-     *   "Paying your deposit does not confirm that the flight is booked. Perro
+     *   "Paying your invoice does not confirm that the flight is booked. Perro
      *    Air will confirm the charter separately once the Charter Group is
      *    fully funded and a binding commitment with the Direct Air Carrier is
      *    in place."
+     *
+     * **invoice, not deposit** (§40, 2026-10-23). FlightBuilder no longer takes
+     * a deposit: each participant pays in full against an invoice, and
+     * counsel's replacement sentence differs from the one archived here before
+     * by that single word. Nothing was wrong — Chuck approved the deposit
+     * wording deliberately and the commercial model changed underneath it.
+     *
+     * The live line below followed it for the same reason. One word, traceable
+     * to counsel's own one-word change rather than copy written here, and the
+     * alternative was a screen telling a member to pay a deposit this product
+     * does not take.
      */
     case 'quoting':
-      return 'Your Contribution is ready. Pay your deposit to secure your participation.'
+      return 'Your Contribution is ready. Pay your invoice to secure your participation.'
     case 'confirmed':
       return 'The quote is locked. Complete your booking to secure your space.'
     /*

@@ -18,6 +18,17 @@ const panelClass =
 /** Nudge arrow right so it sits under the icon center (Figma). */
 const ARROW_OFFSET_X = 6
 
+/**
+ * The narrowest a panel may be before it is pulled left to fit.
+ *
+ * Without a floor the panel was sized from the icon to the right edge of
+ * whatever was passed as its column — and `InfoTooltip` passes the icon's own
+ * wrapper, so that came to about eighteen pixels. The text then wrapped one
+ * letter per line and the tooltip rendered as a thin black column down the
+ * page, on desktop as well as on a phone.
+ */
+const MIN_PANEL_WIDTH = 240
+
 function TooltipArrow({ left }: { left: number }) {
   return (
     <span
@@ -61,22 +72,36 @@ function useIconAnchoredTooltip(columnRef: React.RefObject<HTMLElement | null>) 
   const id = useId()
   const iconRef = useRef<HTMLButtonElement>(null)
   const iconWrapRef = useRef<HTMLSpanElement>(null)
-  const [layout, setLayout] = useState({ panelWidth: 0, arrowLeft: 9 })
+  const [layout, setLayout] = useState({ panelWidth: 0, panelLeft: 0, arrowLeft: 9 })
 
   function updateLayout() {
     if (!iconWrapRef.current) return
     const iconWrap = iconWrapRef.current.getBoundingClientRect()
     const column = columnRef.current?.getBoundingClientRect()
-    const columnRight = column?.right ?? iconWrap.right
+
+    // A column only counts when it is wider than the icon. `SubHeadingInfoTooltip`
+    // passes a real one; `InfoTooltip` passes the icon's own wrapper, and taking
+    // that right edge is what made the panel icon-width.
+    const hasColumn = Boolean(column && column.width > iconWrap.width + 4)
     const viewportRight = window.innerWidth - 24
-    const maxRight = Math.min(columnRight, viewportRight)
+    const maxRight = Math.min(hasColumn ? column!.right : viewportRight, viewportRight)
+
+    // What fits to the right of the icon, and what the panel needs. When the
+    // first is smaller the panel keeps its width and slides left instead, so it
+    // still sits on screen and the arrow follows it.
+    const natural = Math.max(0, maxRight - iconWrap.left)
+    const available = Math.max(0, maxRight - 24)
+    const panelWidth = Math.min(Math.max(natural, MIN_PANEL_WIDTH), available)
+    const shift = Math.max(0, panelWidth - natural)
+
     const icon = iconRef.current?.getBoundingClientRect()
     const iconCenter = icon
       ? icon.left - iconWrap.left + icon.width / 2
       : iconWrap.width / 2
     setLayout({
-      panelWidth: Math.max(0, maxRight - iconWrap.left),
-      arrowLeft: iconCenter + ARROW_OFFSET_X,
+      panelWidth,
+      panelLeft: -shift,
+      arrowLeft: iconCenter + ARROW_OFFSET_X + shift,
     })
   }
 
@@ -112,7 +137,7 @@ function IconAnchoredTooltipPanel({
   open: boolean
   iconRef: React.RefObject<HTMLButtonElement | null>
   iconWrapRef: React.RefObject<HTMLSpanElement | null>
-  layout: { panelWidth: number; arrowLeft: number }
+  layout: { panelWidth: number; panelLeft: number; arrowLeft: number }
   show: () => void
   hide: () => void
   children: ReactNode
@@ -126,7 +151,10 @@ function IconAnchoredTooltipPanel({
     >
       <TooltipTrigger id={id} open={open} iconRef={iconRef} show={show} hide={hide} />
       {open && layout.panelWidth > 0 && (
-        <div className="absolute left-0 top-full z-30 pt-2" style={{ width: layout.panelWidth }}>
+        <div
+          className="absolute top-full z-30 pt-2"
+          style={{ width: layout.panelWidth, left: layout.panelLeft }}
+        >
           <span id={id} role="tooltip" className={cn('relative block', panelClass)}>
             <TooltipArrow left={layout.arrowLeft} />
             <span className="relative block text-left">{children}</span>

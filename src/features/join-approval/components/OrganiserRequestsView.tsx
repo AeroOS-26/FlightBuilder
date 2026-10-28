@@ -64,7 +64,7 @@ export interface PendingRequest {
   placesRequested: number
   travellerCount: number
   petCount: number
-  /** Each pet's descriptors, already flattened — "Nube", "Cat", "9lbs". */
+  /** Each pet's descriptors, already flattened — "Cat", or "Dog", "68lbs". */
   petBits: string[]
   requestedAt: string
 }

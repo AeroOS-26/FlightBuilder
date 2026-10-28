@@ -15,6 +15,7 @@ import 'server-only'
 
 import { pool, queryOne } from '@/features/auth/server/db'
 import { getProfile } from '@/features/auth/server/profile'
+import { firstNameOnly } from '@/features/join-approval/organiserPetView'
 import { acknowledgmentWording } from './acknowledgmentWording'
 import type {
   FlightGroupCreatedEvent,
@@ -782,7 +783,27 @@ export async function getGroupDetail(
   const viewerId = Number(viewerUserId)
 
   const members: GroupDetailMember[] = memberRows.map((row) => {
-    const displayName = row.name?.trim() || row.email
+    // First names on the roster, and never an email address.
+    //
+    // Chuck on 2026-10-22, repeated through Murtaza on 10-27: "joined members
+    // list, please show first names only there too". Narrowed here rather than
+    // in the four components that render `display_name`, so the full name is
+    // not in the payload at all — counsel's 10-23 boundary is about the data
+    // reaching the view, not about what the view chooses to draw.
+    //
+    // **The old fallback was the email address.** `row.name?.trim() ||
+    // row.email`, and sign-up never asks for a name (see `api/register`), so
+    // any member who joined a flight before filling in a profile had their
+    // address on the roster in front of the whole group. That is contact
+    // information, which counsel put outside this view. It survives only on
+    // the viewer's **own** row, where it is their own address and the one
+    // honest signal that their profile is incomplete.
+    //
+    // `first_initial` follows the narrowed name, and `initialsOf` in
+    // `ParticipantRow` already yields a single letter from a single word, so
+    // the avatars need no change of their own.
+    const isSelf = row.user_id === viewerId
+    const displayName = firstNameOnly(row.name) ?? (isSelf ? row.email : 'Flight Club member')
     return {
       user_id: String(row.user_id),
       display_name: displayName,
@@ -790,7 +811,7 @@ export async function getGroupDetail(
       role: row.role === 'group_organizer' ? 'organizer' : 'joiner',
       joined_at: row.joined_at.toISOString(),
       member_status: 'confirmed',
-      is_self: row.user_id === viewerId,
+      is_self: isSelf,
       places: row.seats_committed,
       pet_count: (row.pets ?? []).length,
       pet_summary: petSummary(row.pets ?? []),

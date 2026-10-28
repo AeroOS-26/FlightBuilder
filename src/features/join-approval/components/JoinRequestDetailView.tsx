@@ -57,7 +57,7 @@ export interface RequestDetail {
   /** "Member since March 2026" — null when we have no joined date. */
   memberSince: string | null
   travellerCount: number
-  /** One line per pet: "Nube, cat, 9 lbs". */
+  /** One line per pet, the closed list only: "Cat", or "Dog, 68 lbs". */
   petLines: string[]
   placesRequested: number
   requestedAt: string
