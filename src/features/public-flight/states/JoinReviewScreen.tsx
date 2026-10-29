@@ -55,6 +55,20 @@ import type { ShareFlightDetail } from '../PublicFlightPage'
 const CARD = 'rounded-[20px] border border-[#A8A8A8]/20 bg-white/60 p-5'
 const HEADING = 'font-heading text-[20px] font-semibold leading-[1.21] text-[#000000]'
 const MUTED = 'font-sans text-[14px] font-medium leading-[1.3] text-[#000000]/70'
+
+/**
+ * The three Stage 1 confirmation rows, ticked and unticked.
+ *
+ * The frames dim the **whole row** while it is unticked — the box as well as
+ * the words — by putting the opacity on the frame that wraps both, which is
+ * why it is a wrapper here rather than a colour on the label. See the note
+ * above the rows for the measurements.
+ *
+ * It stays a pair of class names rather than a `Checkbox` variant because the
+ * readiness control on this same screen does not do it.
+ */
+const CONFIRMATION_ROW = 'transition-opacity'
+const CONFIRMATION_ROW_UNTICKED = 'opacity-40'
 const LABEL = 'font-sans text-[12px] font-medium leading-[1.21] text-[#080B2B]/60'
 
 /**
@@ -129,9 +143,27 @@ function EmptyState({
         src={EMPTY_STATE_ICON[icon]}
         alt=""
         aria-hidden="true"
-        width={44}
-        height={44}
-        className="size-[44px] shrink-0"
+        width={108}
+        height={108}
+        /*
+         * The canvas is 108, the card inside it is 44.
+         *
+         * Both exports carry the drop shadow as bleed rather than clipping to
+         * the frame: measured off the files, the solid card sits at
+         * (32,16)-(76,60) in a 108px canvas. Drawing that canvas at 44 made
+         * the card 17.9px, which is what shipped and what was caught on the
+         * preview.
+         *
+         * So the canvas is drawn at its own size, which puts the card back at
+         * exactly 44, and the transparent bleed is pulled out of the flow —
+         * 16 above and 48 below — so the 24px gap under the icon is still
+         * measured from the card rather than from the shadow. The horizontal
+         * bleed is symmetric at 32 each side, so centring is unaffected.
+         *
+         * If the icons are ever re-exported tight to the 44px frame, this
+         * returns to size-[44px] with no negative margins.
+         */
+        className="-mb-12 -mt-4 size-[108px] shrink-0"
       />
       <div className="flex flex-col gap-2">
         <p className="font-heading text-[20px] font-medium leading-[1.2] text-[#000000]">
@@ -714,42 +746,80 @@ export function JoinReviewScreen({
                   letting both stand would send a contradiction into a review
                   done by hand. That is tidying the answer rather than judging
                   it — nothing here decides whether anyone may travel.
+
+                  All three labels are black at **80%**, read off the frames
+                  rather than the screen: 4836:50923 desktop and 4881:43104
+                  mobile both carry #000000 at nodeOpacity 0.8, Inter Tight
+                  400, 14px, 140%. They were full black here, which made the
+                  block read heavier than the design.
+
+                  Note it is 80 and not the 70% used for muted copy elsewhere
+                  on this screen — a different value, not a rounding of that
+                  one.
+
+                  **An unticked row renders at 40%, the whole row.** The
+                  dimming is not on the label: it sits on the frame wrapping
+                  the box and the text together, so reading the TEXT node's
+                  own opacity misses it entirely and reports all three as
+                  identical. Measured with the opacity multiplied down the
+                  ancestor chain, on 4881:43104 and 4835:50402 alike:
+
+                    ticked    wrapper 1.0 x label 0.8  = 0.8
+                    unticked  wrapper 0.4 x label 0.8  = 0.32
+
+                  So the wrapper is the thing that changes on check, and the
+                  label keeps its 80 throughout.
+
+                  Scoped to these three rows rather than put in `Checkbox`.
+                  The readiness box on this same screen measures 1.0 on
+                  4835:50402, not 0.8, so the confirmations and the readiness
+                  control are not one treatment and a component-level rule
+                  would have dimmed a row the frames do not dim.
                 */}
                 {/* 12px apart, measured: three 20px rows at a 32px pitch on
                     the frame. This was 10. */}
                 <div className="mt-4 flex flex-col gap-3">
-                  <Checkbox
-                    checked={Boolean(t.isAdult)}
-                    onChange={(next) => {
-                      const updated = travelers.map((x) =>
-                        x.id === t.id
-                          ? { ...x, isAdult: next, guardianBookingForMinor: next ? false : x.guardianBookingForMinor }
-                          : x,
-                      )
-                      setTravelers(updated)
-                      revalidate({ travelers: updated })
-                    }}
+                  <div className={cn(CONFIRMATION_ROW, !t.isAdult && CONFIRMATION_ROW_UNTICKED)}>
+                    <Checkbox
+                      checked={Boolean(t.isAdult)}
+                      onChange={(next) => {
+                        const updated = travelers.map((x) =>
+                          x.id === t.id
+                            ? { ...x, isAdult: next, guardianBookingForMinor: next ? false : x.guardianBookingForMinor }
+                            : x,
+                        )
+                        setTravelers(updated)
+                        revalidate({ travelers: updated })
+                      }}
+                    >
+                      <span className="font-sans text-[14px] leading-[1.4] text-[#000000]/80">
+                        {STAGE1_CONFIRMATIONS.isAdult}
+                      </span>
+                    </Checkbox>
+                  </div>
+                  <div
+                    className={cn(
+                      CONFIRMATION_ROW,
+                      !t.guardianBookingForMinor && CONFIRMATION_ROW_UNTICKED,
+                    )}
                   >
-                    <span className="font-sans text-[14px] leading-[1.4] text-[#000000]">
-                      {STAGE1_CONFIRMATIONS.isAdult}
-                    </span>
-                  </Checkbox>
-                  <Checkbox
-                    checked={Boolean(t.guardianBookingForMinor)}
-                    onChange={(next) => {
-                      const updated = travelers.map((x) =>
-                        x.id === t.id
-                          ? { ...x, guardianBookingForMinor: next, isAdult: next ? false : x.isAdult }
-                          : x,
-                      )
-                      setTravelers(updated)
-                      revalidate({ travelers: updated })
-                    }}
-                  >
-                    <span className="font-sans text-[14px] leading-[1.4] text-[#000000]">
-                      {STAGE1_CONFIRMATIONS.guardianBookingForMinor}
-                    </span>
-                  </Checkbox>
+                    <Checkbox
+                      checked={Boolean(t.guardianBookingForMinor)}
+                      onChange={(next) => {
+                        const updated = travelers.map((x) =>
+                          x.id === t.id
+                            ? { ...x, guardianBookingForMinor: next, isAdult: next ? false : x.isAdult }
+                            : x,
+                        )
+                        setTravelers(updated)
+                        revalidate({ travelers: updated })
+                      }}
+                    >
+                      <span className="font-sans text-[14px] leading-[1.4] text-[#000000]/80">
+                        {STAGE1_CONFIRMATIONS.guardianBookingForMinor}
+                      </span>
+                    </Checkbox>
+                  </div>
                   {/* One message for the pair rather than one on each box: the
                       rule is about the two together, and a message under both
                       reads as two separate faults. */}
@@ -758,20 +828,27 @@ export function JoinReviewScreen({
                       {errors.travelerFields[t.id].age}
                     </span>
                   )}
-                  <Checkbox
-                    checked={Boolean(t.passportValidSixMonths)}
-                    onChange={(next) => {
-                      const updated = travelers.map((x) =>
-                        x.id === t.id ? { ...x, passportValidSixMonths: next } : x,
-                      )
-                      setTravelers(updated)
-                      revalidate({ travelers: updated })
-                    }}
+                  <div
+                    className={cn(
+                      CONFIRMATION_ROW,
+                      !t.passportValidSixMonths && CONFIRMATION_ROW_UNTICKED,
+                    )}
                   >
-                    <span className="font-sans text-[14px] leading-[1.4] text-[#000000]">
-                      {STAGE1_CONFIRMATIONS.passportValidSixMonths}
-                    </span>
-                  </Checkbox>
+                    <Checkbox
+                      checked={Boolean(t.passportValidSixMonths)}
+                      onChange={(next) => {
+                        const updated = travelers.map((x) =>
+                          x.id === t.id ? { ...x, passportValidSixMonths: next } : x,
+                        )
+                        setTravelers(updated)
+                        revalidate({ travelers: updated })
+                      }}
+                    >
+                      <span className="font-sans text-[14px] leading-[1.4] text-[#000000]/80">
+                        {STAGE1_CONFIRMATIONS.passportValidSixMonths}
+                      </span>
+                    </Checkbox>
+                  </div>
                   {errors?.travelerFields[t.id]?.passportValidSixMonths && (
                     <span className="font-sans text-[12px] text-danger-text">
                       {errors.travelerFields[t.id].passportValidSixMonths}
@@ -1656,15 +1733,46 @@ function SharedFlightCard({
   )
 }
 
-/** Label left, value right at 18px — the row shape frames 42, 43 and 44 share. */
+/**
+ * Label left, value right — the row shape frames 42, 43 and 44 share.
+ *
+ * Measured rather than eyeballed, on `4881:43104` (mobile) and `4835:50402`
+ * (desktop). Both draw the row as a horizontal auto-layout, SPACE_BETWEEN on
+ * the main axis and CENTER on the cross axis, and on both every value ends at
+ * the same x as every other.
+ *
+ *   mobile    itemSpacing 12    value textAlign RIGHT    label 12 / value 16
+ *   desktop   itemSpacing 100   value textAlign LEFT     label 14 / value 18
+ *
+ * Three things this had wrong, all of which only showed once a value was long
+ * enough to wrap — which a date range is and a city pair is not:
+ *
+ *  - **No alignment at all on the value.** It read right only because
+ *    `justify-between` pushed it there. The moment it wrapped it became a
+ *    full-width line reading from the left, which is the ragged departure row
+ *    on the phone.
+ *  - **`flex-wrap`,** which is what let it drop to that line. Removed, with
+ *    the label fixed and the value allowed to shrink, so a long value wraps
+ *    inside its own column and keeps its right edge instead of displacing the
+ *    label.
+ *  - **8px of gap** where the frames have 12 and 100. With SPACE_BETWEEN the
+ *    gap is a floor rather than a spacing, so it only bites when the two
+ *    sides would otherwise meet — which is the case being fixed.
+ *
+ * `text-right` is kept at both sizes though the desktop frame says LEFT. Every
+ * desktop value there is a single hugging line, where LEFT and RIGHT render
+ * identically, so the frame does not actually say what a wrapped desktop value
+ * should do. Right matches what both frames do show: all values ending
+ * together.
+ */
 function Detail({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-2">
+    <div className="flex items-center justify-between gap-3 lg:gap-[100px]">
       {/* 12px on the 440 frame, 14 on the desktop one. */}
-      <dt className="font-sans text-[12px] font-medium uppercase tracking-[0.5px] text-[#080B2B] lg:text-[14px]">
+      <dt className="shrink-0 font-sans text-[12px] font-medium uppercase tracking-[0.5px] text-[#080B2B] lg:text-[14px]">
         {label}
       </dt>
-      <dd className="font-heading text-[16px] font-medium text-[#000000] lg:text-[18px]">
+      <dd className="min-w-0 text-right font-heading text-[16px] font-medium text-[#000000] lg:text-[18px]">
         {children}
       </dd>
     </div>

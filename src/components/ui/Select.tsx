@@ -10,6 +10,15 @@
 const DROPDOWN_MAX_HEIGHT = 240
 const DROPDOWN_GAP = 8
 
+/**
+ * How long a run of keystrokes counts as one search before it starts again.
+ *
+ * Matches what a native <select> does, which is the behaviour this control
+ * threw away by not being one: with 250 nationalities on frame 42 there is no
+ * other way to reach "Switzerland" than scrolling to it.
+ */
+const TYPEAHEAD_RESET_MS = 700
+
 import {
   forwardRef,
   useEffect,
@@ -18,6 +27,9 @@ import {
   useRef,
   useState,
   type ChangeEvent,
+  // Aliased: the bare name would shadow the DOM KeyboardEvent, which the
+  // document-level Escape listener below is typed against.
+  type KeyboardEvent as ReactKeyboardEvent,
   type SelectHTMLAttributes,
 } from 'react'
 import { cn } from '@/utils/cn'
@@ -54,7 +66,12 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(function Select
   const [placement, setPlacement] = useState<'bottom' | 'top'>('bottom')
   const [listMaxHeight, setListMaxHeight] = useState(DROPDOWN_MAX_HEIGHT)
   const containerRef = useRef<HTMLDivElement>(null)
+  const listRef = useRef<HTMLUListElement>(null)
   const listId = useId()
+
+  /** Keystrokes typed inside the reset window, lower-cased. */
+  const typeahead = useRef('')
+  const typeaheadTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const selected = options.find((opt) => opt.value === value)
   const isPlaceholder = value === '' || value === undefined
@@ -110,8 +127,74 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(function Select
     }
   }, [open])
 
-  function selectValue(next: string) {
-    setOpen(false)
+  // Clear the pending reset if the field unmounts mid-search.
+  useEffect(
+    () => () => {
+      if (typeaheadTimer.current) clearTimeout(typeaheadTimer.current)
+    },
+    [],
+  )
+
+  /**
+   * Keep the chosen option in view while the list is open.
+   *
+   * Typing jumps the value, and without this the selection moves somewhere
+   * below the fold and the list looks like it did nothing.
+   */
+  useEffect(() => {
+    if (!open) return
+    const host = listRef.current
+    if (!host) return
+    host
+      .querySelector<HTMLElement>(`[data-value="${CSS.escape(String(value))}"]`)
+      ?.scrollIntoView({ block: 'nearest' })
+  }, [open, value])
+
+  /**
+   * The option a run of keystrokes points at.
+   *
+   * Prefix match on the label, so "ind" reaches India. One letter pressed
+   * repeatedly steps through everything starting with it instead of sticking
+   * on the first — again, what the native control did.
+   */
+  function optionForKeystrokes(buffer: string): SelectOption | undefined {
+    const repeated = buffer.length > 1 && new Set(buffer).size === 1
+    const needle = repeated ? buffer.slice(0, 1) : buffer
+    const matches = options.filter((opt) => opt.label.toLowerCase().startsWith(needle))
+    if (matches.length === 0) return undefined
+    if (!repeated) return matches[0]
+    const current = matches.findIndex((opt) => opt.value === value)
+    return matches[(current + 1) % matches.length]
+  }
+
+  function handleTypeahead(event: ReactKeyboardEvent<HTMLButtonElement>) {
+    // Printable characters only. Tab, Enter, Escape, the arrows and every
+    // browser shortcut pass through untouched.
+    if (event.key.length !== 1 || event.metaKey || event.ctrlKey || event.altKey) return
+    // Space still opens and closes the field, unless a search is already under
+    // way — "united k" needs it, an idle field does not.
+    if (event.key === ' ' && typeahead.current === '') return
+
+    event.preventDefault()
+
+    if (typeaheadTimer.current) clearTimeout(typeaheadTimer.current)
+    typeaheadTimer.current = setTimeout(() => {
+      typeahead.current = ''
+    }, TYPEAHEAD_RESET_MS)
+
+    typeahead.current += event.key.toLowerCase()
+    const match = optionForKeystrokes(typeahead.current)
+    // No match leaves the field alone rather than clearing it: a digit typed
+    // into a list of countries should do nothing, not undo the answer.
+    if (!match) return
+
+    // The list stays open so the search can be refined; a closed field takes
+    // the value without opening, which is how a native select behaves.
+    selectValue(match.value, { keepOpen: open })
+  }
+
+  function selectValue(next: string, { keepOpen = false }: { keepOpen?: boolean } = {}) {
+    if (!keepOpen) setOpen(false)
     onChange?.({
       target: { value: next, name },
     } as ChangeEvent<HTMLSelectElement>)
@@ -144,6 +227,9 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(function Select
           className,
         )}
         {...(props as object)}
+        // After the spread deliberately: typing must not be overridden by a
+        // caller's own handler, and no caller passes one today.
+        onKeyDown={handleTypeahead}
       >
         <span className="min-w-0 truncate">{displayLabel}</span>
         <Icon
@@ -155,6 +241,7 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(function Select
 
       {open && (
         <ul
+          ref={listRef}
           id={listId}
           role="listbox"
           aria-labelledby={id}
@@ -172,6 +259,7 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(function Select
                   type="button"
                   role="option"
                   aria-selected={active}
+                  data-value={opt.value}
                   onClick={() => selectValue(opt.value)}
                   className={cn(
                     'flex w-full items-center px-[14px] py-2.5 text-left font-sans text-[14px] font-medium leading-4 text-[#000000] transition-colors hover:bg-[#F7F8FB]',
