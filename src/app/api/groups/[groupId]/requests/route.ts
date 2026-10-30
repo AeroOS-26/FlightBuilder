@@ -18,6 +18,8 @@
 import { NextResponse } from 'next/server'
 import { requireViewerOrUnauthorized } from '@/features/auth/server/guard'
 import { resolvePublicFlight } from '@/features/public-flight/data/resolvePublicFlight'
+import { checkGroupPublished } from '@/features/public-flight/data/checkGroupPublished'
+import { serverEnv } from '@/config/serverEnv'
 import {
   submitJoinRequest,
   groupZohoRecordId,
@@ -83,6 +85,28 @@ export async function POST(
       { message: 'We could not check this flight just now. Please try again.' },
       { status: 503 },
     )
+  }
+
+  /*
+   * The submission check, Vivek's `check_group_published` (2026-10-30). Behind
+   * PUBLISHED_CHECK_ENABLED, off until launch: it enforces Published from the
+   * moment it is called, and no group is published yet.
+   *
+   * After the resolver rather than instead of it, so it can only add refusals.
+   * The answers map onto the two above: a no is the same 404, and no usable
+   * answer is the same 503.
+   */
+  if (serverEnv.publishedCheckEnabled) {
+    const published = await checkGroupPublished(groupId, await groupZohoRecordId(groupId))
+    if (published.status === 'refused') {
+      return NextResponse.json({ message: 'Not found' }, { status: 404 })
+    }
+    if (published.status === 'error') {
+      return NextResponse.json(
+        { message: 'We could not check this flight just now. Please try again.' },
+        { status: 503 },
+      )
+    }
   }
 
   const body = (await request.json().catch(() => null)) as Record<string, unknown> | null

@@ -32,6 +32,24 @@ interface ServerEnv {
    */
   zohoPublicViewUrl: string
   /**
+   * Zoho CRM Function URL (with zapikey) for `check_group_published`, the
+   * submission check Vivek built for us to call before a join request is
+   * stored (his message, 2026-10-30). POSTed `{ group_id,
+   * zoho_flight_group_record_id? }`; answers `{ group_id, published, reason }`.
+   * Server-only. Read only when `publishedCheckEnabled` is on.
+   */
+  zohoPublishedCheckUrl: string
+  /**
+   * Whether the join request route calls `check_group_published`. **Off unless
+   * set to exactly `true`.**
+   *
+   * Vivek, 2026-10-30: "Please do not switch it on yet. While the switch is
+   * off, it would refuse joins on groups that are not yet marked published." It
+   * goes on at launch, at the same time as his switch in the public read, and
+   * after staff publish the first real group — otherwise every join is refused.
+   */
+  publishedCheckEnabled: boolean
+  /**
    * Optional override URL (with zapikey) for the interest-lead write. The
    * `aeroos` CRM function that handles flight-group creation and member.joined
    * also handles the `interest_lead.created` event — it routes on the event
@@ -88,6 +106,8 @@ interface ServerEnv {
 export const serverEnv: ServerEnv = {
   zohoWebhookUrl: process.env.ZOHO_WEBHOOK_URL ?? '',
   zohoPublicViewUrl: process.env.ZOHO_PUBLIC_VIEW_URL ?? '',
+  zohoPublishedCheckUrl: process.env.ZOHO_PUBLISHED_CHECK_URL ?? '',
+  publishedCheckEnabled: process.env.PUBLISHED_CHECK_ENABLED === 'true',
   zohoLeadWriteUrl: process.env.ZOHO_LEAD_WRITE_URL ?? '',
   zohoTimeoutMs: Number(process.env.ZOHO_TIMEOUT_MS) || 15000,
   zohoCallbackSecret: process.env.ZOHO_CALLBACK_SECRET ?? '',
